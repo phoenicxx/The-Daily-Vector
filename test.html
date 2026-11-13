@@ -868,34 +868,38 @@ let FW = 0, FH = 0;
 let state = "menu";            // menu | play | over | tutdone
 
 // SOUNDS ==================================
-const pingSound = new Audio("./sounds/ping.mp3");
-pingSound.preload = "auto";
-function playPingSound() {
-    pingSound.currentTime = 0;
-    pingSound.play().catch(error => console.warn("Ping sound could not play:", error));
-}
-const enemySelectSound = new Audio("./sounds/enemy_select.mp3");
-enemySelectSound.preload = "auto";
-enemySelectSound.volume = 0.6;
-function playEnemySelectSound() {
-    enemySelectSound.currentTime = 0;
-    enemySelectSound.play().catch(error => console.warn("Enemy select sound failed:", error));
-}
-const pointSound = new Audio("./sounds/point.mp3");
-pointSound.preload = "auto";
-pointSound.volume = 0.7;
-function playPointSound() {
-    pointSound.currentTime = 0;
-    pointSound.play().catch(error => console.warn("Score sound failed:", error));
-}
-const loseSound = new Audio("./sounds/lose.mp3");
-loseSound.preload = "auto";
-loseSound.volume = 0.4;
-function playloseSound() {
-    loseSound.currentTime = 0;
-    loseSound.play().catch(error => console.warn("Lose sound failed:", error));
+// SOUNDS ==================================
+
+function playThemeSound(soundName, volume = 1) {
+
+const theme = document.documentElement.dataset.theme || "classic";
+
+const sound = new Audio(
+    `./sounds/${theme}/${soundName}.mp3`
+);
+
+sound.volume = volume;
+
+sound.play().catch(error => {
+    console.warn("Sound could not play:", error);
+});
 }
 
+function playPingSound() {
+playThemeSound("ping");
+}
+
+function playEnemySelectSound() {
+playThemeSound("enemy_select", 0.6);
+}
+
+function playPointSound() {
+playThemeSound("point", 0.7);
+}
+
+function playloseSound() {
+playThemeSound("lose", 0.4);
+}
 // CONTROLS ================================
 // "touch":    planes = drag, hostiles = tap -> confirm -> hold button, pings = press & hold
 // "keyboard": planes = click then WASD, hostiles = click then hold SPACE, pings = press & hold (mouse)
