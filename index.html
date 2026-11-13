@@ -133,14 +133,15 @@ body {
 }
 
 #game {
+    #game {
     position: fixed;
-    inset: 0;
-    background: radial-gradient(
-        ellipse at 55% 50%,
-        var(--panel-alt) 0%,
-        var(--panel) 45%,
-        var(--bg) 100%
-    );
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(430px, 100vw); /* Forces a vertical phone-sized layout */
+}
+    
 }
 
 #game::before {
