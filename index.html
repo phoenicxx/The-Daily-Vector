@@ -806,7 +806,7 @@ body {
 
 <!-- Start menu -->
 <div class="screen on" id="menu">
-    <div class="modal">
+    <div class="modal"
         <div class="eyebrow">NEURAL READINESS</div>
         <h2>THE DAILY VECTOR</h2>
         <div class="sub">
@@ -1530,17 +1530,17 @@ const TUT_STEPS = [
                "The sooner you catch a stray, the more you score."
     },
     {
-        title: "IDENTIFY THE GHOST",
-        text:  "A red <b>Ghost</b> appeared. <b>Press and hold it for 0.5 s</b> before its " +
+        title: "IDENTIFY THE PING",
+        text:  "A red <b>ping</b> appeared. <b>Press and hold it for 0.5 s</b> before its " +
                "red ring runs out (3 s). In a real run, a missed Ghost ends the game. Here it just comes back."
     },
     {
-        title: "STRIKE THE HOSTILE",
+        title: "STRIKE THE ENEMY",
         text:  "<b>Click the red diamond</b>, press <b>CONFIRM STRIKE</b>, then <b>hold the button for 2 seconds</b>. " +
                "Hostiles chase planes. In a real run, contact ends the game."
     }
 ];
-const TUT_NAMES = ["DRAG PLANE", "IDENTIFY GHOST", "STRIKE HOSTILE"];
+const TUT_NAMES = ["DRAG PLANE", "IDENTIFY PING", "STRIKE ENEMY"];
 
 function tutDoneBefore() {
     try { return localStorage.getItem("ace_tutorial_done") === "1"; } catch (_) { return false; }

@@ -487,7 +487,7 @@ body {
     border-bottom: 1px solid var(--border);
 }
 
-#lbCer { color: var(--success); font-size: 42px; margin: 6px 0 14px; font-variant-numeric: tabular-nums; }
+#lbkcer { color: var(--success); font-size: 42px; margin: 6px 0 14px; font-variant-numeric: tabular-nums; }
 .lb-label {
     color: var(--muted);
     font-size: 11px;
@@ -546,7 +546,7 @@ body {
     color: var(--muted);
 }
 #lbTable .c-name { text-align: left; }
-#lbTable .c-cer {
+#lbTable .c-kcer {
     text-align: right;
     color: var(--success);
 }
@@ -696,7 +696,7 @@ body {
     color: var(--gold);
 }
 
-#myTable td.cer {
+#myTable td.kcer {
     color: var(--success);
 }
 
@@ -763,7 +763,7 @@ body {
         <div class="stats">
             <div class="stat"><div class="lab">TIME</div><div class="val" id="hTime">00:00</div></div>
             <div class="stat"><div class="lab">POINTS</div><div class="val" id="hPts">0</div></div>
-            <div class="stat"><div class="lab">CER</div><div class="val" id="hCer">0.0</div></div>
+            <div class="stat"><div class="lab">kcer</div><div class="val" id="hkcer">0.0</div></div>
             <div class="stat"><div class="lab">LEVEL</div><div class="val" id="hLvl">1</div></div>
             <div class="stat"><div class="lab">HOSTILES</div><div class="val red" id="hHost">0</div></div>
         </div>
@@ -817,7 +817,7 @@ body {
             <b>Follow the dotted grey flight path.</b> Planes drift off course. Drag them back onto the path for points, and the sooner you catch them, the more you score.
             <b>Click a hostile</b>, confirm, then <b>hold 2 seconds</b> to strike it.<br><br>
             <b>Press and hold a red Ghost for 0.5 s</b> to identify it. Each Ghost expires after <b>3.0 s</b>.<br><br>
-            Any failure ends the run. Your daily rank is your <b>CER = (Points / Time) × Difficulty</b>.
+            Any failure ends the run. Your daily rank is your <b>kcer = Points x Time × Difficulty x 1/10000 </b>.
             Only logged-in players can save scores.
         </div>
         <button class="btn" id="menuTut">▶ TUTORIAL (RECOMMENDED)</button>
@@ -888,8 +888,8 @@ body {
         <table id="metrics"></table>
 
         <div id="lbSubmit">
-            <div class="lb-label">YOUR CER</div>
-            <div id="lbCer">0.0</div>
+            <div class="lb-label">YOUR kcer</div>
+            <div id="lbkcer">0.0</div>
             <div id="lbGuest">
                 <div class="acct-hint">Guests can't save scores. You need an account to submit this result.</div>
                 <button class="btn primary" id="lbLogin" style="width:100%;margin-top:10px">LOG IN / CREATE ACCOUNT</button>
@@ -906,7 +906,7 @@ body {
                 <tr>
                     <th class="c-rank">#</th>
                     <th class="c-name">NAME</th>
-                    <th class="c-cer">CER</th>
+                    <th class="c-kcer">kcer</th>
                     <th class="c-pts">PTS</th>
                     <th class="c-time">TIME</th>
                 </tr>
@@ -948,21 +948,21 @@ body {
         <h2 id="myTitle">MY SCORES</h2>
         <div class="my-stats">
             <div><div class="lab">RUNS</div><div class="val" id="myRuns">0</div></div>
-            <div><div class="lab">BEST CER</div><div class="val" id="myBestCer">0</div></div>
+            <div><div class="lab">BEST kcer</div><div class="val" id="myBestkcer">0</div></div>
             <div><div class="lab">BEST PTS</div><div class="val" id="myBestPts">0</div></div>
             <div><div class="lab">LONGEST</div><div class="val" id="myBestTime">00:00</div></div>
         </div>
         <div class="my-stats my-avgs">
-            <div><div class="lab">TODAY AVG CER</div><div class="val" id="myDayCer">-</div></div>
-            <div><div class="lab">ALL-TIME AVG CER</div><div class="val" id="myAllCer">-</div></div>
+            <div><div class="lab">TODAY AVG kcer</div><div class="val" id="myDaykcer">-</div></div>
+            <div><div class="lab">ALL-TIME AVG kcer</div><div class="val" id="myAllkcer">-</div></div>
             <div><div class="lab">TODAY AVG PTS</div><div class="val" id="myDayPts">-</div></div>
             <div><div class="lab">ALL-TIME AVG PTS</div><div class="val" id="myAllPts">-</div></div>
         </div>
-        <div class="my-chart-lab" id="myChartLab">CER OVER TIME (OLDEST → NEWEST)</div>
+        <div class="my-chart-lab" id="myChartLab">kcer OVER TIME (OLDEST → NEWEST)</div>
         <svg id="myChart" viewBox="0 0 300 80" preserveAspectRatio="none"></svg>
         <div id="myScroll">
             <table id="myTable">
-                <thead><tr><th>DATE</th><th>LVL</th><th>CER</th><th>PTS</th><th>TIME</th></tr></thead>
+                <thead><tr><th>DATE</th><th>LVL</th><th>kcer</th><th>PTS</th><th>TIME</th></tr></thead>
                 <tbody id="myBody"></tbody>
             </table>
         </div>
@@ -1152,7 +1152,7 @@ function formatClock(sec) {
     const s = Math.floor(sec);
     return String(Math.floor(s / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0");
 }
-function computeCER(points, seconds, mult) {
+function computekcer(points, seconds, mult) {
     return (points / Math.max(seconds, 0.001)) * mult;
 }
 function levelMult(level) { return 1 + 0.1 * (level - 1); }
@@ -1905,7 +1905,7 @@ function updateHud() {
     if (!G) return;
     $("hTime").textContent = formatClock(G.t);
     $("hPts").textContent = G.points.toLocaleString();
-    $("hCer").textContent = computeCER(G.points, G.t, D.mult).toFixed(1);
+    $("hkcer").textContent = computekcer(G.points, G.t, D.mult).toFixed(1);
     $("hLvl").textContent = G.level;
     $("hHost").textContent = G.enemies.length;
     $("hTime").classList.toggle("ok", G.t >= TARGET_ENDURANCE_S);
@@ -1987,7 +1987,7 @@ function endGame(reason) {
     G.result = {
         points: G.points,
         timeMs: Math.round(seconds * 1000),
-        cer: computeCER(G.points, seconds, D.mult),
+        kcer: computekcer(G.points, seconds, D.mult),
         difficulty: diffKey
     };
     updateHud();
@@ -2071,8 +2071,8 @@ class LeaderboardSystem {
         try {
             const url = `${SUPABASE_URL}/rest/v1/ace_scores` +
                 `?puzzle_day=eq.${day}` +
-                `&select=id,name,points,time_ms,difficulty,cer,created_at` +
-                `&order=cer.desc,created_at.asc` +
+                `&select=id,name,points,time_ms,difficulty,kcer,created_at` +
+                `&order=kcer.desc,created_at.asc` +
                 `&limit=500`;
 
             const res = await fetch(url, { headers: this.headers() });
@@ -2102,7 +2102,7 @@ class LeaderboardSystem {
                 points: r.points,
                 timeMs: r.time_ms,
                 difficulty: r.difficulty,
-                cer: Number(r.cer)
+                kcer: Number(r.kcer)
             }));
             this.online = true;
         } catch (err) {
@@ -2121,9 +2121,9 @@ class LeaderboardSystem {
         return cleaned || 'UNKNOWN';
     }
 
-    qualifies(cer) {
+    qualifies(kcer) {
         if (this.entries.length < this.maxEntries) return true;
-        return cer > this.entries[this.entries.length - 1].cer;
+        return kcer > this.entries[this.entries.length - 1].kcer;
     }
 
     async submitAccount(result) {
@@ -2168,7 +2168,7 @@ class LeaderboardView {
 
         if (!this.submitted && G && G.result && G.result.timeMs >= MIN_TIME_MS) {
             $("lbMessage").textContent = on
-                ? (this.lb.qualifies(G.result.cer) ? "THIS RESULT MAKES THE BOARD" : "")
+                ? (this.lb.qualifies(G.result.kcer) ? "THIS RESULT MAKES THE BOARD" : "")
                 : "GUEST RUNS ARE NOT SAVED - LOG IN TO RECORD YOUR SCORE";
         }
     }
@@ -2240,7 +2240,7 @@ class LeaderboardView {
         $("metrics").innerHTML = rows.map(x => `<tr><td>${x[0]}</td><td>${x[1]}</td></tr>`).join("");
         $("metrics").style.display = "table";
 
-        $("lbCer").textContent = r.cer.toFixed(1);
+        $("lbkcer").textContent = r.kcer.toFixed(1);
 
         $("lbMessage").textContent = "";
         if (r.timeMs < MIN_TIME_MS) {
@@ -2352,7 +2352,7 @@ class LeaderboardView {
             const cells = [
                 ["c-rank", String(i + 1).padStart(2, "0")],
                 ["c-name", e.name + (i === 0 ? "  ★ ACE" : "")],
-                ["c-cer",  e.cer.toFixed(1)],
+                ["c-kcer",  e.kcer.toFixed(1)],
                 ["c-pts",  Number(e.points).toLocaleString()],
                 ["c-time", formatClock(e.timeMs / 1000)]
             ];
@@ -2488,11 +2488,11 @@ function drawTrend(vals) {
 function renderMyScores(rows) {
     const scores = rows.map(r => ({
         day: String(r.puzzle_day), diff: r.difficulty, pts: r.points,
-        timeMs: r.time_ms, cer: Number(r.cer), at: r.created_at, id: r.id
+        timeMs: r.time_ms, kcer: Number(r.kcer), at: r.created_at, id: r.id
     })); // newest first
-    const bestCer = scores.length ? Math.max(...scores.map(s => s.cer)) : 0;
+    const bestkcer = scores.length ? Math.max(...scores.map(s => s.kcer)) : 0;
     $("myRuns").textContent = scores.length;
-    $("myBestCer").textContent = bestCer.toFixed(1);
+    $("myBestkcer").textContent = bestkcer.toFixed(1);
     $("myBestPts").textContent = (scores.length ? Math.max(...scores.map(s => s.pts)) : 0).toLocaleString();
     $("myBestTime").textContent = formatClock((scores.length ? Math.max(...scores.map(s => s.timeMs)) : 0) / 1000);
     // Personal averages (daily = today's UTC puzzle day, same as the daily seed)
@@ -2500,16 +2500,16 @@ function renderMyScores(rows) {
     const today = String(getDaily());
     const todays = scores.filter(s => s.day === today);
 
-    const dayCer = avg(todays.map(s => s.cer));
-    const allCer = avg(scores.map(s => s.cer));
+    const daykcer = avg(todays.map(s => s.kcer));
+    const allkcer = avg(scores.map(s => s.kcer));
     const dayPts = avg(todays.map(s => s.pts));
     const allPts = avg(scores.map(s => s.pts));
 
-    $("myDayCer").textContent = dayCer === null ? "-" : dayCer.toFixed(1);
-    $("myAllCer").textContent = allCer === null ? "-" : allCer.toFixed(1);
+    $("myDaykcer").textContent = daykcer === null ? "-" : daykcer.toFixed(1);
+    $("myAllkcer").textContent = allkcer === null ? "-" : allkcer.toFixed(1);
     $("myDayPts").textContent = dayPts === null ? "-" : Math.round(dayPts).toLocaleString();
     $("myAllPts").textContent = allPts === null ? "-" : Math.round(allPts).toLocaleString();
-    drawTrend(scores.slice().reverse().map(s => s.cer));
+    drawTrend(scores.slice().reverse().map(s => s.kcer));
 
     const body = $("myBody");
     body.textContent = "";
@@ -2519,7 +2519,7 @@ function renderMyScores(rows) {
         const cells = [
             ["", isNaN(d) ? s.day : d.toLocaleDateString()],
             ["", (s.diff || "").slice(0, 1).toUpperCase()],
-            ["cer" + (s.cer === bestCer ? " best" : ""), s.cer.toFixed(1) + (s.cer === bestCer ? " ★" : "")],
+            ["kcer" + (s.kcer === bestkcer ? " best" : ""), s.kcer.toFixed(1) + (s.kcer === bestkcer ? " ★" : "")],
             ["", Number(s.pts).toLocaleString()],
             ["", formatClock(s.timeMs / 1000)]
         ];
@@ -2539,7 +2539,7 @@ async function openMyScores() {
     $("myTitle").textContent = account.name;
     $("myMsg").textContent = "LOADING...";
     $("myBody").textContent = "";
-    ["myDayCer","myAllCer","myDayPts","myAllPts"].forEach(id => $(id).textContent = "-");
+    ["myDaykcer","myAllkcer","myDayPts","myAllPts"].forEach(id => $(id).textContent = "-");
     $("myChart").style.display = "none"; $("myChartLab").style.display = "none";
     $("myOverlay").classList.add("on");
     try {
