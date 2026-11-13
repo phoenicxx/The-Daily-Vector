@@ -992,15 +992,15 @@ const LEVEL_LEN_S = 30;
 const MIN_TIME_MS = 3000;           // shortest run the server accepts
 
 const DIFFS = {
-    easy:   { label: "EASY",   mult: 1.0, blurb: "Slow hostiles, 2 friendlies, 2 Ghosts at a time.",
+    easy:   { label: "EASY",   mult: 1.0, blurb: "Fast enemies, 2 friendlies, 2 small pings at a time.",
               enemySpeed: 35, enemyStart: 9.0, enemyFloor: 4.5, maxEnemies: 8,
               ghostStart: 7.0, ghostFloor: 3.5, maxGhosts: 2, ghostR: 32,
               friendlyMax: 2, friendlySpawn: 9 },
-    normal: { label: "NORMAL", mult: 1.5, blurb: "Faster hostiles, 3 friendlies, 3 Ghosts at a time.",
+    normal: { label: "NORMAL", mult: 1.5, blurb: "Faster enemies, 3 friendlies, 3 smaller pings at a time.",
               enemySpeed: 45, enemyStart: 7.0, enemyFloor: 3.5, maxEnemies: 10,
               ghostStart: 5.5, ghostFloor: 2.8, maxGhosts: 3, ghostR: 28,
               friendlyMax: 3, friendlySpawn: 8 },
-    hard:   { label: "HARD",   mult: 2.0, blurb: "Fast hostiles, 4 friendlies, 4 small Ghosts at a time.",
+    hard:   { label: "HARD",   mult: 2.0, blurb: "Fastest enemies, 4 friendlies, 4 smallest pings at a time.",
               enemySpeed: 60, enemyStart: 5.5, enemyFloor: 2.5, maxEnemies: 12,
               ghostStart: 4.5, ghostFloor: 2.2, maxGhosts: 4, ghostR: 24,
               friendlyMax: 4, friendlySpawn: 7 }
