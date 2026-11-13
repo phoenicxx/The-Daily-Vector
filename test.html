@@ -24,39 +24,39 @@
 
 /* SEASONAL THEMES */
 :root[data-theme="spring"] {
-    --bg: #101b17; --text: #e4f3e8; --accent: #a8df9b;
-    --panel: rgba(20, 43, 32, 0.98); --panel-alt: #203d30; --button: #315b43;
-    --muted: #a8c5b0; --border: #466b50; --success: #8fe0a2; --danger: #ff8994; --gold: #f3d58a;
+    --bg: #2f7a55; --text: #f6fff4; --accent: #ffb3dc;
+    --panel: rgba(52, 118, 82, 0.98); --panel-alt: #3f9166; --button: #4aa873;
+    --muted: #c9eed4; --border: #84d49e; --success: #9cf0b0; --danger: #ff7a8a; --gold: #ffd96b;
 }
 :root[data-theme="summer"] {
-    --bg: #101b2b; --text: #edf5ff; --accent: #ffd166;
-    --panel: rgba(22, 43, 67, 0.98); --panel-alt: rgb(59, 104, 149); --button: #315b80;
-    --muted: #a9c4dc; --border: #456b8c; --success: #75e0ad; --danger: #ff7c7c; --gold: #ffe08a;
+    --bg: #1f72b8; --text: #fffdf5; --accent: #ffd23f;
+    --panel: rgba(38, 122, 188, 0.98); --panel-alt: #3a92d2; --button: #2a88cc;
+    --muted: #d0e9fb; --border: #73c3f2; --success: #6fecb0; --danger: #ff6f6f; --gold: #ffe066;
 }
 :root[data-theme="autumn"] {
-    --bg: #21160f; --text: #f5e8d8; --accent: #e69a50;
-    --panel: rgba(48, 29, 19, 0.98); --panel-alt: #49301f; --button: #684326;
-    --muted: #c4a58b; --border: #805333; --success: #a9cf78; --danger: #e97861; --gold: #f4c66e;
+    --bg: #8c4b20; --text: #fff3e0; --accent: #ffb02e;
+    --panel: rgba(140, 82, 40, 0.98); --panel-alt: #a8632e; --button: #c2742e;
+    --muted: #f2d5b3; --border: #e39c58; --success: #b8e068; --danger: #ff6a4d; --gold: #ffd166;
 }
 :root[data-theme="winter"] {
-    --bg: #101a28; --text: #e8f2ff; --accent: #a9d9ff;
-    --panel: rgba(23, 39, 59, 0.98); --panel-alt: #263e59; --button: #345776;
-    --muted: #a4bdd3; --border: #496b89; --success: #8cdeb9; --danger: #ff8795; --gold: #e5d79b;
+    --bg: #3a70a8; --text: #f4faff; --accent: #c2ebff;
+    --panel: rgba(70, 122, 178, 0.98); --panel-alt: #5b92c7; --button: #4f9dd8;
+    --muted: #d4e7f8; --border: #a2d3f6; --success: #8ff0cc; --danger: #ff8a9a; --gold: #f5e6a8;
 }
 :root[data-theme="christmas"] {
-    --bg: #130f12; --text: #f5eee8; --accent: #df4545;
-    --panel: rgba(35, 19, 24, 0.98); --panel-alt: #263d30; --button: #6d2930;
-    --muted: #c4aaa5; --border: #72503e; --success: #63c985; --danger: #ff7777; --gold: #e9c66e;
+    --bg: #a32638; --text: #fff6ee; --accent: #9af2b0;
+    --panel: rgba(128, 30, 46, 0.98); --panel-alt: #2e7d4f; --button: #1f8f4e;
+    --muted: #f7d3cc; --border: #eb7f76; --success: #7df0a0; --danger: #ffa08f; --gold: #ffd75e;
 }
 :root[data-theme="halloween"] {
-    --bg: #130d1b; --text: #f2e9ff; --accent: #ff852e;
-    --panel: rgba(34, 19, 44, 0.98); --panel-alt: #382346; --button: #57316d;
-    --muted: #bba5ce; --border: #70458a; --success: #a5df78; --danger: #ff647c; --gold: #ffc15c;
+    --bg: #5b2b8c; --text: #fff4e6; --accent: #ff9a2e;
+    --panel: rgba(88, 42, 128, 0.98); --panel-alt: #7b41b2; --button: #9b51d2;
+    --muted: #ddc6f6; --border: #bb7ff2; --success: #b5f07a; --danger: #ff6b8a; --gold: #ffc94d;
 }
 :root[data-theme="birthday"] {
-    --bg: #482745; --text: #f2e9ff; --accent: #ff852e;
-    --panel: rgba(34, 19, 44, 0.98); --panel-alt: #382346; --button: #57316d;
-    --muted: #bba5ce; --border: #70458a; --success: #a5df78; --danger: #ff647c; --gold: #ffc15c;
+    --bg: #c2418f; --text: #fffafc; --accent: #ffe14d;
+    --panel: rgba(172, 52, 122, 0.98); --panel-alt: #d9589f; --button: #e0509f;
+    --muted: #ffd3ec; --border: #ff9ad0; --success: #8ff5b8; --danger: #ffd0a0; --gold: #ffd34d;
 }
 :root[data-theme="christmas"] .friendly { color: #63c985; }
 :root[data-theme="christmas"] .friendly.sel { color: #8fe0a2; }
@@ -867,7 +867,7 @@ const field = $("field");
 let FW = 0, FH = 0;
 let state = "menu";            // menu | play | over | tutdone
 
-// SOUNDS ==================================
+
 // SOUNDS ==================================
 
 function playThemeSound(soundName, volume = 1) {
