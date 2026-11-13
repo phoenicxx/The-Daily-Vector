@@ -1,0 +1,1301 @@
+<body style="margin:0; height:100vh; overflow: hidden;">
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Threat Management – Ace Challenge</title>
+
+<style>
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    overflow: hidden;
+    background: #030b13;
+    color: #d9e8f5;
+    font-family: Arial, sans-serif;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+#game {
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse at 55% 50%, #10283b 0%, #071522 45%, #030b13 100%);
+}
+
+#game::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.2;
+    background-image:
+        linear-gradient(rgba(65,150,190,0.12) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(65,150,190,0.12) 1px, transparent 1px);
+    background-size: 45px 45px;
+}
+
+/* ---------- HUD ---------- */
+#hud {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 84px;
+    z-index: 20;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 14px 24px;
+    pointer-events: none;
+    gap: 16px;
+}
+.eyebrow { color: #20bde0; font-size: 10px; letter-spacing: 4px; }
+#hud h1 { font-size: 22px; font-weight: 300; letter-spacing: 5px; margin: 6px 0 0; }
+.stats { display: flex; gap: 22px; flex-wrap: wrap; justify-content: flex-end; }
+.stat { text-align: right; }
+.stat .lab { color: #8298aa; font-size: 9px; letter-spacing: 3px; }
+.stat .val { color: #20d5ff; font-size: 26px; margin-top: 3px; font-variant-numeric: tabular-nums; }
+.stat .val.ok { color: #45e6a0; }
+.stat .val.red { color: #ff697a; }
+
+/* ---------- FIELD ---------- */
+#field {
+    position: absolute;
+    top: 84px; left: 0; right: 0; bottom: 0;
+    touch-action: none;
+    overflow: hidden;
+}
+
+.friendly {
+    position: absolute;
+    width: 54px; height: 54px;
+    display: flex; align-items: center; justify-content: center;
+    transform: translate(-50%, -50%);
+    cursor: pointer;
+    z-index: 5;
+    color: #38aaff;
+    font-size: 34px;
+}
+.friendly .icon { display: inline-block; pointer-events: none; }
+.friendly.sel { color: #00ffff; }
+.friendly.warn { color: #ff697a; }
+.friendly.sel::after {
+    content: "";
+    position: absolute; inset: 2px;
+    border: 2px solid #00ffff;
+    border-radius: 50%;
+    box-shadow: 0 0 14px #00ffff;
+    pointer-events: none;
+}
+.friendly.sel.warn::after {
+    border-color: #ff697a;
+    box-shadow: 0 0 14px #ff697a;
+}
+
+.enemy {
+    position: absolute;
+    width: 46px; height: 46px;
+    transform: translate(-50%, -50%);
+    cursor: pointer;
+    z-index: 4;
+}
+.enemy .dia {
+    position: absolute; left: 11px; top: 11px;
+    width: 24px; height: 24px;
+    transform: rotate(45deg);
+    background: #d52e43;
+    border: 2px solid #ff6574;
+    box-shadow: 0 0 15px rgba(255,30,60,0.65);
+}
+.enemy:hover .dia { background: #ff5265; }
+.enemy.sel .dia { background: #ff8793; box-shadow: 0 0 25px #ff304f, 0 0 45px #ff304f; }
+.enemy .lbl {
+    position: absolute; top: 46px; left: 50%;
+    transform: translateX(-50%);
+    color: #ff697a; font-size: 9px; letter-spacing: 2px;
+    white-space: nowrap; pointer-events: none;
+}
+
+.ghost {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    z-index: 6;
+    cursor: pointer;
+    touch-action: none;
+}
+.ghost .core {
+    position: absolute; inset: 22%;
+    border-radius: 50%;
+    background: rgba(255,61,61,0.6);
+    animation: pulse 0.7s ease-in-out infinite alternate;
+}
+.ghost .arc, .ghost .hold {
+    position: absolute; inset: 0;
+    border-radius: 50%;
+    -webkit-mask: radial-gradient(circle, transparent 62%, #000 64%);
+            mask: radial-gradient(circle, transparent 62%, #000 64%);
+}
+.ghost .arc  { background: conic-gradient(#ff3d3d var(--rem, 360deg), transparent 0); }
+.ghost .hold { inset: 12%; background: conic-gradient(#5ee6a8 var(--hold, 0deg), transparent 0); }
+@keyframes pulse { from { transform: scale(0.7); opacity: 0.5; } to { transform: scale(1.15); opacity: 1; } }
+
+.fx {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    color: #5ee6a8;
+    font-size: 18px;
+    font-weight: bold;
+    pointer-events: none;
+    z-index: 30;
+    animation: rise 0.9s ease-out forwards;
+}
+@keyframes rise { to { transform: translate(-50%, -90px); opacity: 0; } }
+
+/* ---------- STRIKE PANEL ---------- */
+#strikePanel {
+    position: fixed;
+    bottom: 18px; left: 50%;
+    transform: translateX(-50%);
+    width: min(380px, 94vw);
+    z-index: 40;
+    display: none;
+    padding: 16px 18px;
+    background: rgba(5,19,33,0.96);
+    border: 1px solid #20bde0;
+    box-shadow: 0 0 30px rgba(0,170,220,0.2);
+    text-align: center;
+}
+#strikePanel .eyebrow { margin-bottom: 8px; }
+#spTarget { color: #ff5265; font-size: 20px; letter-spacing: 4px; margin-bottom: 12px; }
+.sp-row { display: flex; gap: 10px; }
+.sp-row button, #spHold {
+    flex: 1; min-height: 46px; cursor: pointer;
+    font-size: 11px; letter-spacing: 2px;
+}
+#spCancel { background: transparent; border: 1px solid #526b7d; color: #c5d7e5; }
+#spOk { background: #20bde0; border: 1px solid #20bde0; color: #00101a; }
+#spHoldWrap { display: none; }
+#spHold {
+    width: 100%; min-height: 56px; position: relative; overflow: hidden;
+    background: #481923; border: 1px solid #ff5265; color: white;
+    touch-action: none;
+}
+#spProg { position: absolute; inset: 0 auto 0 0; width: 0; background: rgba(255,50,75,0.55); pointer-events: none; }
+#spHoldText { position: relative; z-index: 2; }
+
+/* ---------- SCREENS ---------- */
+.screen {
+    position: fixed; inset: 0; z-index: 100;
+    display: none;
+    justify-content: center; align-items: center;
+    padding: 20px;
+    background: rgba(2,8,16,0.78);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    overflow-y: auto;
+}
+.screen.on { display: flex; }
+
+.modal {
+    width: min(520px, 96vw);
+    max-height: 94vh;
+    overflow-y: auto;
+    padding: 30px;
+    background: rgba(8,24,40,0.98);
+    border: 1px solid #55c8ff;
+    box-shadow: 0 0 40px rgba(85,200,255,0.15);
+    text-align: center;
+}
+.modal h2 { font-size: 24px; font-weight: 300; letter-spacing: 4px; margin: 14px 0 6px; }
+.sub { color: #8da9bd; font-size: 12px; line-height: 1.7; margin: 10px 0 18px; }
+.sub b { color: #d9e8f5; font-weight: normal; }
+
+.levels { display: flex; flex-direction: column; gap: 10px; margin: 18px 0; }
+.lvl {
+    padding: 14px 16px; text-align: left; cursor: pointer;
+    background: #0a2229; border: 1px solid #1b4a50; color: #d9e8f5; font: inherit;
+}
+.lvl:hover { border-color: #55c8ff; }
+.lvl b { display: block; letter-spacing: 3px; font-size: 14px; margin-bottom: 4px; }
+.lvl span { font-size: 12px; color: #8da9bd; }
+.lvl em { float: right; font-style: normal; color: #ffd166; font-size: 12px; }
+
+.btn {
+    min-height: 46px; padding: 0 18px; cursor: pointer;
+    font-size: 11px; letter-spacing: 2px;
+    background: #12344c; border: 1px solid #55c8ff; color: white;
+}
+.btn.primary { background: #55c8ff; color: #04121d; }
+.btn-row { display: flex; gap: 10px; margin-top: 20px; }
+.btn-row .btn { flex: 1; }
+
+#metrics { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 13px; }
+#metrics td { padding: 8px 6px; border-bottom: 1px solid #1b3b52; text-align: left; }
+#metrics td:last-child { text-align: right; font-variant-numeric: tabular-nums; }
+.pass { color: #45e6a0; }
+.fail { color: #ff697a; }
+
+#lbSubmit { margin: 18px 0; padding-bottom: 18px; border-bottom: 1px solid #1b3b52; }
+#lbCer { color: #45e6a0; font-size: 42px; margin: 6px 0 14px; font-variant-numeric: tabular-nums; }
+.lb-label { color: #8da9bd; font-size: 11px; letter-spacing: 3px; }
+#lbName {
+    width: 100%; padding: 12px;
+    background: #050d18; border: 1px solid #1b7599; color: white;
+    font-size: 14px; letter-spacing: 4px; text-align: center; text-transform: uppercase; outline: none;
+}
+#lbName:focus { border-color: #55c8ff; }
+#lbSubmitButton { width: 100%; margin-top: 10px; }
+#lbMessage { min-height: 18px; margin: 10px 0; color: #55c8ff; font-size: 11px; letter-spacing: 2px; }
+#lbDay { color: #8da9bd; font-size: 11px; letter-spacing: 2px; }
+
+#lbTable { width: 100%; border-collapse: collapse; font-size: 13px; }
+#lbTable th { padding: 8px 6px; color: #6d8798; font-size: 9px; font-weight: normal; letter-spacing: 3px; border-bottom: 1px solid #1b3b52; }
+#lbTable td { padding: 9px 6px; border-bottom: 1px solid rgba(27,59,82,0.5); letter-spacing: 1px; font-variant-numeric: tabular-nums; }
+#lbTable .c-rank { text-align: left; width: 14%; color: #6d8798; }
+#lbTable .c-name { text-align: left; }
+#lbTable .c-cer  { text-align: right; color: #45e6a0; }
+#lbTable .c-pts  { text-align: right; }
+#lbTable .c-time { text-align: right; color: #6d8798; }
+#lbTable tr.top-1 .c-rank, #lbTable tr.top-1 .c-name { color: #ffd166; }
+#lbTable tr.top-2 .c-rank { color: #c9d6df; }
+#lbTable tr.top-3 .c-rank { color: #d98e5a; }
+#lbTable tr.new-entry td { background: rgba(85,200,255,0.15); }
+#lbEmpty { display: none; padding: 22px 0 6px; color: #6d8798; font-size: 11px; letter-spacing: 3px; }
+
+@media (max-width: 600px) {
+    #hud h1 { font-size: 16px; }
+    .stat .val { font-size: 20px; }
+    .stats { gap: 12px; }
+    #lbTable .c-time { display: none; }
+}
+</style>
+</head>
+
+<body>
+
+<div id="game">
+
+    <div id="hud">
+        <div>
+            <div class="eyebrow">GLOBAL DEFENCE INITIATIVE</div>
+            <h1>THREAT MANAGEMENT</h1>
+        </div>
+        <div class="stats">
+            <div class="stat"><div class="lab">TIME</div><div class="val" id="hTime">00:00</div></div>
+            <div class="stat"><div class="lab">POINTS</div><div class="val" id="hPts">0</div></div>
+            <div class="stat"><div class="lab">CER</div><div class="val" id="hCer">0.0</div></div>
+            <div class="stat"><div class="lab">LEVEL</div><div class="val" id="hLvl">1</div></div>
+            <div class="stat"><div class="lab">HOSTILES</div><div class="val red" id="hHost">0</div></div>
+        </div>
+    </div>
+
+    <div id="field"></div>
+
+</div>
+
+<!-- Strike authorisation (does not pause the game) -->
+<div id="strikePanel">
+    <div class="eyebrow">COMMAND AUTHORISATION</div>
+    <div id="spTarget">HOSTILE 001</div>
+    <div class="sp-row" id="spConfirm">
+        <button id="spCancel">CANCEL</button>
+        <button id="spOk">CONFIRM STRIKE</button>
+    </div>
+    <div id="spHoldWrap">
+        <button id="spHold">
+            <div id="spProg"></div>
+            <span id="spHoldText">HOLD 5 SECONDS TO AUTHORISE</span>
+        </button>
+    </div>
+</div>
+
+<!-- Start menu -->
+<div class="screen on" id="menu">
+    <div class="modal">
+        <div class="eyebrow">GLOBAL DEFENCE INITIATIVE</div>
+        <h2>THREAT MANAGEMENT</h2>
+        <div class="sub">
+            <b>Click a friendly</b> (✈) and steer it with <b>W A S D</b> or the arrow keys.
+            Friendlies turn away from the screen edge on autopilot, but a plane you steer out of the airspace ends the run.
+            Keep friendlies clear of each other and of hostiles. They land on their own after about 30 seconds.<br><br>
+            <b>Click a hostile</b>, confirm, then <b>hold 5 seconds</b> to strike it.<br><br>
+            <b>Press and hold a red Ghost for 0.5 s</b> to identify it. Each Ghost expires after <b>3.0 s</b>.<br><br>
+            Any failure ends the run. Your daily rank is your <b>CER = (Points / Time) × Difficulty</b>.
+        </div>
+        <div class="levels" id="levels"></div>
+        <button class="btn" id="menuBoard" style="width:100%">LEADERBOARD</button>
+    </div>
+</div>
+
+<!-- Result + leaderboard -->
+<div class="screen" id="lbOverlay">
+    <div class="modal">
+        <div class="eyebrow" id="lbEyebrow">GLOBAL DAILY RECORDS</div>
+        <h2 id="lbTitle">LEADERBOARD</h2>
+        <div class="sub" id="lbReason"></div>
+
+        <table id="metrics"></table>
+
+        <div id="lbSubmit">
+            <div class="lb-label">YOUR CER</div>
+            <div id="lbCer">0.0</div>
+            <input id="lbName" type="text" maxlength="12" placeholder="ENTER NAME" autocomplete="off" spellcheck="false">
+            <button class="btn primary" id="lbSubmitButton">SUBMIT RESULT</button>
+        </div>
+
+        <div id="lbDay"></div>
+        <div id="lbMessage"></div>
+
+        <table id="lbTable">
+            <thead>
+                <tr>
+                    <th class="c-rank">#</th>
+                    <th class="c-name">NAME</th>
+                    <th class="c-cer">CER</th>
+                    <th class="c-pts">PTS</th>
+                    <th class="c-time">TIME</th>
+                </tr>
+            </thead>
+            <tbody id="lbBody"></tbody>
+        </table>
+        <div id="lbEmpty">NO RESULTS YET TODAY</div>
+
+        <div class="btn-row">
+            <button class="btn primary" id="lbPlay">PLAY AGAIN</button>
+            <button class="btn" id="lbMenu">MENU</button>
+            <button class="btn" id="lbClose">CLOSE</button>
+        </div>
+    </div>
+</div>
+
+
+<script>
+"use strict";
+
+// =====================================================
+// 1. CONFIG
+// =====================================================
+
+// ---- SUPABASE: your two values go here -------------------------------
+const SUPABASE_URL = 'https://gbltrlxdrvdvsqvrzjzz.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_GxfXhKH5EEgS-s0q3neEcQ_v1uPWq4Z';
+// ----------------------------------------------------------------------
+// Needs the ace_scores table (SQL given in the chat).
+
+const TARGET_ENDURANCE_S = 360;     // 06:00
+const TARGET_EFFICIENCY  = 20000;   // points
+const STRIKE_POINTS = 500;
+const GHOST_POINTS  = 250;
+const HOLD_STRIKE_S = 5.0;
+const HOLD_GHOST_S  = 0.5;
+const GHOST_WINDOW_S = 3.0;
+const LEVEL_LEN_S = 30;
+const MIN_TIME_MS = 5000;           // shortest run the server accepts
+
+const DIFFS = {
+    easy:   { label: "EASY",   mult: 1.0, blurb: "Slow hostiles, 2 friendlies, 2 Ghosts at a time.",
+              enemySpeed: 35, enemyStart: 9.0, enemyFloor: 4.5, maxEnemies: 8,
+              ghostStart: 7.0, ghostFloor: 3.5, maxGhosts: 2, ghostR: 32,
+              friendlyMax: 2, friendlySpawn: 9 },
+    normal: { label: "NORMAL", mult: 1.5, blurb: "Faster hostiles, 3 friendlies, 3 Ghosts at a time.",
+              enemySpeed: 45, enemyStart: 7.0, enemyFloor: 3.5, maxEnemies: 10,
+              ghostStart: 5.5, ghostFloor: 2.8, maxGhosts: 3, ghostR: 28,
+              friendlyMax: 3, friendlySpawn: 8 },
+    hard:   { label: "HARD",   mult: 2.0, blurb: "Fast hostiles, 4 friendlies, 4 small Ghosts at a time.",
+              enemySpeed: 60, enemyStart: 5.5, enemyFloor: 2.5, maxEnemies: 12,
+              ghostStart: 4.5, ghostFloor: 2.2, maxGhosts: 4, ghostR: 24,
+              friendlyMax: 4, friendlySpawn: 7 }
+};
+
+const FRIENDLY_BASE_SPEED = 40;     // px/s
+const FRIENDLY_MIN_SPEED  = 25;
+const FRIENDLY_MAX_SPEED  = 90;
+const STEER_ACCEL = 170;            // px/s^2
+const AUTOPILOT_MARGIN = 90;        // px from edge where autopilot turns the plane
+const AUTOPILOT_TURN   = 170;       // px/s^2
+const WARN_MARGIN = 45;             // px from edge where the plane turns red
+const R_FRIENDLY_FRIENDLY = 32;
+const R_ENEMY_FRIENDLY    = 28;
+const STRIKE_PANEL_CLEARANCE = 170; // keep Ghosts out of the strike panel area
+
+
+// =====================================================
+// 2. DAILY SEED
+// =====================================================
+
+function getDaily() {
+    const d = new Date();
+    return Number(
+        d.getFullYear().toString() +
+        String(d.getMonth() + 1).padStart(2, '0') +
+        String(d.getDate()).padStart(2, '0')
+    );
+}
+function hashStr(s) {
+    let h = 1779033703 ^ s.length;
+    for (let i = 0; i < s.length; i++) {
+        h = Math.imul(h ^ s.charCodeAt(i), 3432918353);
+        h = h << 13 | h >>> 19;
+    }
+    return h >>> 0;
+}
+function mulberry32(a) {
+    return function () {
+        a |= 0; a = a + 0x6D2B79F5 | 0;
+        let t = Math.imul(a ^ a >>> 15, 1 | a);
+        t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+        return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+}
+
+
+// =====================================================
+// 3. HELPERS / STATE
+// =====================================================
+
+const $ = id => document.getElementById(id);
+const field = $("field");
+
+let FW = 0, FH = 0;
+let state = "menu";            // menu | play | over
+let diffKey = "normal";
+let D = DIFFS.normal;
+let rng = Math.random;
+let G = null;
+let gameToken = 0;
+
+function formatClock(sec) {
+    const s = Math.floor(sec);
+    return String(Math.floor(s / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0");
+}
+function computeCER(points, seconds, mult) {
+    return (points / Math.max(seconds, 0.001)) * mult;
+}
+function levelMult(level) { return 1 + 0.1 * (level - 1); }
+
+function measure() {
+    const r = field.getBoundingClientRect();
+    const ow = FW, oh = FH;
+    FW = r.width; FH = r.height;
+    if (G && ow && oh) {
+        const sx = FW / ow, sy = FH / oh;
+        [...G.friendlies, ...G.enemies, ...G.ghosts].forEach(e => {
+            e.x *= sx; e.y *= sy; setPos(e);
+        });
+    }
+}
+window.addEventListener("resize", measure);
+
+function setPos(e) {
+    e.el.style.left = e.x + "px";
+    e.el.style.top = e.y + "px";
+}
+
+
+// =====================================================
+// 4. SPAWNING
+// =====================================================
+
+function farFromOthers(x, y, minD) {
+    const all = [...G.friendlies, ...G.enemies];
+    return all.every(e => Math.hypot(e.x - x, e.y - y) > minD);
+}
+
+function spawnFriendly() {
+    let x, y, tries = 0;
+    do {
+        x = FW * (0.2 + rng() * 0.6);
+        y = FH * (0.2 + rng() * 0.6);
+        tries++;
+    } while (tries < 30 && !farFromOthers(x, y, 140));
+
+    const ang = rng() * Math.PI * 2;
+    const el = document.createElement("div");
+    el.className = "friendly";
+    el.innerHTML = '<span class="icon">✈</span>';
+
+    const f = {
+        id: G.nextId++, el, x, y,
+        vx: Math.cos(ang) * FRIENDLY_BASE_SPEED,
+        vy: Math.sin(ang) * FRIENDLY_BASE_SPEED,
+        life: 28 + rng() * 12
+    };
+    el.addEventListener("pointerdown", ev => {
+    if (state !== "play") return;
+
+    ev.preventDefault();
+    ev.stopPropagation();
+
+    selectFriendly(f);
+
+    const rect = field.getBoundingClientRect();
+
+    G.drag = {
+        friendly: f,
+        pointerId: ev.pointerId,
+        x: ev.clientX - rect.left,
+        y: ev.clientY - rect.top
+    };
+
+    try {
+        el.setPointerCapture(ev.pointerId);
+    } catch (_) {}
+});
+    field.appendChild(el);
+    G.friendlies.push(f);
+    setPos(f);
+    rotateFriendly(f);
+    if (!G.selected) selectFriendly(f);
+}
+
+function rotateFriendly(f) {
+    const deg = Math.atan2(f.vy, f.vx) * 180 / Math.PI + 45;
+    f.el.firstChild.style.transform = `rotate(${deg}deg)`;
+}
+
+function selectFriendly(f) {
+    if (G.selected) G.selected.el.classList.remove("sel");
+    G.selected = f;
+    f.el.classList.add("sel");
+}
+
+// Click-and-drag steering
+field.addEventListener("pointermove", ev => {
+    if (state !== "play" || !G || !G.drag) return;
+    if (ev.pointerId !== G.drag.pointerId) return;
+
+    const rect = field.getBoundingClientRect();
+
+    G.drag.x = Math.max(
+        12,
+        Math.min(FW - 12, ev.clientX - rect.left)
+    );
+
+    G.drag.y = Math.max(
+        12,
+        Math.min(FH - 12, ev.clientY - rect.top)
+    );
+});
+
+function endFriendlyDrag(ev) {
+    if (!G || !G.drag) return;
+    if (ev.pointerId !== G.drag.pointerId) return;
+
+    G.drag = null;
+}
+
+field.addEventListener("pointerup", endFriendlyDrag);
+field.addEventListener("pointercancel", endFriendlyDrag);
+field.addEventListener("lostpointercapture", endFriendlyDrag);
+
+function spawnEnemy() {
+    const side = Math.floor(rng() * 4);
+    const t = 0.1 + rng() * 0.8;
+    let x, y;
+    if (side === 0) { x = FW * t; y = 0; }
+    else if (side === 1) { x = FW; y = FH * t; }
+    else if (side === 2) { x = FW * t; y = FH; }
+    else { x = 0; y = FH * t; }
+
+    const el = document.createElement("div");
+    el.className = "enemy";
+    const num = G.enemyCounter++;
+    const name = "HOSTILE " + String(num).padStart(3, "0");
+    el.innerHTML = '<div class="dia"></div><div class="lbl">' + name + '</div>';
+
+    const e = { id: G.nextId++, el, x, y, name };
+    el.addEventListener("pointerdown", ev => {
+        if (state !== "play") return;
+        ev.stopPropagation();
+        strikeSelect(e);
+    });
+    field.appendChild(el);
+    G.enemies.push(e);
+    setPos(e);
+}
+
+function spawnGhost() {
+    const R = D.ghostR;
+    const x = R + 20 + rng() * Math.max(10, FW - 2 * R - 40);
+    // Keep Ghosts above the strike panel so one can never be hidden under it
+    const y = R + 20 + rng() * Math.max(10, FH - 2 * R - 40 - STRIKE_PANEL_CLEARANCE);
+
+    const el = document.createElement("div");
+    el.className = "ghost";
+    el.style.width = el.style.height = (R * 2) + "px";
+    el.innerHTML = '<div class="core"></div><div class="arc"></div><div class="hold"></div>';
+
+    const g = { id: G.nextId++, el, x, y, age: 0, holdT: 0, holder: null };
+
+    el.addEventListener("pointerdown", ev => {
+        if (state !== "play" || g.holder !== null) return;
+        ev.preventDefault();
+        ev.stopPropagation();
+        g.holder = ev.pointerId;
+        g.holdT = 0;
+        try { el.setPointerCapture(ev.pointerId); } catch (_) {}
+    });
+    const release = ev => {
+        if (g.holder === ev.pointerId) { g.holder = null; g.holdT = 0; }
+    };
+    el.addEventListener("pointerup", release);
+    el.addEventListener("pointercancel", release);
+    el.addEventListener("lostpointercapture", release);
+
+    field.appendChild(el);
+    G.ghosts.push(g);
+    setPos(g);
+}
+
+function interval(start, floor) {
+    const base = Math.max(floor, start * Math.pow(0.93, G.level - 1));
+    return base * (0.8 + rng() * 0.4);
+}
+
+
+// =====================================================
+// 5. SCORING
+// =====================================================
+
+function award(base, x, y) {
+    const pts = Math.round(base * levelMult(G.level));
+    G.points += pts;
+    const fx = document.createElement("div");
+    fx.className = "fx";
+    fx.textContent = "+" + pts;
+    fx.style.left = x + "px";
+    fx.style.top = y + "px";
+    field.appendChild(fx);
+    setTimeout(() => fx.remove(), 900);
+}
+
+
+// =====================================================
+// 6. STRIKE AUTHORISATION
+// =====================================================
+
+const strike = { state: "idle", enemy: null, holding: false, holdT: 0 };
+
+function strikeSelect(enemy) {
+    if (strike.state === "hold") return;
+    if (strike.enemy) strike.enemy.el.classList.remove("sel");
+    strike.state = "confirm";
+    strike.enemy = enemy;
+    enemy.el.classList.add("sel");
+    $("spTarget").textContent = enemy.name;
+    $("spConfirm").style.display = "flex";
+    $("spHoldWrap").style.display = "none";
+    $("strikePanel").style.display = "block";
+}
+
+function strikeReset() {
+    if (strike.enemy) strike.enemy.el.classList.remove("sel");
+    strike.state = "idle";
+    strike.enemy = null;
+    strike.holding = false;
+    strike.holdT = 0;
+    $("spProg").style.width = "0%";
+    $("spHoldText").textContent = "HOLD 5 SECONDS TO AUTHORISE";
+    $("strikePanel").style.display = "none";
+}
+
+$("spCancel").addEventListener("click", strikeReset);
+
+$("spOk").addEventListener("click", () => {
+    if (strike.state !== "confirm") return;
+    strike.state = "hold";
+    $("spConfirm").style.display = "none";
+    $("spHoldWrap").style.display = "block";
+});
+
+$("spHold").addEventListener("pointerdown", ev => {
+    if (strike.state !== "hold" || state !== "play") return;
+    ev.preventDefault();
+    strike.holding = true;
+    strike.holdT = 0;
+    try { $("spHold").setPointerCapture(ev.pointerId); } catch (_) {}
+});
+function endStrikeHold() {
+    if (!strike.holding) return;
+    strike.holding = false;
+    strike.holdT = 0;
+    $("spProg").style.width = "0%";
+    $("spHoldText").textContent = "HOLD 5 SECONDS TO AUTHORISE";
+}
+$("spHold").addEventListener("pointerup", endStrikeHold);
+$("spHold").addEventListener("pointercancel", endStrikeHold);
+$("spHold").addEventListener("lostpointercapture", endStrikeHold);
+window.addEventListener("blur", endStrikeHold);
+
+function strikeComplete() {
+    const e = strike.enemy;
+    strikeReset();
+    if (!e) return;
+    const i = G.enemies.indexOf(e);
+    if (i === -1) return;
+    G.enemies.splice(i, 1);
+    e.el.remove();
+    G.kills++;
+    award(STRIKE_POINTS, e.x, e.y);
+}
+
+// =====================================================
+// 8. GAME LOOP
+// =====================================================
+
+function update(dt) {
+    G.t += dt;
+    G.level = 1 + Math.floor(G.t / LEVEL_LEN_S);
+
+   
+// --- Click-and-drag steering (selected friendly only) ---
+let steerActive = false;
+const s = G.selected;
+
+if (s && G.drag && G.drag.friendly === s) {
+    const dx = G.drag.x - s.x;
+    const dy = G.drag.y - s.y;
+    const distance = Math.hypot(dx, dy);
+
+    if (distance > 12) {
+        s.vx += (dx / distance) * STEER_ACCEL * dt;
+        s.vy += (dy / distance) * STEER_ACCEL * dt;
+
+        steerActive = true;
+    }
+}
+
+    // --- Friendlies ---
+    for (const f of [...G.friendlies]) {
+
+        // Keep a minimum cruise speed when the player isn't steering this plane
+        const pilotedByPlayer = (f === s && steerActive);
+        if (!pilotedByPlayer) {
+            const cruise = Math.hypot(f.vx, f.vy);
+            if (cruise < FRIENDLY_MIN_SPEED) {
+                if (cruise < 0.001) {
+                    f.vx = FRIENDLY_MIN_SPEED;
+                    f.vy = 0;
+                } else {
+                    f.vx = f.vx / cruise * FRIENDLY_MIN_SPEED;
+                    f.vy = f.vy / cruise * FRIENDLY_MIN_SPEED;
+                }
+            }
+        }
+
+        // Speed cap
+        const sp = Math.hypot(f.vx, f.vy);
+        if (sp > FRIENDLY_MAX_SPEED) {
+            f.vx = f.vx / sp * FRIENDLY_MAX_SPEED;
+            f.vy = f.vy / sp * FRIENDLY_MAX_SPEED;
+        }
+
+        f.x += f.vx * dt;
+        f.y += f.vy * dt;
+        f.life -= dt;
+
+        // Left the screen (with a small buffer) or landed: remove it
+        const MARGIN = 30;
+        const offscreen = f.x < -MARGIN || f.x > FW + MARGIN ||
+                          f.y < -MARGIN || f.y > FH + MARGIN;
+
+        if (offscreen || f.life <= 0) {
+            G.friendlies.splice(G.friendlies.indexOf(f), 1);
+            if (G.selected === f) G.selected = null;
+            if (G.drag && G.drag.friendly === f) G.drag = null;
+            f.el.remove();
+            continue;
+        }
+
+        setPos(f);
+        rotateFriendly(f);
+    }
+
+    // Replacement planes spawn immediately to keep the count at the limit
+    while (G.friendlies.length < D.friendlyMax) spawnFriendly();
+
+    if (!G.selected && G.friendlies.length) selectFriendly(G.friendlies[0]);
+
+    // --- Enemies hunt the nearest friendly ---
+    for (const e of G.enemies) {
+        if (!G.friendlies.length) break;
+        let target = null, best = Infinity;
+        for (const f of G.friendlies) {
+            const d = Math.hypot(f.x - e.x, f.y - e.y);
+            if (d < best) { best = d; target = f; }
+        }
+        if (target && best > 0) {
+            e.x += (target.x - e.x) / best * D.enemySpeed * dt;
+            e.y += (target.y - e.y) / best * D.enemySpeed * dt;
+            setPos(e);
+        }
+        if (target && Math.hypot(target.x - e.x, target.y - e.y) < R_ENEMY_FRIENDLY) {
+            return endGame("FRIENDLY HIT BY HOSTILE");
+        }
+    }
+
+    // --- Friendly vs friendly ---
+    for (let i = 0; i < G.friendlies.length; i++) {
+        for (let j = i + 1; j < G.friendlies.length; j++) {
+            const a = G.friendlies[i], b = G.friendlies[j];
+            if (Math.hypot(a.x - b.x, a.y - b.y) < R_FRIENDLY_FRIENDLY) {
+                return endGame("FRIENDLY COLLISION");
+            }
+        }
+    }
+
+    // --- Ghosts ---
+    for (const g of [...G.ghosts]) {
+        g.age += dt;
+        if (g.holder !== null) {
+            g.holdT += dt;
+            if (g.holdT >= HOLD_GHOST_S) {
+                G.ghosts.splice(G.ghosts.indexOf(g), 1);
+                g.el.remove();
+                G.ghostIds++;
+                award(GHOST_POINTS, g.x, g.y);
+                continue;
+            }
+        }
+        if (g.age >= GHOST_WINDOW_S) {
+            g.el.style.outline = "3px solid #ff3d3d";
+            return endGame("GHOST NOT IDENTIFIED WITHIN 3.0 SECONDS");
+        }
+        g.el.style.setProperty("--rem", (1 - g.age / GHOST_WINDOW_S) * 360 + "deg");
+        g.el.style.setProperty("--hold", Math.min(1, g.holdT / HOLD_GHOST_S) * 360 + "deg");
+    }
+
+    // --- Strike hold ---
+    if (strike.holding) {
+        strike.holdT += dt;
+        const p = Math.min(1, strike.holdT / HOLD_STRIKE_S);
+        $("spProg").style.width = (p * 100) + "%";
+        $("spHoldText").textContent =
+            "AUTHORISING... " + Math.max(0, HOLD_STRIKE_S - strike.holdT).toFixed(1) + "s";
+        if (p >= 1) strikeComplete();
+    }
+
+    // --- Spawn timers ---
+    G.enemyTimer -= dt;
+    if (G.enemyTimer <= 0) {
+        if (G.enemies.length < D.maxEnemies) spawnEnemy();
+        G.enemyTimer = interval(D.enemyStart, D.enemyFloor);
+    }
+    G.ghostTimer -= dt;
+    if (G.ghostTimer <= 0) {
+        if (G.ghosts.length < D.maxGhosts) {
+            spawnGhost();
+            G.ghostTimer = interval(D.ghostStart, D.ghostFloor);
+        } else {
+            G.ghostTimer = 0.4;
+        }
+    }
+    G.friendlyTimer -= dt;
+    if (G.friendlyTimer <= 0) {
+        if (G.friendlies.length < D.friendlyMax) spawnFriendly();
+        G.friendlyTimer = D.friendlySpawn;
+    }
+}
+
+function updateHud() {
+    if (!G) return;
+    $("hTime").textContent = formatClock(G.t);
+    $("hPts").textContent = G.points.toLocaleString();
+    $("hCer").textContent = computeCER(G.points, G.t, D.mult).toFixed(1);
+    $("hLvl").textContent = G.level;
+    $("hHost").textContent = G.enemies.length;
+    $("hTime").classList.toggle("ok", G.t >= TARGET_ENDURANCE_S);
+    $("hPts").classList.toggle("ok", G.points >= TARGET_EFFICIENCY);
+}
+
+let last = performance.now();
+function frame(now) {
+    const dt = Math.min(0.05, (now - last) / 1000);
+    last = now;
+    if (state === "play" && G) {
+        update(dt);
+        updateHud();
+    }
+    requestAnimationFrame(frame);
+}
+
+
+// =====================================================
+// 9. START / END
+// =====================================================
+
+function clearField() { field.innerHTML = ""; }
+
+function startGame(key) {
+    diffKey = key;
+    D = DIFFS[key];
+    gameToken++;
+    rng = mulberry32(hashStr(getDaily() + "|" + key));
+
+    // Make sure the board belongs to today's date (tab may have been open overnight)
+    lbSystem.day = getDaily();
+    lbSystem.entries = [];
+    lbSystem.load();
+
+    strikeReset();
+    
+    clearField();
+    G = null;
+    measure();
+
+    G = {
+        t: 0, level: 1, points: 0, kills: 0, ghostIds: 0,
+        friendlies: [], enemies: [], ghosts: [],
+        selected: null, drag: null, nextId: 1, enemyCounter: 1,
+        enemyTimer: 3, ghostTimer: 4.5, friendlyTimer: D.friendlySpawn,
+        failReason: "", result: null
+    };
+
+    for (let i = 0; i < D.friendlyMax; i++) spawnFriendly();
+    for (let i = 0; i < 2; i++) spawnEnemy();
+
+    $("menu").classList.remove("on");
+    board.close(true);
+    state = "play";
+    last = performance.now();
+    updateHud();
+}
+
+function endGame(reason) {
+    if (state !== "play") return;
+    state = "over";
+    strikeReset();
+    G.failReason = reason;
+
+    const seconds = G.t;
+    G.result = {
+        points: G.points,
+        timeMs: Math.round(seconds * 1000),
+        cer: computeCER(G.points, seconds, D.mult),
+        difficulty: diffKey
+    };
+    updateHud();
+
+    const token = gameToken;
+    setTimeout(() => {
+        if (token === gameToken && state === "over") board.openResult();
+    }, 900);
+}
+
+
+// =====================================================
+// 10. LEADERBOARD (Supabase)
+// =====================================================
+// Table: ace_scores. See the SQL given in the chat.
+
+class LeaderboardSystem {
+    constructor() {
+        this.maxEntries = 10;
+        this.day = getDaily();
+        this.entries = [];
+        this.online = false;
+    }
+
+    headers() {
+        return { apikey: SUPABASE_KEY, 'Content-Type': 'application/json' };
+    }
+
+    async load() {
+        const day = this.day;
+        try {
+            const url = `${SUPABASE_URL}/rest/v1/ace_scores` +
+                `?puzzle_day=eq.${day}` +
+                `&select=id,name,points,time_ms,difficulty,cer,created_at` +
+                `&order=cer.desc,created_at.asc` +
+                `&limit=${this.maxEntries}`;
+
+            const res = await fetch(url, { headers: this.headers() });
+
+            if (!res.ok) {
+                console.error('Load failed:', res.status, await res.text());
+                throw new Error(res.status);
+            }
+
+            const rows = await res.json();
+            if (day !== this.day) return this.entries;
+
+            this.entries = rows.map(r => ({
+                id: String(r.id),
+                name: r.name,
+                points: r.points,
+                timeMs: r.time_ms,
+                difficulty: r.difficulty,
+                cer: Number(r.cer)
+            }));
+            this.online = true;
+        } catch (err) {
+            console.error('Leaderboard load error:', err);
+            this.online = false;
+        }
+        return this.entries;
+    }
+
+    sanitiseName(name) {
+        const cleaned = String(name ?? '')
+            .replace(/[^\w \-]/g, '')
+            .trim()
+            .toUpperCase()
+            .slice(0, 12);
+        return cleaned || 'UNKNOWN';
+    }
+
+    qualifies(cer) {
+        if (this.entries.length < this.maxEntries) return true;
+        return cer > this.entries[this.entries.length - 1].cer;
+    }
+
+    async submit(name, result) {
+        try {
+            const res = await fetch(`${SUPABASE_URL}/rest/v1/ace_scores`, {
+                method: 'POST',
+                headers: { ...this.headers(), Prefer: 'return=representation' },
+                body: JSON.stringify({
+                    puzzle_day: this.day,
+                    name: this.sanitiseName(name),
+                    difficulty: result.difficulty,
+                    points: result.points,
+                    time_ms: result.timeMs
+                })
+            });
+
+            if (!res.ok) {
+                console.error('Insert failed:', res.status, await res.text());
+                throw new Error(res.status);
+            }
+
+            const [row] = await res.json();
+            await this.load();
+
+            const index = this.entries.findIndex(e => e.id === String(row.id));
+            return { saved: true, id: String(row.id), rank: index === -1 ? null : index + 1 };
+        } catch (err) {
+            console.error('Leaderboard submit error:', err);
+            return { saved: false };
+        }
+    }
+}
+
+class LeaderboardView {
+    constructor(lb) {
+        this.lb = lb;
+        this.mode = "closed";        // closed | view | result
+        this.submitted = false;
+        this.highlightId = null;
+        this.pollTimer = null;
+        this.bind();
+    }
+
+    bind() {
+        $("lbSubmitButton").addEventListener("click", () => this.submit());
+        $("lbName").addEventListener("keydown", ev => {
+            if (ev.key === "Enter") { ev.preventDefault(); this.submit(); }
+        });
+        $("lbClose").addEventListener("click", () => this.close());
+        $("lbPlay").addEventListener("click", () => startGame(diffKey));
+        $("lbMenu").addEventListener("click", () => {
+            this.close(true);
+            clearField();
+            state = "menu";
+            $("menu").classList.add("on");
+        });
+        $("menuBoard").addEventListener("click", () => this.openView());
+        window.addEventListener("keydown", ev => {
+            if (ev.key === "Escape" && this.mode === "view") this.close();
+        });
+        $("lbOverlay").addEventListener("click", ev => {
+            if (ev.target === $("lbOverlay") && this.mode === "view") this.close();
+        });
+    }
+
+    dayLabel() {
+        const d = String(this.lb.day);
+        $("lbDay").textContent =
+            `DAILY BOARD ${d.slice(0,4)}-${d.slice(4,6)}-${d.slice(6,8)} · ` +
+            (this.lb.online ? "LIVE" : "OFFLINE");
+    }
+
+    openView() {
+        this.mode = "view";
+        $("lbEyebrow").textContent = "GLOBAL DAILY RECORDS";
+        $("lbTitle").textContent = "LEADERBOARD";
+        $("lbReason").style.display = "none";
+        $("metrics").style.display = "none";
+        $("lbSubmit").style.display = "none";
+        $("lbMessage").textContent = "";
+        $("lbPlay").style.display = "none";
+        $("lbMenu").style.display = "none";
+        $("lbClose").style.display = "";
+        this.show();
+    }
+
+    openResult() {
+        this.mode = "result";
+        this.submitted = false;
+        this.highlightId = null;
+        const r = G.result;
+        const t = r.timeMs / 1000;
+        const endOK = t >= TARGET_ENDURANCE_S;
+        const effOK = r.points >= TARGET_EFFICIENCY;
+
+        $("lbEyebrow").textContent = "SYSTEM FAILURE";
+        $("lbTitle").textContent = "RUN COMPLETE";
+        $("lbReason").style.display = "block";
+        $("lbReason").textContent = G.failReason;
+
+        const rows = [
+            ["Endurance (target 06:00)",
+                `<span class="${endOK ? 'pass' : 'fail'}">${formatClock(t)} ${endOK ? '✔' : '✘'}</span>`],
+            ["Efficiency (target 20,000)",
+                `<span class="${effOK ? 'pass' : 'fail'}">${r.points.toLocaleString()} ${effOK ? '✔' : '✘'}</span>`],
+            ["Difficulty", `${D.label} × ${D.mult.toFixed(1)}`],
+            ["Hostiles eliminated", G.kills],
+            ["Ghosts identified", G.ghostIds]
+        ];
+        $("metrics").innerHTML = rows.map(x => `<tr><td>${x[0]}</td><td>${x[1]}</td></tr>`).join("");
+        $("metrics").style.display = "table";
+
+        $("lbCer").textContent = r.cer.toFixed(1);
+        $("lbName").value = "";
+
+        if (r.timeMs < MIN_TIME_MS) {
+            $("lbSubmit").style.display = "none";
+            $("lbMessage").textContent = "RUN TOO SHORT TO RECORD (MIN 5 SECONDS)";
+        } else {
+            $("lbSubmit").style.display = "block";
+            $("lbMessage").textContent = this.lb.qualifies(r.cer) ? "THIS RESULT MAKES THE BOARD" : "";
+        }
+
+        $("lbPlay").style.display = "";
+        $("lbMenu").style.display = "";
+        $("lbClose").style.display = "none";
+        this.show();
+        if (r.timeMs >= MIN_TIME_MS) $("lbName").focus();
+    }
+
+    async show() {
+        this.dayLabel();
+        this.render();
+        $("lbOverlay").classList.add("on");
+        await this.refresh();
+        this.startPolling();
+    }
+
+    async refresh() {
+        await this.lb.load();
+        if (this.mode === "closed") return;
+        this.dayLabel();
+        this.render();
+    }
+
+    startPolling() {
+        if (this.pollTimer || this.mode === "closed") return;
+        this.pollTimer = setInterval(() => this.refresh(), 5000);
+    }
+
+    stopPolling() {
+        clearInterval(this.pollTimer);
+        this.pollTimer = null;
+    }
+
+    async submit() {
+        if (this.mode !== "result" || this.submitted || !G || !G.result) return;
+        const token = gameToken;
+        this.submitted = true;
+        $("lbSubmitButton").disabled = true;
+        $("lbMessage").textContent = "SAVING...";
+
+        const res = await this.lb.submit($("lbName").value, G.result);
+
+        $("lbSubmitButton").disabled = false;
+        if (token !== gameToken) return;
+
+        if (!res.saved) {
+            this.submitted = false;
+            $("lbMessage").textContent = "COULD NOT SAVE - SEE BROWSER CONSOLE (F12)";
+            return;
+        }
+
+        this.highlightId = res.rank ? res.id : null;
+        $("lbSubmit").style.display = "none";
+        $("lbMessage").textContent = res.rank
+            ? `RANK #${res.rank} RECORDED` + (res.rank === 1 ? " - TODAY'S ACE" : "")
+            : `DID NOT REACH THE TOP ${this.lb.maxEntries}`;
+        this.dayLabel();
+        this.render();
+    }
+
+    close(silent) {
+        if (this.mode === "closed") return;
+        $("lbOverlay").classList.remove("on");
+        this.stopPolling();
+        this.highlightId = null;
+        this.mode = "closed";
+    }
+
+    render() {
+        const body = $("lbBody");
+        body.textContent = "";
+        const entries = this.lb.entries;
+        $("lbEmpty").style.display = entries.length ? "none" : "block";
+        $("lbTable").style.display = entries.length ? "table" : "none";
+
+        entries.forEach((e, i) => {
+            const tr = document.createElement("tr");
+            if (i < 3) tr.classList.add("top-" + (i + 1));
+            if (e.id === this.highlightId) tr.classList.add("new-entry");
+
+            const cells = [
+                ["c-rank", String(i + 1).padStart(2, "0")],
+                ["c-name", e.name + (i === 0 ? "  ★ ACE" : "")],
+                ["c-cer",  e.cer.toFixed(1)],
+                ["c-pts",  Number(e.points).toLocaleString()],
+                ["c-time", formatClock(e.timeMs / 1000)]
+            ];
+            cells.forEach(([cls, text]) => {
+                const td = document.createElement("td");
+                td.className = cls;
+                td.textContent = text;
+                tr.appendChild(td);
+            });
+            body.appendChild(tr);
+        });
+    }
+}
+
+const lbSystem = new LeaderboardSystem();
+const board = new LeaderboardView(lbSystem);
+lbSystem.load();
+
+
+// =====================================================
+// 11. MENU
+// =====================================================
+
+function buildMenu() {
+    const box = $("levels");
+    box.innerHTML = "";
+    for (const k in DIFFS) {
+        const d = DIFFS[k];
+        const b = document.createElement("button");
+        b.className = "lvl";
+        b.innerHTML = `<em>×${d.mult.toFixed(1)}</em><b>${d.label}</b><span>${d.blurb}</span>`;
+        b.addEventListener("click", () => startGame(k));
+        box.appendChild(b);
+    }
+}
+
+buildMenu();
+measure();
+requestAnimationFrame(frame);
+</script>
+
+</body>
+</html>

@@ -1,0 +1,1888 @@
+
+<style>
+    * {
+        box-sizing: border-box;
+    }
+    
+    body {
+        margin: 0;
+        overflow: hidden;
+        background: #030b13;
+        color: #d9e8f5;
+        font-family: Arial, sans-serif;
+    }
+    
+    /* =========================================
+       MAIN INTERFACE
+    ========================================= */
+    
+    #game {
+        position: relative;
+        width: 100vw;
+        height: 100vh;
+        overflow: hidden;
+        background:
+            radial-gradient(ellipse at 55% 50%, #10283b 0%, #071522 45%, #030b13 100%);
+    }
+    
+    #game::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        opacity: 0.2;
+        background-image:
+            linear-gradient(rgba(65,150,190,0.12) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(65,150,190,0.12) 1px, transparent 1px);
+        background-size: 45px 45px;
+    }
+    
+    /* HEADER */
+    
+    .header {
+        position: absolute;
+        top: 25px;
+        left: 30px;
+        z-index: 2;
+    }
+    
+    .eyebrow {
+        color: #20bde0;
+        font-size: 10px;
+        letter-spacing: 4px;
+    }
+    
+    h1 {
+        font-size: 27px;
+        font-weight: 300;
+        letter-spacing: 5px;
+        margin: 8px 0;
+    }
+    
+    /* SCORE */
+    
+    .score-panel {
+        position: absolute;
+        top: 25px;
+        right: 30px;
+        text-align: right;
+        z-index: 2;
+    }
+    
+    .score-label {
+        color: #8298aa;
+        font-size: 10px;
+        letter-spacing: 3px;
+    }
+    
+    #score {
+        color: #20d5ff;
+        font-size: 34px;
+        margin-top: 5px;
+    }
+    
+    /* TARGET FIELD */
+    
+    #targetField {
+        position: absolute;
+        inset: 100px 0 70px;
+    }
+    
+    /* ENEMY MARKERS */
+    
+    .enemy {
+        position: absolute;
+        width: 25px;
+        height: 25px;
+        transform: translate(-50%, -50%) rotate(45deg);
+        background: #d52e43;
+        border: 2px solid #ff6574;
+        box-shadow: 0 0 15px rgba(255, 30, 60, 0.65);
+        cursor: pointer;
+        z-index: 2;
+        transition: box-shadow 0.2s, background 0.2s;
+    }
+    
+    .enemy:hover {
+        background: #ff5265;
+        box-shadow: 0 0 25px #ff5265;
+    }
+    
+    .enemy.selected {
+        background: #ff8793;
+        box-shadow: 0 0 25px #ff304f, 0 0 45px #ff304f;
+    }
+    
+    .enemy-label {
+        position: absolute;
+        transform: translate(-50%, 0);
+        color: #ff697a;
+        font-size: 9px;
+        letter-spacing: 2px;
+        white-space: nowrap;
+        pointer-events: none;
+    }
+    
+    /* BOTTOM STATUS */
+    
+    .status {
+        position: absolute;
+        bottom: 25px;
+        left: 30px;
+        color: #648297;
+        font-size: 10px;
+        letter-spacing: 2px;
+        z-index: 2;
+    }
+    
+    #enemyCount {
+        color: #ff697a;
+    }
+    
+    /* DEMO CONTROLS */
+    
+    .demo-controls {
+        position: absolute;
+        bottom: 20px;
+        right: 30px;
+        z-index: 2;
+    }
+    
+    .demo-controls button {
+        background: transparent;
+        color: #66899f;
+        border: 1px solid #31536a;
+        padding: 10px 15px;
+        cursor: pointer;
+        font-size: 10px;
+        letter-spacing: 2px;
+    }
+    
+    /* =========================================
+       MODAL / BACKGROUND BLUR
+    ========================================= */
+    
+    #modalOverlay {
+        position: fixed;
+        inset: 0;
+        z-index: 10;
+        display: none;
+        justify-content: center;
+        align-items: center;
+        padding: 20px;
+    
+        background: rgba(0, 5, 12, 0.7);
+        backdrop-filter: blur(9px);
+        -webkit-backdrop-filter: blur(9px);
+    }
+    
+    .modal {
+        width: min(430px, 95vw);
+        padding: 35px;
+        background: rgba(5, 19, 33, 0.97);
+        border: 1px solid #20bde0;
+        box-shadow: 0 0 40px rgba(0, 170, 220, 0.15);
+        text-align: center;
+    }
+    
+    .modal-eyebrow {
+        color: #20bde0;
+        font-size: 10px;
+        letter-spacing: 4px;
+    }
+    
+    .modal h2 {
+        font-size: 24px;
+        font-weight: 300;
+        letter-spacing: 4px;
+        margin: 20px 0;
+    }
+    
+    #targetName {
+        color: #ff5265;
+        font-size: 25px;
+        letter-spacing: 4px;
+        margin: 20px 0;
+    }
+    
+    .modal-description {
+        color: #8298aa;
+        font-size: 12px;
+        line-height: 1.8;
+    }
+    
+    .modal-buttons {
+        display: flex;
+        gap: 12px;
+        margin-top: 30px;
+    }
+    
+    .modal-buttons button {
+        flex: 1;
+        min-height: 48px;
+        cursor: pointer;
+        font-size: 11px;
+        letter-spacing: 2px;
+    }
+    
+    #cancelButton {
+        background: transparent;
+        border: 1px solid #526b7d;
+        color: #c5d7e5;
+    }
+    
+    #confirmButton {
+        background: #20bde0;
+        border: 1px solid #20bde0;
+        color: #00101a;
+    }
+    
+    /* =========================================
+       HOLD TO STRIKE
+    ========================================= */
+    
+    #holdSection {
+        display: none;
+        margin-top: 25px;
+    }
+    
+    #holdButton {
+        width: 100%;
+        min-height: 60px;
+        position: relative;
+        overflow: hidden;
+        background: #481923;
+        border: 1px solid #ff5265;
+        color: white;
+        cursor: pointer;
+        touch-action: none;
+        user-select: none;
+        -webkit-user-select: none;
+    }
+    
+    #holdButton:active {
+        background: #70202c;
+    }
+    
+    #holdText {
+        position: relative;
+        z-index: 2;
+        font-size: 12px;
+        letter-spacing: 3px;
+    }
+    
+    #holdProgress {
+        position: absolute;
+        inset: 0 auto 0 0;
+        width: 0%;
+        background: rgba(255, 50, 75, 0.55);
+        pointer-events: none;
+    }
+    
+    #holdInstruction {
+        margin-top: 15px;
+        color: #8298aa;
+        font-size: 10px;
+        letter-spacing: 2px;
+    }
+    
+    /* =========================================
+       RESULT MESSAGE
+    ========================================= */
+    
+    #resultSection {
+        display: none;
+        margin-top: 25px;
+        color: #20d5ff;
+        font-size: 12px;
+        letter-spacing: 3px;
+    }
+    
+    /* =========================================
+       RESPONSIVE
+    ========================================= */
+    
+    @media (max-width: 600px) {
+        .header {
+            left: 18px;
+            top: 18px;
+        }
+    
+        .score-panel {
+            right: 18px;
+            top: 18px;
+        }
+    
+        h1 {
+            font-size: 20px;
+        }
+    
+        .status {
+            left: 18px;
+            bottom: 18px;
+        }
+    
+        .demo-controls {
+            right: 18px;
+            bottom: 15px;
+        }
+    
+        .modal {
+            padding: 25px 20px;
+        }
+    }
+    
+    /* =========================================
+       OPERATOR ACCESS
+    ========================================= */
+    
+    #operatorAccess {
+        position: fixed;
+        bottom: 12px;
+        right: 12px;
+        z-index: 10000;
+    }
+    
+    #operatorPassword {
+        width: 220px;
+        padding: 10px;
+        background: #111;
+        color: #00ff99;
+        border: 1px solid #00ff99;
+        font-family: monospace;
+    }
+    
+    #operatorPanel {
+        position: fixed;
+        bottom: 55px;
+        right: 12px;
+        z-index: 10001;
+        padding: 15px;
+        background: #111;
+        border: 1px solid #00ff99;
+        color: #00ff99;
+    }
+    
+    #operatorPanel button {
+        display: block;
+        width: 100%;
+        margin-top: 8px;
+        padding: 8px;
+        cursor: pointer;
+    }
+    
+    </style>
+    </head>
+    
+    <body>
+    
+    <div id="game">
+    
+        <div class="header">
+            <div class="eyebrow">GLOBAL DEFENCE INITIATIVE</div>
+            <h1>THREAT MANAGEMENT</h1>
+            <div class="eyebrow">ENEMY DECONFLICTION SYSTEM</div>
+        </div>
+    
+        <div class="score-panel">
+            <div class="score-label">HOSTILES ELIMINATED</div>
+            <div id="score">000</div>
+        </div>
+    
+        <div id="targetField"></div>
+    
+        <div class="status">
+            ACTIVE HOSTILES: <span id="enemyCount">0</span>
+        </div>
+    
+        <!-- Demo-only button -->
+        <div class="demo-controls">
+            <button id="spawnButton">+ SIMULATE ENEMY</button>
+        </div>
+    
+    </div>
+    
+    <!-- =========================================
+         CONFIRMATION MODAL
+    ========================================= -->
+    
+    <div id="modalOverlay">
+    
+        <div class="modal">
+    
+            <div class="modal-eyebrow">
+                COMMAND AUTHORISATION
+            </div>
+    
+            <h2>CONFIRM STRIKE?</h2>
+    
+            <div id="targetName">
+                HOSTILE 001
+            </div>
+    
+            <div class="modal-description" id="modalDescription">
+                Confirm your request to eliminate this hostile target.
+            </div>
+    
+            <div class="modal-buttons" id="confirmOptions">
+                <button id="cancelButton">CANCEL</button>
+                <button id="confirmButton">CONFIRM</button>
+            </div>
+    
+            <div id="holdSection">
+    
+                <button id="holdButton">
+                    <div id="holdProgress"></div>
+                    <span id="holdText">HOLD TO AUTHORISE STRIKE</span>
+                </button>
+    
+                <div id="holdInstruction">
+                    MAINTAIN PRESSURE FOR 5 SECONDS
+                </div>
+    
+            </div>
+    
+            <div id="resultSection">
+                TARGET ELIMINATED
+                <p id="pointsAwarded"></p>
+            </div>
+    
+        </div>
+    
+    </div>
+    
+    <!-- GAME OVER SCREEN -->
+    <div id="gameOverScreen" style="display: none;">
+        <div class="game-over-box">
+            <div class="game-over-label">SYSTEM FAILURE</div>
+            <h2>GAME OVER</h2>
+            <p id="finalScore">FINAL SCORE: 000</p>
+            <button id="restartButton">RESTART MISSION</button>
+        </div>
+    </div>
+    
+    <!-- OPERATOR ACCESS -->
+    <div id="operatorAccess">
+        <input
+            id="operatorPassword"
+            type="password"
+            placeholder="ENTER ACCESS COMMAND"
+            autocomplete="off"
+        >
+    </div>
+    
+    
+    <!-- OPERATOR ACCESS -->
+    </div> <!-- end gameOverScreen -->
+    
+    <div id="operatorAccess">
+        <input
+            id="operatorPassword"
+            type="password"
+            placeholder="ENTER ACCESS COMMAND"
+            autocomplete="off"
+        >
+    </div>
+    
+    <div id="operatorPanel" style="display:none;">
+        <div class="operator-title">OPERATOR COMMANDS</div>
+    
+        <button id="manualReset">RESET GAME</button>
+        <button id="spawnFriendly">SPAWN FRIENDLY</button>
+        <button id="spawnHostile">SPAWN HOSTILE</button>
+        <button id="spawn10Friendly">+10 FRIENDLIES</button>
+        <button id="spawn10Hostile">+10 HOSTILES</button>
+    </div>
+    
+    <script>
+    
+    // ============================================================
+    // 1. GAME CONFIGURATION
+    // ============================================================
+    
+    const GameConfig = {
+        difficulty: "normal",
+    
+        aircraft: {
+            initialCount: 3,
+            spawnInterval: 5000,
+            speed: 0.012,
+            landingDistance: 0.03
+        },
+    
+    
+        enemies: {
+        initialCount: 3,
+        spawnInterval: 5000,
+        speed: 0.008,
+        targetNearestAircraft: true,
+        maxActive: 30
+    },
+    
+        difficultySettings: {
+            easy: {
+                aircraftSpeedMultiplier: 1.2,
+                enemySpeedMultiplier: 0.7,
+                enemySpawnMultiplier: 0.7
+            },
+    
+            normal: {
+                aircraftSpeedMultiplier: 1,
+                enemySpeedMultiplier: 1,
+                enemySpawnMultiplier: 1
+            },
+    
+            hard: {
+                aircraftSpeedMultiplier: 0.85,
+                enemySpeedMultiplier: 1.4,
+                enemySpawnMultiplier: 1.5
+            }
+        }
+    };
+    
+    
+    // ============================================================
+    // 2. EVENT SYSTEM
+    // ============================================================
+    
+    class EventSystem {
+    
+        constructor() {
+            this.listeners = {};
+        }
+    
+        on(eventName, callback) {
+    
+            if (!this.listeners[eventName]) {
+                this.listeners[eventName] = [];
+            }
+    
+            this.listeners[eventName].push(callback);
+    
+        }
+    
+        emit(eventName, data = {}) {
+    
+            const callbacks = this.listeners[eventName] || [];
+    
+            callbacks.forEach(callback => callback(data));
+    
+        }
+    
+        off(eventName, callback) {
+    
+            if (!this.listeners[eventName]) return;
+    
+            this.listeners[eventName] =
+                this.listeners[eventName].filter(
+                    item => item !== callback
+                );
+    
+        }
+    
+    }
+    
+    
+    // ============================================================
+    // 3. ENEMY SYSTEM
+    // ============================================================
+    
+    class EnemySystem extends EventSystem {
+        getSpawnPosition() {
+        const side = Math.floor(Math.random() * 4);
+        const offset = Math.random() * 80 + 10;
+    
+        switch (side) {
+            case 0: return { x: offset, y: 5 };
+            case 1: return { x: 95, y: offset };
+            case 2: return { x: offset, y: 95 };
+            case 3: return { x: 5, y: offset };
+        }
+    }
+    constructor(config = {}) {
+    
+    super();
+    
+    this.enemies = [];
+    this.nextEnemyId = 1;
+    
+    this.config = config;
+    
+    // Automatically spawn enemies
+    this.spawnTimer = setInterval(() => {
+        this.spawnEnemy();
+    }, this.config.spawnInterval ?? GameConfig.enemies.spawnInterval);
+    
+    }
+    
+        spawnEnemy(options = {}) {
+            const spawnPosition = this.getSpawnPosition();
+            const enemy = {
+    
+                id: this.nextEnemyId++,
+    
+                name: options.name ||
+                    `HOSTILE ${String(this.nextEnemyId - 1).padStart(3, "0")}`,
+    
+                    x: options.x ?? spawnPosition.x,
+                    y: options.y ?? spawnPosition.y,
+    
+                speed: options.speed ??
+                    this.config.baseSpeed ?? 0.01,
+    
+                active: true
+    
+            };
+    
+            this.enemies.push(enemy);
+    
+            this.emit("enemySpawned", enemy);
+    
+            return enemy;
+    
+        }
+    
+        getEnemy(id) {
+    
+            return this.enemies.find(
+                enemy => enemy.id === id && enemy.active
+            );
+    
+        }
+    
+        removeEnemy(id) {
+    
+            const enemy = this.getEnemy(id);
+    
+            if (!enemy) return false;
+    
+            enemy.active = false;
+    
+            this.enemies = this.enemies.filter(
+                item => item.id !== id
+            );
+    
+            this.emit("enemyRemoved", enemy);
+    
+            return true;
+    
+        }
+    
+        getActiveEnemies() {
+    
+            return [...this.enemies];
+    
+        }
+        update() {
+        const aircraft = window.aircraftSystem?.getActiveAircraft() || [];
+    
+        this.enemies.forEach(enemy => {
+            if (!aircraft.length) return;
+    
+            let target = aircraft.reduce((nearest, plane) => {
+                const d = Math.hypot(
+                    plane.x - enemy.x,
+                    plane.y - enemy.y
+                );
+    
+                return d < nearest.distance
+                    ? { plane, distance: d }
+                    : nearest;
+            }, { plane: null, distance: Infinity }).plane;
+    
+            if (!target) return;
+    
+            const dx = target.x - enemy.x;
+            const dy = target.y - enemy.y;
+            const distance = Math.hypot(dx, dy);
+    
+            if (distance > 0) {
+                enemy.x += dx / distance * GameConfig.enemies.speed;
+                enemy.y += dy / distance * GameConfig.enemies.speed;
+            }
+    
+            enemy.element.style.left = enemy.x + "%";
+            enemy.element.style.top = enemy.y + "%";
+        });
+    }
+    }
+    
+    class AircraftSystem {
+        constructor(container, events) {
+            this.container = container;
+            this.events = events;
+            this.aircraft = [];
+            this.nextId = 0;
+            this.selectedAircraft = null;
+            // Flight control keys
+    this.pressedKeys = new Set();
+    
+    window.addEventListener("keydown", (event) => {
+        if (typeof event.key !== "string") return;
+    
+        const key = event.key.toLowerCase();
+    
+        if (["w", "a", "s", "d"].includes(key)) {
+            event.preventDefault();
+            this.pressedKeys.add(key);
+        }
+    });
+    
+    window.addEventListener("keyup", (event) => {
+        if (typeof event.key !== "string") return;
+    
+        this.pressedKeys.delete(event.key.toLowerCase());
+    });
+    
+    window.addEventListener("blur", () => {
+        this.pressedKeys.clear();
+    });
+    
+            // Flight correction crosshair
+            this.crosshair = document.createElement("div");
+    
+            this.crosshair.textContent = "⌖";
+    
+            this.crosshair.style.position = "absolute";
+    this.crosshair.style.color = "#00ffff";
+    this.crosshair.style.fontSize = "55px";
+    this.crosshair.style.fontWeight = "bold";
+    this.crosshair.style.pointerEvents = "none";
+    this.crosshair.style.transform = "translate(-50%, -50%)";
+    this.crosshair.style.zIndex = "9999";
+    this.crosshair.style.display = "none";
+    
+            this.container.appendChild(this.crosshair);
+    
+            for (let i = 0; i < GameConfig.aircraft.initialCount; i++) {
+                this.spawnAircraft();
+            }
+    
+            setInterval(() => {
+                this.spawnAircraft();
+            }, GameConfig.aircraft.spawnInterval);
+        }
+    
+        getSpawnPosition() {
+    
+    const side = Math.floor(Math.random() * 4);
+    const offset = Math.random() * 80 + 10;
+    
+    switch (side) {
+    
+        case 0:
+            return { x: offset, y: 5 };   // Top
+    
+        case 1:
+            return { x: 95, y: offset }; // Right
+    
+        case 2:
+            return { x: offset, y: 95 }; // Bottom
+    
+        case 3:
+            return { x: 5, y: offset };  // Left
+    
+    }
+    }
+        spawnAircraft() {
+            const plane = document.createElement("div");
+    
+            plane.textContent = "✈";
+            plane.style.position = "absolute";
+            plane.style.color = "#38aaff";
+            plane.style.fontSize = "40px";
+            plane.style.cursor = "pointer";
+            plane.style.zIndex = "200";
+            plane.style.width = "55px";
+            plane.style.height = "55px";
+            plane.style.display = "flex";
+            plane.style.alignItems = "center";
+            plane.style.justifyContent = "center";
+            plane.style.transform = "translate(-50%, -50%)";
+            plane.style.pointerEvents = "auto";
+            const aircraft = {
+                id: this.nextId++,
+                element: plane,
+                ...this.getSpawnPosition(),
+                dx: (Math.random() - 0.5) * 0.5,
+                dy: (Math.random() - 0.5) * 0.5,
+                active: true
+            };
+    
+            plane.style.left = aircraft.x + "%";
+            plane.style.top = aircraft.y + "%";
+    
+            plane.addEventListener("click", (event) => {
+    
+    event.stopPropagation();
+    
+    this.selectedAircraft = aircraft;
+    
+    this.crosshair.style.display = "block";
+    this.crosshair.style.left = aircraft.x + "%";
+    this.crosshair.style.top = aircraft.y + "%";
+    
+    console.log("SELECTED AIRCRAFT:", aircraft.id);
+    
+    this.events.emit("aircraftSelected", aircraft);
+    
+    });
+    
+            this.container.appendChild(plane);
+            this.aircraft.push(aircraft);
+    
+            this.events.emit("aircraftSpawned", aircraft);
+        }
+    
+        update() {
+    
+    // WASD steering
+    const selected = this.selectedAircraft;
+    
+    if (selected && selected.active) {
+    
+        const steering = 0.015;
+    
+        if (this.pressedKeys.has("w")) selected.dy -= steering;
+        if (this.pressedKeys.has("s")) selected.dy += steering;
+        if (this.pressedKeys.has("a")) selected.dx -= steering;
+        if (this.pressedKeys.has("d")) selected.dx += steering;
+    
+        const speed = Math.hypot(selected.dx, selected.dy);
+        const maxSpeed = 0.5;
+    
+        if (speed > maxSpeed) {
+            selected.dx = selected.dx / speed * maxSpeed;
+            selected.dy = selected.dy / speed * maxSpeed;
+        }
+    }
+    
+    // Aircraft movement
+    this.aircraft.forEach(plane => {
+    
+        if (!plane.active) return;
+    
+        plane.x += plane.dx;
+        plane.y += plane.dy;
+    
+        if (
+            plane.x < 0 || plane.x > 95 ||
+            plane.y < 0 || plane.y > 95
+        ) {
+            plane.active = false;
+            plane.element.remove();
+            return;
+        }
+    
+        plane.element.style.left = plane.x + "%";
+        plane.element.style.top = plane.y + "%";
+    });
+    
+    this.aircraft = this.aircraft.filter(p => p.active);
+    
+    // Crosshair tracking
+    if (this.selectedAircraft && this.selectedAircraft.active) {
+    
+        this.crosshair.style.display = "block";
+        this.crosshair.style.left = this.selectedAircraft.x + "%";
+        this.crosshair.style.top = this.selectedAircraft.y + "%";
+    
+    } else {
+    
+        this.selectedAircraft = null;
+        this.crosshair.style.display = "none";
+    }
+    }
+    
+    getActiveAircraft() {
+    return this.aircraft.filter(p => p.active);
+    }
+    }
+    
+    // ============================================================
+    // 4. SCORING SYSTEM
+    // ============================================================
+    
+    class ScoreSystem extends EventSystem {
+    
+        constructor(config = {}) {
+    
+            super();
+    
+            this.score = 0;
+    
+            this.pointsPerEnemy =
+                config.pointsPerEnemy ?? 1;
+    
+        }
+    
+        awardPoints(amount = this.pointsPerEnemy) {
+    
+            this.score += amount;
+    
+            this.emit("scoreChanged", {
+                score: this.score,
+                awarded: amount
+            });
+    
+        }
+    
+        reset() {
+    
+            this.score = 0;
+    
+            this.emit("scoreChanged", {
+                score: this.score,
+                awarded: 0
+            });
+    
+        }
+    
+        getScore() {
+    
+            return this.score;
+    
+        }
+    
+    }
+    
+    
+    // ============================================================
+    // 5. STRIKE AUTHORISATION SYSTEM
+    // ============================================================
+    
+    class StrikeSystem extends EventSystem {
+    
+        constructor(options = {}) {
+    
+            super();
+    
+            this.enemySystem = options.enemySystem;
+            this.scoreSystem = options.scoreSystem;
+    
+            this.config = options.config || {};
+    
+            this.holdDuration =
+                this.config.holdDuration ?? 5000;
+    
+            this.selectedEnemyId = null;
+    
+            this.isHolding = false;
+            this.holdStartTime = null;
+            this.animationFrame = null;
+    
+            this.elements = options.elements || {};
+    
+            this.state = "idle";
+    
+            this.bindEvents();
+    
+        }
+    
+    
+        // --------------------------------------------------------
+        // INITIALISE BUTTONS
+        // --------------------------------------------------------
+    
+        bindEvents() {
+    
+            const e = this.elements;
+    
+            e.cancelButton.addEventListener(
+                "click",
+                () => this.cancel()
+            );
+    
+            e.confirmButton.addEventListener(
+                "click",
+                () => this.confirm()
+            );
+    
+            e.holdButton.addEventListener(
+                "pointerdown",
+                event => this.startHold(event)
+            );
+    
+            e.holdButton.addEventListener(
+                "pointerup",
+                () => this.endHold()
+            );
+    
+            e.holdButton.addEventListener(
+                "pointercancel",
+                () => this.endHold()
+            );
+    
+            e.holdButton.addEventListener(
+                "lostpointercapture",
+                () => this.endHold()
+            );
+    
+            window.addEventListener(
+                "blur",
+                () => this.endHold()
+            );
+    
+        }
+    
+    
+        // --------------------------------------------------------
+        // SELECT ENEMY
+        // --------------------------------------------------------
+    
+        selectEnemy(enemyId) {
+    
+            const enemy = this.enemySystem.getEnemy(enemyId);
+    
+            if (!enemy) return false;
+    
+            if (this.state !== "idle") return false;
+    
+            this.selectedEnemyId = enemyId;
+    
+            this.state = "confirming";
+    
+            this.openModal(enemy);
+    
+            this.emit("enemySelected", {
+                enemyId,
+                enemy
+            });
+    
+            return true;
+    
+        }
+    
+    
+        // --------------------------------------------------------
+        // OPEN CONFIRMATION
+        // --------------------------------------------------------
+    
+        openModal(enemy) {
+    
+            const e = this.elements;
+    
+            e.overlay.style.display = "flex";
+    
+            e.targetName.textContent = enemy.name;
+    
+            e.modalDescription.textContent =
+                "Confirm your request to eliminate this hostile target.";
+    
+            e.confirmOptions.style.display = "flex";
+    
+            e.holdSection.style.display = "none";
+    
+            e.resultSection.style.display = "none";
+    
+            e.holdProgress.style.width = "0%";
+    
+        }
+    
+    
+        // --------------------------------------------------------
+        // CONFIRM REQUEST
+        // --------------------------------------------------------
+    
+        confirm() {
+    
+            if (this.state !== "confirming") return;
+    
+            const enemy =
+                this.enemySystem.getEnemy(this.selectedEnemyId);
+    
+            if (!enemy) {
+    
+                this.cancel();
+                return;
+    
+            }
+    
+            this.state = "holding";
+    
+            const e = this.elements;
+    
+            e.confirmOptions.style.display = "none";
+    
+            e.holdSection.style.display = "block";
+    
+            e.modalDescription.textContent =
+                "Strike request received. Maintain the hold to complete authorisation.";
+    
+            this.emit("strikeRequested", {
+                enemyId: this.selectedEnemyId
+            });
+    
+        }
+    
+    
+        // --------------------------------------------------------
+        // START FIVE-SECOND HOLD
+        // --------------------------------------------------------
+    
+        startHold(event) {
+    
+            if (this.state !== "holding") return;
+    
+            if (this.isHolding) return;
+    
+            event.preventDefault();
+    
+            this.isHolding = true;
+    
+            this.holdStartTime = performance.now();
+    
+            this.elements.holdButton.setPointerCapture(
+                event.pointerId
+            );
+    
+            this.emit("holdStarted", {
+                enemyId: this.selectedEnemyId
+            });
+    
+            this.updateHold();
+    
+        }
+    
+    
+        // --------------------------------------------------------
+        // HOLD PROGRESS
+        // --------------------------------------------------------
+    
+        updateHold() {
+    
+            if (!this.isHolding) return;
+    
+            const elapsed =
+                performance.now() - this.holdStartTime;
+    
+            const progress = Math.min(
+                elapsed / this.holdDuration,
+                1
+            );
+    
+            this.elements.holdProgress.style.width =
+                `${progress * 100}%`;
+    
+            const remaining = Math.max(
+                0,
+                (this.holdDuration - elapsed) / 1000
+            );
+    
+            this.elements.holdText.textContent =
+                `AUTHORISING... ${remaining.toFixed(1)}s`;
+    
+            if (progress >= 1) {
+    
+                this.completeStrike();
+                return;
+    
+            }
+    
+            this.animationFrame =
+                requestAnimationFrame(() => this.updateHold());
+    
+        }
+    
+    
+        // --------------------------------------------------------
+        // INTERRUPTED HOLD
+        // --------------------------------------------------------
+    
+        endHold() {
+    
+            if (!this.isHolding) return;
+    
+            this.isHolding = false;
+    
+            cancelAnimationFrame(this.animationFrame);
+    
+            this.animationFrame = null;
+    
+            if (this.state === "holding") {
+    
+                this.elements.holdProgress.style.width = "0%";
+    
+                this.elements.holdText.textContent =
+                    "HOLD TO AUTHORISE STRIKE";
+    
+                this.emit("holdInterrupted", {
+                    enemyId: this.selectedEnemyId
+                });
+    
+            }
+    
+        }
+    
+    
+        // --------------------------------------------------------
+        // COMPLETE STRIKE
+        // --------------------------------------------------------
+    
+        completeStrike() {
+    
+            if (!this.isHolding) return;
+    
+            this.isHolding = false;
+    
+            cancelAnimationFrame(this.animationFrame);
+    
+            this.animationFrame = null;
+    
+            const enemyId = this.selectedEnemyId;
+    
+            const removed =
+                this.enemySystem.removeEnemy(enemyId);
+    
+            if (!removed) {
+    
+                this.cancel();
+                return;
+    
+            }
+    
+            this.scoreSystem.awardPoints();
+    
+            this.state = "completed";
+    
+            const e = this.elements;
+    
+            e.holdProgress.style.width = "100%";
+    
+            e.holdText.textContent = "AUTHORISATION COMPLETE";
+    
+            e.holdSection.style.display = "none";
+    
+            e.resultSection.style.display = "block";
+    
+            e.pointsAwarded.textContent =
+                `+${this.scoreSystem.pointsPerEnemy} POINT`;
+    
+            this.emit("strikeCompleted", {
+                enemyId,
+                points: this.scoreSystem.pointsPerEnemy
+            });
+    
+            // Automatically close the completed modal
+            // after a short delay.
+            setTimeout(() => {
+    
+                if (this.state === "completed") {
+                    this.closeModal();
+                }
+    
+            }, 1200);
+    
+        }
+    
+    
+        // --------------------------------------------------------
+        // CANCEL
+        // --------------------------------------------------------
+    
+        cancel() {
+    
+            this.endHold();
+    
+            if (this.state === "idle") return;
+    
+            const previousEnemyId = this.selectedEnemyId;
+    
+            this.state = "idle";
+    
+            this.selectedEnemyId = null;
+    
+            this.elements.overlay.style.display = "none";
+    
+            this.emit("strikeCancelled", {
+                enemyId: previousEnemyId
+            });
+    
+        }
+    
+    
+        // --------------------------------------------------------
+        // CLOSE COMPLETED MODAL
+        // --------------------------------------------------------
+    
+        closeModal() {
+    
+            this.state = "idle";
+    
+            this.selectedEnemyId = null;
+    
+            this.elements.overlay.style.display = "none";
+    
+            this.emit("modalClosed");
+    
+        }
+    
+    }
+    
+    
+    // ============================================================
+    // 6. DEMO INTERFACE
+    // ============================================================
+    
+    // These are the HTML elements connected to the system.
+    
+    const elements = {
+    
+        overlay:
+            document.getElementById("modalOverlay"),
+    
+        targetName:
+            document.getElementById("targetName"),
+    
+        modalDescription:
+            document.getElementById("modalDescription"),
+    
+        confirmOptions:
+            document.getElementById("confirmOptions"),
+    
+        cancelButton:
+            document.getElementById("cancelButton"),
+    
+        confirmButton:
+            document.getElementById("confirmButton"),
+    
+        holdSection:
+            document.getElementById("holdSection"),
+    
+        holdButton:
+            document.getElementById("holdButton"),
+    
+        holdProgress:
+            document.getElementById("holdProgress"),
+    
+        holdText:
+            document.getElementById("holdText"),
+    
+        resultSection:
+            document.getElementById("resultSection"),
+    
+        pointsAwarded:
+            document.getElementById("pointsAwarded")
+    
+    };
+    
+    
+    // ============================================================
+    // 7. CREATE SYSTEM INSTANCES
+    // ============================================================
+    
+    const enemySystem = new EnemySystem(
+        GameConfig.enemies
+    );
+    
+    const scoreSystem = new ScoreSystem(
+        GameConfig.strike
+    );
+    
+    const strikeSystem = new StrikeSystem({
+    
+        enemySystem: enemySystem,
+    
+        scoreSystem: scoreSystem,
+    
+        config: GameConfig.strike,
+    
+        elements: elements
+    
+    });
+    
+    
+    // ============================================================
+    // 8. DEMO RENDERING
+    // ============================================================
+    
+    const targetField =
+        document.getElementById("targetField");
+    
+    const scoreDisplay =
+        document.getElementById("score");
+    
+    const enemyCountDisplay =
+        document.getElementById("enemyCount");
+    
+    const enemyElements = new Map();
+    
+    function renderEnemy(enemy) {
+    
+        const marker = document.createElement("div");
+    
+        marker.className = "enemy";
+    
+        marker.title = enemy.name;
+    
+        marker.style.left = `${enemy.x}%`;
+    
+        marker.style.top = `${enemy.y}%`;
+    
+        marker.addEventListener("click", () => {
+    
+            strikeSystem.selectEnemy(enemy.id);
+    
+        });
+    
+        const label = document.createElement("div");
+    
+        label.className = "enemy-label";
+    
+        label.textContent = enemy.name;
+    
+        label.style.left = `${enemy.x}%`;
+    
+        label.style.top = `${enemy.y + 3}%`;
+    
+        targetField.appendChild(marker);
+    
+        targetField.appendChild(label);
+    
+        enemyElements.set(enemy.id, {
+            marker,
+            label
+        });
+    
+    }
+    
+    
+    // ------------------------------------------------------------
+    // ENEMY EVENTS
+    // ------------------------------------------------------------
+    
+    enemySystem.on("enemySpawned", enemy => {
+    
+        renderEnemy(enemy);
+    
+        updateEnemyCount();
+    
+    });
+    
+    
+    enemySystem.on("enemyRemoved", enemy => {
+    
+        const elements = enemyElements.get(enemy.id);
+    
+        if (elements) {
+    
+            elements.marker.remove();
+    
+            elements.label.remove();
+    
+            enemyElements.delete(enemy.id);
+    
+        }
+    
+        updateEnemyCount();
+    
+    });
+    
+    
+    // ------------------------------------------------------------
+    // SCORE EVENTS
+    // ------------------------------------------------------------
+    
+    scoreSystem.on("scoreChanged", data => {
+    
+        scoreDisplay.textContent =
+            String(data.score).padStart(3, "0");
+    
+    });
+    
+    
+    // ------------------------------------------------------------
+    // COUNT UPDATE
+    // ------------------------------------------------------------
+    
+    function updateEnemyCount() {
+    
+        enemyCountDisplay.textContent =
+            enemySystem.getActiveEnemies().length;
+    
+    }
+    
+    
+    // ============================================================
+    // 9. DEMO ENEMY SPAWNING
+    // ============================================================
+    
+    document.getElementById("spawnButton")
+        .addEventListener("click", () => {
+    
+            enemySystem.spawnEnemy();
+    
+        });
+    
+    
+    // INITIAL ENEMIES
+    
+    for (
+        let i = 0;
+        i < GameConfig.enemies.initialCount;
+        i++
+    ) {
+    
+        enemySystem.spawnEnemy();
+    
+    }
+    
+    
+    // ============================================================
+    // 10. AIRCRAFT INITIALISATION AND GAME LOOP
+    // ============================================================
+    
+    // Initialise friendly aircraft
+    window.aircraftSystem = new AircraftSystem(
+        targetField,
+        new EventSystem()
+    );
+    
+    
+    // ------------------------------------------------------------
+    // ENEMY MOVEMENT
+    // ------------------------------------------------------------
+    
+    function updateEnemyMovement() {
+    
+        const aircraft =
+            window.aircraftSystem.getActiveAircraft();
+    
+        const enemies =
+            enemySystem.getActiveEnemies();
+    
+        enemies.forEach(enemy => {
+    
+            if (aircraft.length === 0) return;
+    
+            // Find nearest friendly aircraft
+            let target = aircraft.reduce((nearest, plane) => {
+    
+                const distance = Math.hypot(
+                    plane.x - enemy.x,
+                    plane.y - enemy.y
+                );
+    
+                return distance < nearest.distance
+                    ? { plane, distance }
+                    : nearest;
+    
+            }, { plane: null, distance: Infinity }).plane;
+    
+            if (!target) return;
+    
+            // Move enemy towards target
+            const dx = target.x - enemy.x;
+            const dy = target.y - enemy.y;
+    
+            const distance = Math.hypot(dx, dy);
+    
+            if (distance > 0) {
+    
+                const speed = GameConfig.enemies.speed * 10;
+    
+                enemy.x += (dx / distance) * speed;
+                enemy.y += (dy / distance) * speed;
+    
+            }
+    
+            // Update displayed enemy position
+            const elements = enemyElements.get(enemy.id);
+    
+            if (elements) {
+    
+                elements.marker.style.left = enemy.x + "%";
+                elements.marker.style.top = enemy.y + "%";
+    
+                elements.label.style.left = enemy.x + "%";
+                elements.label.style.top = (enemy.y + 3) + "%";
+    
+            }
+    
+        });
+    
+    }
+    
+    
+    
+    // ------------------------------------------------------------
+    // MAIN GAME LOOP
+    // ------------------------------------------------------------
+    
+    // ============================================================
+    // GAME STATE
+    // ============================================================
+    
+    let gameOver = false;
+    
+    
+    // ============================================================
+    // COLLISION DETECTION
+    // ============================================================
+    
+    function checkCollisions() {
+    
+        const aircraft = aircraftSystem.getActiveAircraft();
+        const enemies = enemySystem.getActiveEnemies();
+    
+        // Friendly vs hostile
+        for (const plane of aircraft) {
+            for (const enemy of enemies) {
+    
+                if (Math.hypot(
+                    plane.x - enemy.x,
+                    plane.y - enemy.y
+                ) < 2.5) {
+                    console.log("COLLISION DETECTED");
+                    endGame();
+                    console.log("ENDGAME FINISHED");
+                    return;
+                }
+            }
+        }
+    
+        // Friendly vs friendly
+        for (let i = 0; i < aircraft.length; i++) {
+            for (let j = i + 1; j < aircraft.length; j++) {
+    
+                if (Math.hypot(
+                    aircraft[i].x - aircraft[j].x,
+                    aircraft[i].y - aircraft[j].y
+                ) < 2.5) {
+                    console.log("COLLISION DETECTED");
+                    endGame();
+                    console.log("ENDGAME FINISHED");
+                    return;
+                }
+            }
+        }
+    }
+    
+    
+    // ============================================================
+    // GAME OVER
+    // ============================================================
+    
+    
+    function endGame() {
+    
+    if (gameOver) return;
+    
+    gameOver = true;
+    
+    console.log("GAME OVER ACTIVATED");
+    
+    const screen = document.getElementById("gameOverScreen");
+    const finalScore = document.getElementById("finalScore");
+    
+    finalScore.textContent =
+        "FINAL SCORE: " +
+        String(scoreSystem.getScore()).padStart(3, "0");
+    
+    screen.style.cssText = `
+        display: flex !important;
+        position: fixed !important;
+        inset: 0 !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        z-index: 999999 !important;
+        background: rgba(0, 0, 0, 0.9) !important;
+        justify-content: center !important;
+        align-items: center !important;
+    `;
+    
+    if (strikeSystem && typeof strikeSystem.cancel === "function") {
+        strikeSystem.cancel();
+    }
+    }
+    
+    
+    // ============================================================
+    // RESTART
+    // ============================================================
+    
+    function restartGame() {
+    
+        gameOver = false;
+    
+        enemySystem.getActiveEnemies().forEach(enemy => {
+            enemySystem.removeEnemy(enemy.id);
+        });
+    
+        aircraftSystem.aircraft.forEach(plane => {
+            plane.active = false;
+            plane.element.remove();
+        });
+    
+        aircraftSystem.aircraft = [];
+    
+        scoreSystem.reset();
+    
+        scoreDisplay.textContent = "000";
+    
+        for (let i = 0; i < GameConfig.aircraft.initialCount; i++) {
+            aircraftSystem.spawnAircraft();
+        }
+    
+        for (let i = 0; i < GameConfig.enemies.initialCount; i++) {
+            enemySystem.spawnEnemy();
+        }
+    
+        updateEnemyCount();
+    
+        document.getElementById("gameOverScreen").style.display = "none";
+    }
+    
+    
+    // ============================================================
+    // RESTART BUTTON
+    // ============================================================
+    
+    document.getElementById("restartButton")
+        .addEventListener("click", restartGame);
+    
+    
+    // ============================================================
+    // MAIN GAME LOOP
+    // ============================================================
+    
+    function gameLoop() {
+    
+        requestAnimationFrame(gameLoop);
+    
+        if (gameOver) return;
+    
+        aircraftSystem.update();
+    
+        updateEnemyMovement();
+    
+        checkCollisions();
+    }
+    
+    gameLoop();
+    
+    // ============================================================
+    // OPERATOR COMMANDS
+    // ============================================================
+    
+    const operatorPassword = document.getElementById("operatorPassword");
+    const operatorPanel = document.getElementById("operatorPanel");
+    
+    // Reveal operator panel
+    operatorPassword.addEventListener("keydown", event => {
+    
+        if (event.key === "Enter") {
+    
+            if (operatorPassword.value.trim() === "/show operator commands") {
+                operatorPanel.style.display = "block";
+            }
+    
+            operatorPassword.value = "";
+        }
+    });
+    
+    
+    // Manual reset
+    document.getElementById("manualReset")
+        .addEventListener("click", restartGame);
+    
+    
+    // Spawn 1 friendly aircraft
+    document.getElementById("spawnFriendly")
+        .addEventListener("click", () => {
+            if (!gameOver) aircraftSystem.spawnAircraft();
+        });
+    
+    
+    // Spawn 1 hostile aircraft
+    document.getElementById("spawnHostile")
+        .addEventListener("click", () => {
+            if (!gameOver) enemySystem.spawnEnemy();
+        });
+    
+    
+    // Spawn 10 friendly aircraft
+    document.getElementById("spawn10Friendly")
+        .addEventListener("click", () => {
+            if (!gameOver) {
+                for (let i = 0; i < 10; i++) {
+                    aircraftSystem.spawnAircraft();
+                }
+            }
+        });
+    
+    
+    // Spawn 10 hostile aircraft
+    document.getElementById("spawn10Hostile")
+        .addEventListener("click", () => {
+            if (!gameOver) {
+                for (let i = 0; i < 10; i++) {
+                    enemySystem.spawnEnemy();
+                }
+            }
+        });
+    
+    // ============================================================
+    // 10. FUTURE DIFFICULTY CONNECTION POINTS
+    // ============================================================
+    
+    // Difficulty is intentionally NOT applied automatically.
+    //
+    // Other systems can retrieve the selected settings:
+    //
+    // const settings =
+    //     GameConfig.difficultySettings[GameConfig.difficulty];
+    //
+    // Example future connections:
+    //
+    // enemySystem.setSpeedMultiplier(
+    //     settings.enemySpeedMultiplier
+    // );
+    //
+    // aircraftSystem.setSpeedMultiplier(
+    //     settings.aircraftSpeedMultiplier
+    // );
+    //
+    // enemySpawner.setSpawnMultiplier(
+    //     settings.enemySpawnMultiplier
+    // );
+    //
+    // These methods can be implemented when those systems exist.
+    
+    
+    // ============================================================
+    // 11. EXTERNAL INTEGRATION INTERFACE
+    // ============================================================
+    
+    // Other game systems can listen for these events:
+    //
+    // strikeSystem.on("enemySelected", data => {});
+    // strikeSystem.on("strikeRequested", data => {});
+    // strikeSystem.on("holdStarted", data => {});
+    // strikeSystem.on("holdInterrupted", data => {});
+    // strikeSystem.on("strikeCompleted", data => {});
+    // strikeSystem.on("strikeCancelled", data => {});
+    //
+    // enemySystem.on("enemySpawned", data => {});
+    // enemySystem.on("enemyRemoved", data => {});
+    //
+    // scoreSystem.on("scoreChanged", data => {});
+    //
+    // Other systems can also call:
+    //
+    // strikeSystem.selectEnemy(enemyId);
+    // strikeSystem.cancel();
+    //
+    // enemySystem.spawnEnemy();
+    // enemySystem.removeEnemy(enemyId);
+    //
+    // scoreSystem.getScore();
+    // scoreSystem.reset();
+    
+    
+    
+    </script>
+    
+    </body>
+    </html>
+    

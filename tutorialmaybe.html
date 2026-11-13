@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Threat Management – Ace Challenge with Tutorial</title>
+<style>
+  /* Your original CSS for the whole game (copy-pasted from your code) */
+  /* For brevity, I include only essential tutorial panel styles here */
+  * { box-sizing: border-box; }
+  body {
+      margin: 0;
+      overflow: hidden;
+      background: #030b13;
+      color: #d9e8f5;
+      font-family: Arial, sans-serif;
+      user-select: none;
+      -webkit-user-select: none;
+  }
+  #game {
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(ellipse at 55% 50%, #10283b 0%, #071522 45%, #030b13 100%);
+  }
+  #game::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.2;
+      background-image:
+          linear-gradient(rgba(65,150,190,0.12) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(65,150,190,0.12) 1px, transparent 1px);
+      background-size: 45px 45px;
+  }
+  /* HUD and other styles copied from your CSS... */
+
+  /* Tutorial message panel style */
+  #tutorialPanel {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.7);
+      color: #20bde0;
+      padding: 12px 24px;
+      font-size: 18px;
+      border-radius: 8px;
+      z-index: 100;
+      max-width: 90vw;
+      text-align: center;
+      user-select: none;
+  }
+</style>
+</head>
+<body>
+
+<div id="game">
+  <div id="hud">
+    <div>
+      <div class="eyebrow">GLOBAL DEFENCE INITIATIVE</div>
+      <h1>THREAT MANAGEMENT</h1>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="lab">TIME</div><div class="val" id="hTime">00:00</div></div>
+      <div class="stat"><div class="lab">POINTS</div><div class="val" id="hPts">0</div></div>
+      <div class="stat"><div class="lab">CER</div><div class="val" id="hCer">0.0</div></div>
+      <div class="stat"><div class="lab">LEVEL</div><div class="val" id="hLvl">1</div></div>
+      <div class="stat"><div class="lab">HOSTILES</div><div class="val red" id="hHost">0</div></div>
+    </div>
+  </div>
+  <div id="field"></div>
+</div>
+
+<!-- Tutorial instruction panel -->
+<div id="tutorialPanel"></div>
+
+<script>
+"use strict";
+
+// ---------- (Simplified example based on your full code) ----------
+
+const field = document.getElementById("field");
+const tutorialPanel = document.getElementById("tutorialPanel");
+
+// Game state variables (simplified)
+let state = "tutorial"; // can be "tutorial" or "play"
+let G = null;
+
+// Basic friendly and enemy arrays to support tutorial
+G = {
+  friendlies: [],
+  enemies: [],
+  selected: null,
+  drag: null,
+  points: 0,
+  t: 0 // time seconds
+};
+
+// Helper for converting seconds to mm:ss format
+function formatClock(sec) {
+  const s = Math.floor(sec);
+  return String(Math.floor(s/60)).padStart(2,"0") + ":" + String(s%60).padStart(2,"0");
+}
+
+// Example friendly object spawn
+function spawnFriendly() {
+  const el = document.createElement("div");
+  el.className = "friendly";
+  el.style.position = "absolute";
+  el.style.width = "54px";
+  el.style.height = "54px";
+  el.style.color = "#38aaff";
+  el.style.fontSize = "34px";
+  el.style.left = "100px";
+  el.style.top = "300px";
+  el.style.transform = "translate(-50%, -50%)";
+  el.textContent = "✈";
+
+  el.addEventListener("pointerdown", ev => {
+    if(state !== "tutorial" && state !== "play") return;
+    ev.preventDefault();
+    G.drag = {friendly: true};
+    // Select this friendly for tutorial
+    G.selected = friendly;
+    advanceTutorialIf("dragStarted");
+  });
+
+  field.appendChild(el);
+  const friendly = { el, x: 100, y: 300, dragged: false };
+  G.friendlies.push(friendly);
+  return friendly;
+}
+
+// Example enemy object spawn
+function spawnEnemy() {
+  const el = document.createElement("div");
+  el.className = "enemy";
+  el.style.position = "absolute";
+  el.style.width = "46px";
+  el.style.height = "46px";
+  el.style.color = "#d52e43";
+  el.style.left = "400px";
+  el.style.top = "300px";
+  el.style.transform = "translate(-50%, -50%)";
+  el.innerHTML = "⚠";
+  el.style.fontSize = "40px";
+
+  el.addEventListener("click", ev => {
+    if(state !== "tutorial" && state !== "play") return;
+    G.selected = enemy;
+    strikeSelect(enemy);
+    advanceTutorialIf("enemySelected");
+  });
+
+  field.appendChild(el);
+  const enemy = { el, x: 400, y: 300 };
+  G.enemies.push(enemy);
+  return enemy;
+}
+
+// Tutorial system
+const tutorial = {
+  steps: [
+    {
+      text: "Click and drag the friendly plane (✈) to move it.",
+      check() { return tutorial.dragStarted; }
+    },
+    {
+      text: "Release and observe you can drag the plane anywhere.",
+      check() { return tutorial.draggedOnce; }
+    },
+    {
+      text: "Click a hostile (⚠) to select it.",
+      check() { return tutorial.enemySelected; }
+    },
+    {
+      text: "Press CONFIRM (simulated) to start strike authorization.",
+      check() { return tutorial.strikeConfirmed; }
+    },
+    {
+      text: "Hold the authorization button for 3 seconds (simulated).",
+      check() { return tutorial.strikeHeld; }
+    },
+    {
+      text: "Tutorial complete! Press PLAY to start the real game.",
+      check() { return false; }
+    }
+  ],
+
+  currentStep: 0,
+  dragStarted: false,
+  draggedOnce: false,
+  enemySelected: false,
+  strikeConfirmed: false,
+  strikeHeld: false
+};
+
+// Show tutorial message
+function showTutorialMessage(txt) {
+  tutorialPanel.textContent = txt;
+}
+
+// Advance tutorial on condition
+function advanceTutorialIf(flag) {
+  if(tutorial.steps[tutorial.currentStep].check()) {
+    tutorial.currentStep++;
+    if(tutorial.currentStep >= tutorial.steps.length) {
+      // tutorial finished
+      showTutorialMessage("Tutorial complete! Starting game...");
+      setTimeout(() => {
+        startGame();
+      }, 1500);
+    } else {
+      showTutorialMessage(tutorial.steps[tutorial.currentStep].text);
+    }
+  }
+}
+
+showTutorialMessage(tutorial.steps[0].text);
+
+// Initialize friendly and enemy for tutorial
+const friendly = spawnFriendly();
+const enemy = spawnEnemy();
+
+// Dragging logic (simplified for tutorial)
+friendly.el.addEventListener("pointerdown", ev => {
+  ev.preventDefault();
+  tutorial.dragStarted = true;
+  advanceTutorialIf("dragStarted");
+  friendly.el.setPointerCapture(ev.pointerId);
+});
+
+friendly.el.addEventListener("pointermove", ev => {
+  if (tutorial.dragStarted) {
+    friendly.x = ev.clientX;
+    friendly.y = ev.clientY;
+    friendly.el.style.left = friendly.x + "px";
+    friendly.el.style.top = friendly.y + "px";
+    tutorial.draggedOnce = true;
+    advanceTutorialIf("draggedOnce");
+  }
+});
+
+friendly.el.addEventListener("pointerup", ev => {
+  if(tutorial.dragStarted) {
+    tutorial.dragStarted = false;
+  }
+});
+
+
+// Strike panel simulated
+
+function strikeSelect(enemy) {
+  tutorial.enemySelected = true;
+  advanceTutorialIf("enemySelected");
+  // Simulate showing confirm button
+  showTutorialMessage("Click CONFIRM to authorize strike.");
+  
+  // Add a confirm button for tutorial
+  if(!document.getElementById("confirmBtn")) {
+    const btn = document.createElement("button");
+    btn.id = "confirmBtn";
+    btn.textContent = "CONFIRM";
+    btn.style.position = "absolute";
+    btn.style.bottom = "100px";
+    btn.style.left = "50%";
+    btn.style.transform = "translateX(-50%)";
+    btn.style.padding = "12px 24px";
+    btn.style.fontSize = "20px";
+    btn.style.zIndex = 1000;
+    document.body.appendChild(btn);
+
+    btn.onclick = () => {
+      tutorial.strikeConfirmed = true;
+      btn.remove();
+      showTutorialMessage("Holding authorization button for 3 seconds...");
+      simulateHoldStrike();
+    };
+  }
+}
+
+// Simulate holding strike
+function simulateHoldStrike() {
+  let holdTime = 0;
+  const holdDuration = 3000; // 3 seconds
+  const interval = 100;
+  const holdInterval = setInterval(() => {
+    holdTime += interval;
+    if(holdTime >= holdDuration) {
+      clearInterval(holdInterval);
+      tutorial.strikeHeld = true;
+      advanceTutorialIf("strikeHeld");
+    }
+  }, interval);
+}
+
+// Start the real game (simplified)
+function startGame() {
+  state = "play";
+  tutorialPanel.textContent = "";
+  alert("Game started! This is where your full game logic begins.");
+  // Here you would kick off your full code
+  // So far this demo just stops tutorial and shows alert.
+}
+
+// For demo, show game HUD time update (simplified)
+let lastTime = performance.now();
+function gameLoop(time) {
+  const dt = (time - lastTime) / 1000;
+  lastTime = time;
+  if(state === "tutorial") {
+    G.t += dt;
+    document.getElementById("hTime").textContent = formatClock(G.t);
+  }
+  requestAnimationFrame(gameLoop);
+}
+
+requestAnimationFrame(gameLoop);
+</script>
+
+</body>
+</html>

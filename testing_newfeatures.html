@@ -1,0 +1,2621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Threat Management – Ace Challenge</title>
+
+<style>
+* { box-sizing: border-box; }
+
+
+:root {
+    --bg: #030b13;
+    --text: #d9e8f5;
+    --accent: #55c8ff;
+    --panel: rgba(8,24,40,0.98);
+    --panel-alt: #0a2229;
+    --button: #12344c;
+    --muted: #8da9bd;
+    --border: #1b3b52;
+    --success: #45e6a0;
+    --danger: #ff697a;
+    --gold: #ffd166;
+}
+    /* SEASONAL THEMES */
+
+/* SPRING */
+:root[data-theme="spring"] {
+    --bg: #101b17;
+    --text: #e4f3e8;
+    --accent: #a8df9b;
+    --panel: rgba(20, 43, 32, 0.98);
+    --panel-alt: #203d30;
+    --button: #315b43;
+    --muted: #a8c5b0;
+    --border: #466b50;
+    --success: #8fe0a2;
+    --danger: #ff8994;
+    --gold: #f3d58a;
+}
+
+/* SUMMER */
+:root[data-theme="summer"] {
+    --bg: #101b2b;
+    --text: #edf5ff;
+    --accent: #ffd166;
+    --panel: rgba(22, 43, 67, 0.98);
+    --panel-alt: rgb(59, 104, 149);
+    --button: #315b80;
+    --muted: #a9c4dc;
+    --border: #456b8c;
+    --success: #75e0ad;
+    --danger: #ff7c7c;
+    --gold: #ffe08a;
+}
+
+/* AUTUMN */
+:root[data-theme="autumn"] {
+    --bg: #21160f;
+    --text: #f5e8d8;
+    --accent: #e69a50;
+    --panel: rgba(48, 29, 19, 0.98);
+    --panel-alt: #49301f;
+    --button: #684326;
+    --muted: #c4a58b;
+    --border: #805333;
+    --success: #a9cf78;
+    --danger: #e97861;
+    --gold: #f4c66e;
+}
+
+/* WINTER */
+:root[data-theme="winter"] {
+    --bg: #101a28;
+    --text: #e8f2ff;
+    --accent: #a9d9ff;
+    --panel: rgba(23, 39, 59, 0.98);
+    --panel-alt: #263e59;
+    --button: #345776;
+    --muted: #a4bdd3;
+    --border: #496b89;
+    --success: #8cdeb9;
+    --danger: #ff8795;
+    --gold: #e5d79b;
+}
+
+/* CHRISTMAS */
+:root[data-theme="christmas"] {
+    --bg: #130f12;
+    --text: #f5eee8;
+    --accent: #df4545;
+    --panel: rgba(35, 19, 24, 0.98);
+    --panel-alt: #263d30;
+    --button: #6d2930;
+    --muted: #c4aaa5;
+    --border: #72503e;
+    --success: #63c985;
+    --danger: #ff7777;
+    --gold: #e9c66e;
+}
+
+/* HALLOWEEN */
+:root[data-theme="halloween"] {
+    --bg: #130d1b;
+    --text: #f2e9ff;
+    --accent: #ff852e;
+    --panel: rgba(34, 19, 44, 0.98);
+    --panel-alt: #382346;
+    --button: #57316d;
+    --muted: #bba5ce;
+    --border: #70458a;
+    --success: #a5df78;
+    --danger: #ff647c;
+    --gold: #ffc15c;
+}
+
+:root[data-theme="christmas"] .friendly {
+    color: #63c985;
+}
+
+:root[data-theme="christmas"] .friendly.sel {
+    color: #8fe0a2;
+}
+
+body {
+    margin: 0;
+    overflow: hidden;
+    background: var(--bg);
+    color: var(--text);
+    font-family: Arial, sans-serif;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+#game {
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(
+        ellipse at 55% 50%,
+        var(--panel-alt) 0%,
+        var(--panel) 45%,
+        var(--bg) 100%
+    );
+}
+
+#game::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.2;
+    background-image:
+    linear-gradient(color-mix(in srgb, var(--accent) 12%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--accent) 12%, transparent) 1px, transparent 1px);
+    background-size: 45px 45px;
+}
+
+
+
+/* ---------- HUD ---------- */
+#hud {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 84px;
+    z-index: 20;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 14px 24px;
+    pointer-events: none;
+    gap: 16px;
+}
+.eyebrow { color: var(--accent); font-size: 10px; letter-spacing: 4px; }
+#hud h1 { font-size: 22px; font-weight: 300; letter-spacing: 5px; margin: 6px 0 0; }
+.stats { display: flex; gap: 22px; flex-wrap: wrap; justify-content: flex-end; }
+.stat { text-align: right; }
+.stat .lab { color: var(--muted); font-size: 9px; letter-spacing: 3px; }
+.stat .val { color: var(--accent); font-size: 26px; margin-top: 3px; font-variant-numeric: tabular-nums; }
+.stat .val.ok { color: #45e6a0; }
+.stat .val.red { color: #ff697a; }
+
+/* ---------- FIELD ---------- */
+#field {
+    position: absolute;
+    top: 84px; left: 0; right: 0; bottom: 0;
+    touch-action: none;
+    overflow: hidden;
+}
+
+.friendly {
+    position: absolute;
+    width: 54px; height: 54px;
+    display: flex; align-items: center; justify-content: center;
+    transform: translate(-50%, -50%);
+    cursor: pointer;
+    z-index: 5;
+    color: var(--accent);
+    font-size: 34px;
+}
+.friendly .icon { display: inline-block; pointer-events: none; }
+.friendly.sel { color: #00ffff; }
+.friendly.warn { color: #ff697a; }
+.friendly.sel::after {
+    content: "";
+    position: absolute; inset: 2px;
+    border: 2px solid #00ffff;
+    border-radius: 50%;
+    box-shadow: 0 0 14px #00ffff;
+    pointer-events: none;
+}
+:root[data-theme="christmas"] .friendly.sel::after {
+    border-color: #8fe0a2;
+    box-shadow: 0 0 14px #8fe0a2;
+}
+.friendly.sel.warn::after {
+    border-color: #ff697a;
+    box-shadow: 0 0 14px #ff697a;
+}
+
+.enemy {
+    position: absolute;
+    width: 46px; height: 46px;
+    transform: translate(-50%, -50%);
+    cursor: pointer;
+    z-index: 4;
+}
+.enemy .dia {
+    position: absolute; left: 11px; top: 11px;
+    width: 24px; height: 24px;
+    transform: rotate(45deg);
+    background: color-mix(in srgb, var(--danger) 75%, var(--panel));
+    border: 2px solid var(--danger);
+    box-shadow: 0 0 15px color-mix(in srgb, var(--danger) 65%, transparent);
+}
+.enemy:hover .dia { background: #ff5265; }
+.enemy.sel .dia { background: #ff8793; box-shadow: 0 0 25px #ff304f, 0 0 45px #ff304f; }
+.enemy .lbl {
+    position: absolute; top: 46px; left: 50%;
+    transform: translateX(-50%);
+    color: var(--danger); font-size: 9px; letter-spacing: 2px;
+    white-space: nowrap; pointer-events: none;
+}
+
+.ghost {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    z-index: 6;
+    cursor: pointer;
+    touch-action: none;
+}
+.ghost .core {
+    position: absolute; inset: 22%;
+    border-radius: 50%;
+    background: rgba(255,61,61,0.6);
+    animation: pulse 0.7s ease-in-out infinite alternate;
+}
+.ghost .arc, .ghost .hold {
+    position: absolute; inset: 0;
+    border-radius: 50%;
+    -webkit-mask: radial-gradient(circle, transparent 62%, #000 64%);
+            mask: radial-gradient(circle, transparent 62%, #000 64%);
+}
+.ghost .arc  { background: conic-gradient(#ff3d3d var(--rem, 360deg), transparent 0); }
+.ghost .hold { inset: 12%; background: conic-gradient(#5ee6a8 var(--hold, 0deg), transparent 0); }
+@keyframes pulse { from { transform: scale(0.7); opacity: 0.5; } to { transform: scale(1.15); opacity: 1; } }
+
+.fx {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    color: #5ee6a8;
+    font-size: 18px;
+    font-weight: bold;
+    pointer-events: none;
+    z-index: 30;
+    animation: rise 0.9s ease-out forwards;
+}
+@keyframes rise { to { transform: translate(-50%, -90px); opacity: 0; } }
+/* ---------- FLIGHT PATHS ---------- */
+#pathLayer {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: 1;
+    overflow: visible;
+}
+.fpath {
+    stroke: #8d9aa5;
+    stroke-width: 3;
+    stroke-dasharray: 1 10;
+    stroke-linecap: round;
+    opacity: 0.85;
+}
+/* ---------- STRIKE PANEL ---------- */
+#strikePanel {
+    position: fixed;
+    bottom: 18px; left: 50%;
+    transform: translateX(-50%);
+    width: min(380px, 94vw);
+    z-index: 40;
+    display: none;
+    padding: 16px 18px;
+    background: var(--panel);
+    border: 1px solid var(--accent);
+    box-shadow: 0 0 30px color-mix(in srgb, var(--accent) 20%, transparent);
+    text-align: center;
+}
+#strikePanel .eyebrow { margin-bottom: 8px; }
+#spTarget { color: #ff5265; font-size: 20px; letter-spacing: 4px; margin-bottom: 12px; }
+.sp-row { display: flex; gap: 10px; }
+.sp-row button, #spHold {
+    flex: 1; min-height: 46px; cursor: pointer;
+    font-size: 11px; letter-spacing: 2px;
+}
+#spCancel {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text);
+}
+
+#spOk {
+    background: var(--accent);
+    border: 1px solid var(--accent);
+    color: var(--bg);
+}
+#spHoldWrap { display: none; }
+#spHold {
+    width: 100%; min-height: 56px; position: relative; overflow: hidden;
+    background: color-mix(in srgb, var(--danger) 25%, var(--panel));
+    border: 1px solid var(--danger);
+    color: var(--text);
+    touch-action: none;
+}
+#spProg {
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 0;
+    background: color-mix(in srgb, var(--danger) 55%, transparent);
+    pointer-events: none;
+}
+#spHoldText { position: relative; z-index: 2; }
+
+/* ---------- TUTORIAL PANEL ---------- */
+/* The panel itself ignores pointer events, so it can never block a plane,
+   Ghost or hostile underneath it. Only the exit button is clickable. */
+#tutPanel {
+    position: fixed;
+    bottom: 18px; left: 50%;
+    transform: translateX(-50%);
+    width: min(460px, 94vw);
+    z-index: 25;
+    display: none;
+    padding: 12px 16px;
+    background: color-mix(in srgb, var(--panel) 92%, transparent);
+    border: 1px solid var(--accent);
+    box-shadow: 0 0 30px color-mix(in srgb, var(--accent) 20%, transparent);
+    text-align: center;
+    pointer-events: none;
+}
+#tutPanel.on { display: block; }
+#tutPanel.up { bottom: 182px; }   /* sits above the strike panel on step 3 */
+#tutTitle { font-size: 16px; letter-spacing: 3px; margin: 5px 0 5px; }
+#tutText  { color: var(--muted); font-size: 11px; line-height: 1.5; margin-bottom: 8px; }
+#tutText b { color: var(--text); font-weight: normal; }
+.tut-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+#tutChecks { text-align: left; }
+#tutChecks span {
+    display: inline-block;
+    margin-right: 10px;
+    color: var(--muted);
+    font-size: 9px;
+    letter-spacing: 2px;
+}
+#tutChecks span.cur  { color: var(--accent); }
+#tutChecks span.done { color: var(--success); }
+#tutSkip {
+    pointer-events: auto;
+    min-height: 32px;
+    padding: 0 12px;
+    font-size: 9px;
+}
+#menuTut { width: 100%; margin-bottom: 4px; }
+
+/* ---------- SCREENS ---------- */
+.screen {
+    position: fixed; inset: 0; z-index: 100;
+    display: none;
+    justify-content: center; align-items: center;
+    padding: 20px;
+    background: color-mix(in srgb, var(--bg) 78%, transparent);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    overflow-y: auto;
+}
+.screen.on { display: flex; }
+
+.modal {
+    width: min(520px, 96vw);
+    max-height: 94vh;
+    overflow-y: auto;
+    padding: 30px;
+    background: var(--panel);
+    border: 1px solid var(--accent);
+    box-shadow: 0 0 40px color-mix(in srgb, var(--accent) 15%, transparent);
+    text-align: center;
+}
+.modal h2 { font-size: 24px; font-weight: 300; letter-spacing: 4px; margin: 14px 0 6px; }
+.sub {
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.7;
+    margin: 10px 0 18px;
+}
+
+.sub b {
+    color: var(--text);
+    font-weight: normal;
+}
+
+
+.levels { display: flex; flex-direction: column; gap: 10px; margin: 18px 0; }
+.lvl {
+    padding: 14px 16px;
+    text-align: left;
+    cursor: pointer;
+    background: var(--panel-alt);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font: inherit;
+}
+
+.lvl:hover {
+    border-color: var(--accent);
+}
+
+.lvl span {
+    font-size: 12px;
+    color: var(--muted);
+}
+
+.lvl em {
+    float: right;
+    font-style: normal;
+    color: var(--gold);
+    font-size: 12px;
+}
+.lvl b { display: block; letter-spacing: 3px; font-size: 14px; margin-bottom: 4px; }
+
+.btn {
+    min-height: 46px;
+    padding: 0 18px;
+    cursor: pointer;
+    font-size: 11px;
+    letter-spacing: 2px;
+    background: var(--button);
+    border: 1px solid var(--accent);
+    color: var(--text);
+}
+
+.btn.primary {
+    background: var(--accent);
+    color: var(--bg);
+}
+
+.btn-row { display: flex; gap: 10px; margin-top: 20px; }
+.btn-row .btn { flex: 1; }
+
+#metrics { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 13px; }
+#metrics td {
+    padding: 8px 6px;
+    border-bottom: 1px solid var(--border);
+    text-align: left;
+}
+
+#metrics td:last-child { text-align: right; font-variant-numeric: tabular-nums; }
+.pass {
+    color: var(--success);
+}
+
+.fail {
+    color: var(--danger);
+}
+
+#lbSubmit {
+    margin: 18px 0;
+    padding-bottom: 18px;
+    border-bottom: 1px solid var(--border);
+}
+
+#lbCer { color: var(--success); font-size: 42px; margin: 6px 0 14px; font-variant-numeric: tabular-nums; }
+.lb-label {
+    color: var(--muted);
+    font-size: 11px;
+    letter-spacing: 3px;
+}
+
+#lbName {
+    width: 100%;
+    padding: 12px;
+    background: var(--bg);
+    border: 1px solid var(--accent);
+    color: var(--text);
+    font-size: 14px;
+    letter-spacing: 4px;
+    text-align: center;
+    text-transform: uppercase;
+    outline: none;
+}
+
+#lbName:focus {
+    border-color: var(--accent);
+}
+#lbSubmitButton { width: 100%; margin-top: 10px; }
+#lbMessage {
+    min-height: 18px;
+    margin: 10px 0;
+    color: var(--accent);
+    font-size: 11px;
+    letter-spacing: 2px;
+}
+#lbDay {
+    color: var(--muted);
+    font-size: 11px;
+    letter-spacing: 2px;
+}
+
+
+#lbTable { width: 100%; border-collapse: collapse; font-size: 13px; }
+#lbTable th {
+    padding: 8px 6px;
+    color: var(--muted);
+    font-size: 9px;
+    font-weight: normal;
+    letter-spacing: 3px;
+    border-bottom: 1px solid var(--border);
+}
+#lbTable td {
+    padding: 9px 6px;
+    border-bottom: 1px solid var(--border);
+    letter-spacing: 1px;
+    font-variant-numeric: tabular-nums;
+}
+#lbTable .c-rank {
+    text-align: left;
+    width: 14%;
+    color: var(--muted);
+}
+#lbTable .c-name { text-align: left; }
+#lbTable .c-cer {
+    text-align: right;
+    color: var(--success);
+}
+
+#lbTable .c-pts  { text-align: right; }
+#lbTable .c-time {
+    text-align: right;
+    color: var(--muted);
+}
+
+#lbTable tr.top-1 .c-rank,
+#lbTable tr.top-1 .c-name {
+    color: var(--gold);
+}
+
+#lbTable tr.top-2 .c-rank { color: #c9d6df; }
+#lbTable tr.top-3 .c-rank { color: #d98e5a; }
+#lbTable tr.new-entry td {
+    background: color-mix(in srgb, var(--accent) 15%, transparent);
+}
+
+#lbEmpty {
+    display: none;
+    padding: 22px 0 6px;
+    color: var(--muted);
+    font-size: 11px;
+    letter-spacing: 3px;
+}
+
+@media (max-width: 600px) {
+    #hud h1 { font-size: 16px; }
+    .stat .val { font-size: 20px; }
+    .stats { gap: 12px; }
+    #lbTable .c-time { display: none; }
+}
+/* ---------- ACCOUNTS ---------- */
+#acctOverlay { z-index: 120; }
+#myOverlay   { z-index: 110; }
+.field-in {
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 10px;
+    background: var(--bg);
+    border: 1px solid var(--accent);
+    color: var(--text);
+    font-size: 14px;
+    letter-spacing: 4px;
+    text-align: center;
+    outline: none;
+}
+.field-in:focus {
+    border-color: var(--accent);
+}
+.acct-line {
+    color: var(--muted);
+    font-size: 11px;
+    letter-spacing: 2px;
+    margin: 4px 0 12px;
+}
+.acct-line b {
+    color: var(--success);
+    font-weight: normal;
+}
+
+.acct-hint {
+    color: var(--muted);
+    font-size: 11px;
+    margin-top: 10px;
+    line-height: 1.6;
+}
+
+.linkbtn {
+    background: none;
+    border: 0;
+    padding: 0;
+    color: var(--accent);
+    cursor: pointer;
+    font: inherit;
+    text-decoration: underline;
+}
+
+.msg {
+    min-height: 18px;
+    margin: 10px 0 0;
+    color: var(--danger);
+    font-size: 11px;
+    letter-spacing: 2px;
+}
+.menu-row { display: flex; gap: 10px; }
+.menu-row .btn { flex: 1; padding: 0 6px; }
+
+.my-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 16px 0 10px; }
+.my-stats div {
+    background: var(--panel-alt);
+    border: 1px solid var(--border);
+    padding: 10px 4px;
+}
+
+.my-stats .lab {
+    color: var(--muted);
+    font-size: 8px;
+    letter-spacing: 2px;
+}
+
+.my-stats .val {
+    color: var(--accent);
+    font-size: 18px;
+    margin-top: 4px;
+    font-variant-numeric: tabular-nums;
+}
+#myChart {
+    width: 100%;
+    height: 80px;
+    margin: 6px 0 4px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    display: none;
+}
+
+.my-chart-lab {
+    color: var(--muted);
+    font-size: 9px;
+    letter-spacing: 3px;
+}
+#myScroll { max-height: 38vh; overflow-y: auto; margin-top: 8px; }
+#myTable { width: 100%; border-collapse: collapse; font-size: 12px; }
+#myTable th {
+    padding: 8px 4px;
+    color: var(--muted);
+    font-size: 9px;
+    font-weight: normal;
+    letter-spacing: 2px;
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    background: var(--panel);
+}
+
+#myTable td {
+    padding: 8px 4px;
+    border-bottom: 1px solid var(--border);
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+#myTable td:first-child, #myTable th:first-child { text-align: left; }
+#myTable td.best {
+    color: var(--gold);
+}
+
+#myTable td.cer {
+    color: var(--success);
+}
+
+.theme-picker {
+    margin: 18px 0;
+    text-align: left;
+}
+
+.theme-picker label {
+    display: block;
+    color: var(--muted);
+    font-size: 10px;
+    letter-spacing: 3px;
+    margin-bottom: 8px;
+}
+
+.theme-picker select {
+    width: 100%;
+    text-align: center;
+}
+/* ---------- BREATHING RESET ---------- */
+#breathOverlay { z-index: 130; }
+.br-wrap {
+    position: relative;
+    height: 260px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 10px 0;
+}
+.br-circle {
+    position: absolute;
+    width: 130px; height: 130px;
+    border-radius: 50%;
+    background: radial-gradient(circle,
+        var(--accent) 0%,
+        color-mix(in srgb, var(--accent) 60%, transparent) 70%,
+        transparent 100%);
+    opacity: 0.8;
+    transform: scale(1);
+    transition: transform 1s ease-in-out;
+}
+.br-circle.in   { transform: scale(1.7); }
+.br-circle.hold { transform: scale(1.7); }
+.br-circle.out  { transform: scale(1); }
+.br-text { position: relative; z-index: 1; text-align: center; }
+#brText  { display: block; font-size: 18px; font-weight: 300; letter-spacing: 3px; color: var(--text); }
+#brTimer { display: block; font-size: 42px; margin-top: 6px; color: var(--text); font-variant-numeric: tabular-nums; }
+
+.my-avgs { margin-top: 0; }
+.my-avgs .lab { font-size: 7px; }
+</style>
+</head>
+
+<body>
+
+<div id="game">
+
+    <div id="hud">
+        <div>
+            <div class="eyebrow">GLOBAL DEFENCE INITIATIVE</div>
+            <h1>THREAT MANAGEMENT</h1>
+        </div>
+        <div class="stats">
+            <div class="stat"><div class="lab">TIME</div><div class="val" id="hTime">00:00</div></div>
+            <div class="stat"><div class="lab">POINTS</div><div class="val" id="hPts">0</div></div>
+            <div class="stat"><div class="lab">CER</div><div class="val" id="hCer">0.0</div></div>
+            <div class="stat"><div class="lab">LEVEL</div><div class="val" id="hLvl">1</div></div>
+            <div class="stat"><div class="lab">HOSTILES</div><div class="val red" id="hHost">0</div></div>
+        </div>
+    </div>
+
+    <div id="field"></div>
+
+</div>
+
+<!-- Tutorial instructions (clicks pass through, except the exit button) -->
+<div id="tutPanel">
+    <div class="eyebrow">TRAINING · STEP <span id="tutStep">1</span> OF 3</div>
+    <div id="tutTitle">DRAG THE PLANE</div>
+    <div id="tutText"></div>
+    <div class="tut-foot">
+        <div id="tutChecks">
+            <span id="tc0">○ DRAG PLANE</span>
+            <span id="tc1">○ IDENTIFY GHOST</span>
+            <span id="tc2">○ STRIKE HOSTILE</span>
+        </div>
+        <button class="btn" id="tutSkip">EXIT TUTORIAL</button>
+    </div>
+</div>
+
+<!-- Strike authorisation (does not pause the game) -->
+<div id="strikePanel">
+    <div class="eyebrow">COMMAND AUTHORISATION</div>
+    <div id="spTarget">HOSTILE 001</div>
+    <div class="sp-row" id="spConfirm">
+        <button id="spCancel">CANCEL</button>
+        <button id="spOk">CONFIRM STRIKE</button>
+    </div>
+    <div id="spHoldWrap">
+        <button id="spHold">
+            <div id="spProg"></div>
+            <span id="spHoldText">HOLD 2 SECONDS TO AUTHORISE</span>
+        </button>
+    </div>
+</div>
+
+<!-- Start menu -->
+<div class="screen on" id="menu">
+    <div class="modal">
+        <div class="eyebrow">GLOBAL DEFENCE INITIATIVE</div>
+        <h2>THREAT MANAGEMENT</h2>
+        <div class="sub">
+            <b>New here? Try the tutorial first.</b><br><br>
+            <b>Click and drag a friendly</b> (✈) to steer it.
+            Friendlies can fly off the screen safely, and a replacement spawns right away.
+            Keep friendlies clear of each other and of hostiles. They land on their own after about 30 seconds.<br><br>
+            <b>Follow the dotted grey flight path.</b> Planes drift off course. Drag them back onto the path for points, and the sooner you catch them, the more you score.
+            <b>Click a hostile</b>, confirm, then <b>hold 2 seconds</b> to strike it.<br><br>
+            <b>Press and hold a red Ghost for 0.5 s</b> to identify it. Each Ghost expires after <b>3.0 s</b>.<br><br>
+            Any failure ends the run. Your daily rank is your <b>CER = (Points / Time) × Difficulty</b>.
+            Only logged-in players can save scores.
+        </div>
+        <button class="btn" id="menuTut">▶ TUTORIAL (RECOMMENDED)</button>
+        <div class="levels" id="levels"></div>
+        <div class="theme-picker">
+            <label for="themeSelect">SELECT THEME</label>
+            <select id="themeSelect" class="btn">
+                <option value="spring">SPRING</option>
+                <option value="summer">SUMMER</option>
+                <option value="autumn">AUTUMN</option>
+                <option value="winter">WINTER</option>
+                <option value="christmas">CHRISTMAS</option>
+                <option value="halloween">HALLOWEEN</option>
+            </select>
+        </div>
+
+        <div class="acct-line" id="acctLine"></div>
+        <div class="menu-row">
+            <button class="btn" id="menuAcct">LOG IN / SIGN UP</button>
+            <button class="btn" id="menuMy">MY SCORES</button>
+            <button class="btn" id="menuBoard">LEADERBOARD</button>
+        </div>
+    </div>
+</div>
+
+<!-- Tutorial complete -->
+<div class="screen" id="tutDone">
+    <div class="modal">
+        <div class="eyebrow">TRAINING</div>
+        <h2>TUTORIAL COMPLETE</h2>
+        <div class="sub">
+            You've steered a plane, identified a Ghost and struck a hostile.<br><br>
+            Pick a difficulty from the menu to play for the daily leaderboard.
+            <b>Log in</b> to save your score. Guests can play and view the board, but their runs are not saved.
+        </div>
+        <div class="btn-row">
+            <button class="btn" id="tdReplay">REPLAY</button>
+            <button class="btn primary" id="tdMenu">CHOOSE DIFFICULTY</button>
+        </div>
+    </div>
+</div>
+
+<!-- Breathing reset (shown after a loss, before results) -->
+<div class="screen" id="breathOverlay">
+    <div class="modal">
+        <div class="eyebrow">DEBRIEF</div>
+        <h2>TACTICAL RESET</h2>
+        <div class="sub">Take one slow breath before reviewing your results.</div>
+        <div class="br-wrap">
+            <div class="br-circle" id="brCircle"></div>
+            <div class="br-text">
+                <span id="brText">Get ready</span>
+                <span id="brTimer"></span>
+            </div>
+        </div>
+        <div class="btn-row">
+            <button class="btn" id="brSkip">SKIP</button>
+        </div>
+    </div>
+</div>
+<!-- Result + leaderboard -->
+<div class="screen" id="lbOverlay">
+    <div class="modal">
+        <div class="eyebrow" id="lbEyebrow">GLOBAL DAILY RECORDS</div>
+        <h2 id="lbTitle">LEADERBOARD</h2>
+        <div class="sub" id="lbReason"></div>
+
+        <table id="metrics"></table>
+
+        <div id="lbSubmit">
+            <div class="lb-label">YOUR CER</div>
+            <div id="lbCer">0.0</div>
+            <div id="lbGuest">
+                <div class="acct-hint">Guests can't save scores. You need an account to submit this result.</div>
+                <button class="btn primary" id="lbLogin" style="width:100%;margin-top:10px">LOG IN / CREATE ACCOUNT</button>
+            </div>
+            <div id="lbUser" class="lb-label" style="display:none">SUBMITTING AS <b id="lbUserName" style="color:#45e6a0;font-weight:normal"></b></div>
+            <button class="btn primary" id="lbSubmitButton">SUBMIT RESULT</button>
+        </div>
+
+        <div id="lbDay"></div>
+        <div id="lbMessage"></div>
+
+        <table id="lbTable">
+            <thead>
+                <tr>
+                    <th class="c-rank">#</th>
+                    <th class="c-name">NAME</th>
+                    <th class="c-cer">CER</th>
+                    <th class="c-pts">PTS</th>
+                    <th class="c-time">TIME</th>
+                </tr>
+            </thead>
+            <tbody id="lbBody"></tbody>
+        </table>
+        <div id="lbEmpty">NO RESULTS YET TODAY</div>
+
+        <div class="btn-row">
+            <button class="btn" id="lbMy" style="display:none">MY SCORES</button>
+            <button class="btn primary" id="lbPlay">PLAY AGAIN</button>
+            <button class="btn" id="lbMenu">MENU</button>
+            <button class="btn" id="lbClose">CLOSE</button>
+        </div>
+    </div>
+</div>
+
+<!-- Account -->
+<div class="screen" id="acctOverlay">
+    <div class="modal">
+        <div class="eyebrow">PLAYER ACCOUNT</div>
+        <h2>LOG IN</h2>
+        <div class="sub">Pick a name and a <b>4–6 digit PIN</b>. Your PIN can't be recovered if you forget it, so remember it.</div>
+        <input id="acName" class="field-in" type="text" maxlength="12" placeholder="NAME" autocomplete="off" spellcheck="false" style="text-transform:uppercase">
+        <input id="acPin" class="field-in" type="password" inputmode="numeric" maxlength="6" placeholder="PIN" autocomplete="off">
+        <div class="msg" id="acMsg"></div>
+        <div class="btn-row">
+            <button class="btn primary" id="acLogin">LOG IN</button>
+            <button class="btn" id="acCreate">CREATE ACCOUNT</button>
+        </div>
+        <div class="btn-row"><button class="btn" id="acCancel">CANCEL</button></div>
+    </div>
+</div>
+
+<!-- My scores -->
+<div class="screen" id="myOverlay">
+    <div class="modal">
+        <div class="eyebrow">PERSONAL RECORDS</div>
+        <h2 id="myTitle">MY SCORES</h2>
+        <div class="my-stats">
+            <div><div class="lab">RUNS</div><div class="val" id="myRuns">0</div></div>
+            <div><div class="lab">BEST CER</div><div class="val" id="myBestCer">0</div></div>
+            <div><div class="lab">BEST PTS</div><div class="val" id="myBestPts">0</div></div>
+            <div><div class="lab">LONGEST</div><div class="val" id="myBestTime">00:00</div></div>
+        </div>
+        <div class="my-stats my-avgs">
+            <div><div class="lab">TODAY AVG CER</div><div class="val" id="myDayCer">-</div></div>
+            <div><div class="lab">ALL-TIME AVG CER</div><div class="val" id="myAllCer">-</div></div>
+            <div><div class="lab">TODAY AVG PTS</div><div class="val" id="myDayPts">-</div></div>
+            <div><div class="lab">ALL-TIME AVG PTS</div><div class="val" id="myAllPts">-</div></div>
+        </div>
+        <div class="my-chart-lab" id="myChartLab">CER OVER TIME (OLDEST → NEWEST)</div>
+        <svg id="myChart" viewBox="0 0 300 80" preserveAspectRatio="none"></svg>
+        <div id="myScroll">
+            <table id="myTable">
+                <thead><tr><th>DATE</th><th>LVL</th><th>CER</th><th>PTS</th><th>TIME</th></tr></thead>
+                <tbody id="myBody"></tbody>
+            </table>
+        </div>
+        <div class="msg" id="myMsg" style="color:#55c8ff"></div>
+        <div class="btn-row"><button class="btn" id="myClose">CLOSE</button></div>
+    </div>
+</div>
+
+<script>
+"use strict";
+
+// =====================================================
+// 1. CONFIG
+// =====================================================
+
+// ---- SUPABASE: your two values go here -------------------------------
+const SUPABASE_URL = 'https://usokezqgscfzaahxjxvt.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_1OxgIUDvE9JatD7Uypo7Yg_MECGS-Ac';
+// ----------------------------------------------------------------------
+// Needs the ace_scores table (SQL given in the chat).
+
+const TARGET_ENDURANCE_S = 360;     // 06:00
+const TARGET_EFFICIENCY  = 20000;   // points
+const STRIKE_POINTS = 500;
+const GHOST_POINTS  = 250;
+const HOLD_STRIKE_S = 2.0; //seconds to confirm strike
+const HOLD_GHOST_S  = 0.5;
+const GHOST_WINDOW_S = 3.0;
+const LEVEL_LEN_S = 30;
+const MIN_TIME_MS = 3000;           // shortest run the server accepts
+
+const DIFFS = {
+    easy:   { label: "EASY",   mult: 1.0, blurb: "Slow hostiles, 2 friendlies, 2 Ghosts at a time.",
+              enemySpeed: 35, enemyStart: 9.0, enemyFloor: 4.5, maxEnemies: 8,
+              ghostStart: 7.0, ghostFloor: 3.5, maxGhosts: 2, ghostR: 32,
+              friendlyMax: 2, friendlySpawn: 9 },
+    normal: { label: "NORMAL", mult: 1.5, blurb: "Faster hostiles, 3 friendlies, 3 Ghosts at a time.",
+              enemySpeed: 45, enemyStart: 7.0, enemyFloor: 3.5, maxEnemies: 10,
+              ghostStart: 5.5, ghostFloor: 2.8, maxGhosts: 3, ghostR: 28,
+              friendlyMax: 3, friendlySpawn: 8 },
+    hard:   { label: "HARD",   mult: 2.0, blurb: "Fast hostiles, 4 friendlies, 4 small Ghosts at a time.",
+              enemySpeed: 60, enemyStart: 5.5, enemyFloor: 2.5, maxEnemies: 12,
+              ghostStart: 4.5, ghostFloor: 2.2, maxGhosts: 4, ghostR: 24,
+              friendlyMax: 4, friendlySpawn: 7 }
+};
+
+const FRIENDLY_BASE_SPEED = 40;     // px/s
+const FRIENDLY_MIN_SPEED  = 25;
+const FRIENDLY_MAX_SPEED  = 90;
+const STEER_ACCEL = 170;            // px/s^2
+const AUTOPILOT_MARGIN = 90;        // px from edge where autopilot turns the plane
+const AUTOPILOT_TURN   = 170;       // px/s^2
+const WARN_MARGIN = 45;             // px from edge where the plane turns red
+const R_FRIENDLY_FRIENDLY = 32;
+const R_ENEMY_FRIENDLY    = 28;
+const STRIKE_PANEL_CLEARANCE = 170; // keep Ghosts out of the strike panel area
+
+// Flight paths
+const PATH_ON_DIST     = 12;    // px: counts as "back on the path"
+const PATH_OFF_DIST    = 30;    // px: counts as "off the path"
+const PATH_FAR_DIST    = 240;   // px: deviation at which points reach the minimum
+const PATH_MAX_POINTS  = 300;   // reward for catching a plane that only just strayed
+const PATH_MIN_POINTS  = 20;    // reward for catching a plane that strayed far
+const PATH_SEP         = 80;    // px: minimum gap between any two paths
+const DRIFT_JITTER     = 0.5;   // how erratically planes veer
+const DRIFT_MAX_TURN   = 0.3;   // rad/s: maximum veer rate
+const SVG_NS = "http://www.w3.org/2000/svg";
+
+// Tutorial
+const TUT_OFFSET_PX  = 110;     // how far off its path the tutorial plane starts
+const TUT_STEP_PAUSE = 1.4;     // seconds to show "nice work" between steps
+const TUT_RESPAWN_S  = 0.8;     // pause before a missed Ghost / hostile is replaced
+
+// =====================================================
+// 2. DAILY SEED
+// =====================================================
+
+// The seed is the UTC date as YYYYMMDD, so every player in every
+// time zone gets the same map on the same day.
+function getDaily() {
+    const d = new Date();
+    return d.getUTCFullYear() * 10000 + (d.getUTCMonth() + 1) * 100 + d.getUTCDate();
+}
+function hashStr(s) {
+    let h = 1779033703 ^ s.length;
+    for (let i = 0; i < s.length; i++) {
+        h = Math.imul(h ^ s.charCodeAt(i), 3432918353);
+        h = h << 13 | h >>> 19;
+    }
+    return h >>> 0;
+}
+function mulberry32(a) {
+    return function () {
+        a |= 0; a = a + 0x6D2B79F5 | 0;
+        let t = Math.imul(a ^ a >>> 15, 1 | a);
+        t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+        return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+}
+
+// Separate random streams for each kind of spawn. Because each stream is
+// only used by its own spawner, the nth friendly / hostile / Ghost is the
+// same for every player, whatever else they do during the run.
+function makeStreams(key) {
+    const base = getDaily() + "|" + key;
+    return {
+        base,
+        friendly: mulberry32(hashStr(base + "|friendly")),
+        enemy:    mulberry32(hashStr(base + "|enemy")),
+        ghost:    mulberry32(hashStr(base + "|ghost"))
+    };
+}
+
+
+// =====================================================
+// 3. HELPERS / STATE
+// =====================================================
+
+const $ = id => document.getElementById(id);
+const field = $("field");
+
+let FW = 0, FH = 0;
+let state = "menu";            // menu | play | over | tutdone
+
+// SOUNDS ==================================
+
+const pingSound = new Audio("./sounds/ping.mp3");
+pingSound.preload = "auto";
+
+function playPingSound() {
+    pingSound.currentTime = 0;
+    pingSound.play().catch(error => {
+        console.warn("Ping sound could not play:", error);
+    });
+}
+
+const enemySelectSound = new Audio("./sounds/enemy_select.mp3");
+
+enemySelectSound.preload = "auto";
+enemySelectSound.volume = 0.6;
+
+function playEnemySelectSound() {
+    enemySelectSound.currentTime = 0;
+
+    enemySelectSound.play().catch(error => {
+        console.warn("Enemy select sound failed:", error);
+    });
+}
+
+const pointSound = new Audio("./sounds/point.mp3");
+
+pointSound.preload = "auto";
+pointSound.volume = 0.7;
+
+function playPointSound() {
+    pointSound.currentTime = 0;
+
+    pointSound.play().catch(error => {
+        console.warn("Score sound failed:", error);
+    });
+}
+
+
+const loseSound = new Audio("./sounds/lose.mp3");
+
+loseSound.preload = "auto";
+loseSound.volume = 0.4;
+
+function playloseSound() {
+    loseSound.currentTime = 0;
+
+    loseSound.play().catch(error => {
+        console.warn("Lose sound failed:", error);
+    });
+}
+
+
+//STATES
+
+let diffKey = "normal";
+let D = DIFFS.normal;
+let RNG = null;               // daily seeded streams, created in startGame()
+let G = null;
+let gameToken = 0;
+
+function formatClock(sec) {
+    const s = Math.floor(sec);
+    return String(Math.floor(s / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0");
+}
+function computeCER(points, seconds, mult) {
+    return (points / Math.max(seconds, 0.001)) * mult;
+}
+function levelMult(level) { return 1 + 0.1 * (level - 1); }
+
+function measure() {
+    const r = field.getBoundingClientRect();
+    const ow = FW, oh = FH;
+    FW = r.width; FH = r.height;
+    if (G && ow && oh) {
+        const sx = FW / ow, sy = FH / oh;
+        [...G.friendlies, ...G.enemies, ...G.ghosts].forEach(e => {
+            e.x *= sx; e.y *= sy; setPos(e);
+            if (e.path) {
+                e.path.x0 *= sx; e.path.x1 *= sx; e.path.y0 *= sy; e.path.y1 *= sy;
+            }
+        });
+    }
+}
+window.addEventListener("resize", measure);
+
+function setPos(e) {
+    e.el.style.left = e.x + "px";
+    e.el.style.top = e.y + "px";
+}
+// =====================================================
+// FLIGHT PATH HELPERS
+// =====================================================
+
+let pathLayer = null;
+function makePathLayer() {
+    pathLayer = document.createElementNS(SVG_NS, "svg");
+    pathLayer.id = "pathLayer";
+    field.appendChild(pathLayer);
+}
+
+// Closest point on a segment {x0,y0,x1,y1} to (px,py)
+function nearestOnSeg(px, py, s) {
+    const dx = s.x1 - s.x0, dy = s.y1 - s.y0;
+    const l2 = dx * dx + dy * dy;
+    let t = l2 ? ((px - s.x0) * dx + (py - s.y0) * dy) / l2 : 0;
+    t = Math.max(0, Math.min(1, t));
+    const x = s.x0 + dx * t, y = s.y0 + dy * t;
+    return { x, y, d: Math.hypot(px - x, py - y) };
+}
+function cross(ax, ay, bx, by, cx, cy) {
+    return (bx - ax) * (cy - ay) - (by - ay) * (cx - ax);
+}
+// Smallest distance between two segments (0 if they cross)
+function segDist(a, b) {
+    const d1 = cross(a.x0, a.y0, a.x1, a.y1, b.x0, b.y0);
+    const d2 = cross(a.x0, a.y0, a.x1, a.y1, b.x1, b.y1);
+    const d3 = cross(b.x0, b.y0, b.x1, b.y1, a.x0, a.y0);
+    const d4 = cross(b.x0, b.y0, b.x1, b.y1, a.x1, a.y1);
+    if (d1 * d2 < 0 && d3 * d4 < 0) return 0;
+    return Math.min(
+        nearestOnSeg(a.x0, a.y0, b).d, nearestOnSeg(a.x1, a.y1, b).d,
+        nearestOnSeg(b.x0, b.y0, a).d, nearestOnSeg(b.x1, b.y1, a).d
+    );
+}
+// Where a ray leaves the screen (plus a small margin)
+function rayToEdge(x, y, dx, dy) {
+    const M = 30;
+    let t = Infinity;
+    if (dx > 0) t = Math.min(t, (FW + M - x) / dx);
+    else if (dx < 0) t = Math.min(t, (-M - x) / dx);
+    if (dy > 0) t = Math.min(t, (FH + M - y) / dy);
+    else if (dy < 0) t = Math.min(t, (-M - y) / dy);
+    return { x: x + dx * t, y: y + dy * t };
+}
+// Pick a start point and direction whose path doesn't cross or hug any other path.
+// The first attempt always uses the shared daily stream (exactly 3 draws), so
+// friendly number n starts from the same place for everyone. Only if that
+// attempt is blocked do we fall back on a private stream tied to this spawn.
+function makePath(n) {
+    const first = [RNG.friendly(), RNG.friendly(), RNG.friendly()];
+    const retry = mulberry32(hashStr(RNG.base + "|path|" + n));
+    let cand = null;
+    for (let tries = 0; tries < 300; tries++) {
+        const strict = tries < 150;
+        const r = tries === 0 ? first : [retry(), retry(), retry()];
+        const x = FW * (0.15 + r[0] * 0.7);
+        const y = FH * (0.15 + r[1] * 0.7);
+        const ang = r[2] * Math.PI * 2;
+        const end = rayToEdge(x, y, Math.cos(ang), Math.sin(ang));
+        cand = { x0: x, y0: y, x1: end.x, y1: end.y };
+        if (strict && Math.hypot(end.x - x, end.y - y) < 250) continue;
+        if (!farFromOthers(x, y, strict ? 140 : 60)) continue;
+        const sep = strict ? PATH_SEP : 1;
+        const clear = G.friendlies.every(f =>
+            segDist(cand, { x0: f.px, y0: f.py, x1: f.path.x1, y1: f.path.y1 }) > sep);
+        if (clear) return cand;
+    }
+    return cand;
+}
+
+// =====================================================
+// 4. SPAWNING
+// =====================================================
+
+function farFromOthers(x, y, minD) {
+    const all = [...G.friendlies, ...G.enemies];
+    return all.every(e => Math.hypot(e.x - x, e.y - y) > minD);
+}
+
+function spawnFriendly() {
+    const n = G.friendlyCounter++;            // friendly number n of this run
+    const path = makePath(n);                 // 3 draws from the friendly stream
+    const life = 28 + RNG.friendly() * 12;    // 1 draw from the friendly stream
+    const x = path.x0, y = path.y0;
+    const ang = Math.atan2(path.y1 - path.y0, path.x1 - path.x0);
+
+    const el = document.createElement("div");
+    el.className = "friendly";
+    el.innerHTML = '<span class="icon">✈</span>';
+
+    const pathEl = document.createElementNS(SVG_NS, "line");
+    pathEl.setAttribute("class", "fpath");
+    pathLayer.appendChild(pathEl);
+
+    const id = G.nextId++;
+    const f = {
+        id, el, x, y, path, pathEl, px: x, py: y,
+        vx: Math.cos(ang) * FRIENDLY_BASE_SPEED,
+        vy: Math.sin(ang) * FRIENDLY_BASE_SPEED,
+        life,
+        // own seeded generator so the daily spawn sequence isn't disturbed
+        drng: mulberry32(hashStr(RNG.base + "|drift|" + n)),
+        turn: 0, off: false, maxDev: 0, dev: 0, lastDrag: -99
+    };
+    f.turn = (f.drng() - 0.5) * 0.3;
+    el.addEventListener("pointerdown", ev => {
+        if (state !== "play") return;
+
+        ev.preventDefault();
+        ev.stopPropagation();
+
+        selectFriendly(f);
+
+        const rect = field.getBoundingClientRect();
+
+        G.drag = {
+            friendly: f,
+            pointerId: ev.pointerId,
+            x: ev.clientX - rect.left,
+            y: ev.clientY - rect.top
+        };
+
+        try {
+            el.setPointerCapture(ev.pointerId);
+        } catch (_) {}
+    });
+    field.appendChild(el);
+    G.friendlies.push(f);
+
+    // Tutorial step 1: start the plane off its path so there's something to fix
+    if (G.tutorial && G.tut.step === 0 && !G.tut.done[0]) tutOffsetFriendly(f);
+
+    setPos(f);
+    rotateFriendly(f);
+    if (!G.selected) selectFriendly(f);
+}
+
+function rotateFriendly(f) {
+    const deg = Math.atan2(f.vy, f.vx) * 180 / Math.PI + 45;
+    f.el.firstChild.style.transform = `rotate(${deg}deg)`;
+}
+
+function selectFriendly(f) {
+    if (G.selected) G.selected.el.classList.remove("sel");
+    G.selected = f;
+    f.el.classList.add("sel");
+}
+
+// Click-and-drag steering
+field.addEventListener("pointermove", ev => {
+    if (state !== "play" || !G || !G.drag) return;
+    if (ev.pointerId !== G.drag.pointerId) return;
+
+    const rect = field.getBoundingClientRect();
+
+    G.drag.x = Math.max(
+        12,
+        Math.min(FW - 12, ev.clientX - rect.left)
+    );
+
+    G.drag.y = Math.max(
+        12,
+        Math.min(FH - 12, ev.clientY - rect.top)
+    );
+});
+
+function endFriendlyDrag(ev) {
+    if (!G || !G.drag) return;
+    if (ev.pointerId !== G.drag.pointerId) return;
+
+    G.drag = null;
+}
+
+field.addEventListener("pointerup", endFriendlyDrag);
+field.addEventListener("pointercancel", endFriendlyDrag);
+field.addEventListener("lostpointercapture", endFriendlyDrag);
+
+function spawnEnemy() {
+    const side = Math.floor(RNG.enemy() * 4);
+    const t = 0.1 + RNG.enemy() * 0.8;
+    let x, y;
+    if (side === 0) { x = FW * t; y = 0; }
+    else if (side === 1) { x = FW; y = FH * t; }
+    else if (side === 2) { x = FW * t; y = FH; }
+    else { x = 0; y = FH * t; }
+
+    const el = document.createElement("div");
+    el.className = "enemy";
+    const num = G.enemyCounter++;
+    const name = "HOSTILE " + String(num).padStart(3, "0");
+    el.innerHTML = '<div class="dia"></div><div class="lbl">' + name + '</div>';
+
+    const e = { id: G.nextId++, el, x, y, name };
+    el.addEventListener("pointerdown", ev => {
+        if (state !== "play") return;
+        ev.stopPropagation();
+        strikeSelect(e);
+    });
+    field.appendChild(el);
+    G.enemies.push(e);
+    setPos(e);
+}
+
+function spawnGhost() {
+    const R = D.ghostR;
+    const x = R + 20 + RNG.ghost() * Math.max(10, FW - 2 * R - 40);
+    // Keep Ghosts above the strike panel so one can never be hidden under it
+    const y = R + 20 + RNG.ghost() * Math.max(10, FH - 2 * R - 40 - STRIKE_PANEL_CLEARANCE);
+
+    const el = document.createElement("div");
+    el.className = "ghost";
+    el.style.width = el.style.height = (R * 2) + "px";
+    el.innerHTML = '<div class="core"></div><div class="arc"></div><div class="hold"></div>';
+
+    const g = { id: G.nextId++, el, x, y, age: 0, holdT: 0, holder: null };
+
+    el.addEventListener("pointerdown", ev => {
+        if (state !== "play" || g.holder !== null) return;
+        ev.preventDefault();
+        ev.stopPropagation();
+        g.holder = ev.pointerId;
+        g.holdT = 0;
+        try { el.setPointerCapture(ev.pointerId); } catch (_) {}
+    });
+    const release = ev => {
+        if (g.holder === ev.pointerId) { g.holder = null; g.holdT = 0; }
+    };
+    el.addEventListener("pointerup", release);
+    el.addEventListener("pointercancel", release);
+    el.addEventListener("lostpointercapture", release);
+
+    field.appendChild(el);
+    G.ghosts.push(g);
+
+    // Play ping sound when ghost appears
+    playPingSound();
+
+    setPos(g);
+}
+
+// Time until the next spawn. The stream is passed in so enemy and Ghost
+// timing each use their own daily sequence.
+function interval(start, floor, stream) {
+    const base = Math.max(floor, start * Math.pow(0.93, G.level - 1));
+    return base * (0.8 + stream() * 0.4);
+}
+
+
+// =====================================================
+// 5. SCORING
+// =====================================================
+
+function award(base, x, y) {
+    const pts = Math.round(base * levelMult(G.level));
+    G.points += pts;
+
+    playPointSound();
+
+    const fx = document.createElement("div");
+    fx.className = "fx";
+    fx.textContent = "+" + pts;
+    fx.style.left = x + "px";
+    fx.style.top = y + "px";
+    field.appendChild(fx);
+    setTimeout(() => fx.remove(), 900);
+}
+
+
+// =====================================================
+// 6. STRIKE AUTHORISATION
+// =====================================================
+
+const strike = { state: "idle", enemy: null, holding: false, holdT: 0 };
+
+function strikeSelect(enemy) {
+    if (strike.state === "hold") return;
+    if (strike.enemy) strike.enemy.el.classList.remove("sel");
+    strike.state = "confirm";
+    strike.enemy = enemy;
+    enemy.el.classList.add("sel");
+    playEnemySelectSound();
+    $("spTarget").textContent = enemy.name;
+    $("spConfirm").style.display = "flex";
+    $("spHoldWrap").style.display = "none";
+    $("strikePanel").style.display = "block";
+}
+
+function strikeReset() {
+    if (strike.enemy) strike.enemy.el.classList.remove("sel");
+    strike.state = "idle";
+    strike.enemy = null;
+    strike.holding = false;
+    strike.holdT = 0;
+    $("spProg").style.width = "0%";
+    $("spHoldText").textContent = "HOLD 2 SECONDS TO AUTHORISE";
+    $("strikePanel").style.display = "none";
+}
+
+$("spCancel").addEventListener("click", strikeReset);
+
+$("spOk").addEventListener("click", () => {
+    if (strike.state !== "confirm") return;
+    strike.state = "hold";
+    $("spConfirm").style.display = "none";
+    $("spHoldWrap").style.display = "block";
+});
+
+$("spHold").addEventListener("pointerdown", ev => {
+    if (strike.state !== "hold" || state !== "play") return;
+    ev.preventDefault();
+    strike.holding = true;
+    strike.holdT = 0;
+    try { $("spHold").setPointerCapture(ev.pointerId); } catch (_) {}
+});
+function endStrikeHold() {
+    if (!strike.holding) return;
+    strike.holding = false;
+    strike.holdT = 0;
+    $("spProg").style.width = "0%";
+    $("spHoldText").textContent = "HOLD 2 SECONDS TO AUTHORISE";
+}
+$("spHold").addEventListener("pointerup", endStrikeHold);
+$("spHold").addEventListener("pointercancel", endStrikeHold);
+$("spHold").addEventListener("lostpointercapture", endStrikeHold);
+window.addEventListener("blur", endStrikeHold);
+
+function strikeComplete() {
+    const e = strike.enemy;
+    strikeReset();
+    if (!e) return;
+    const i = G.enemies.indexOf(e);
+    if (i === -1) return;
+    G.enemies.splice(i, 1);
+    e.el.remove();
+    G.kills++;
+    award(STRIKE_POINTS, e.x, e.y);
+    if (G.tutorial) tutComplete(2);
+}
+
+// =====================================================
+// 7. TUTORIAL
+// =====================================================
+// Three guided steps: drag a plane back onto its path, identify a Ghost,
+// strike a hostile. Nothing in the tutorial can end the run or reach the
+// leaderboard: a missed Ghost or a hostile that reaches a plane is simply
+// replaced after a short pause.
+
+const TUT_STEPS = [
+    {
+        title: "DRAG THE PLANE",
+        text:  "This plane has strayed from its <b>dotted grey flight path</b>. " +
+               "<b>Click and drag the plane (✈)</b> back onto the path to score. " +
+               "The sooner you catch a stray, the more you score."
+    },
+    {
+        title: "IDENTIFY THE GHOST",
+        text:  "A red <b>Ghost</b> appeared. <b>Press and hold it for 0.5 s</b> before its " +
+               "red ring runs out (3 s). In a real run, a missed Ghost ends the game. Here it just comes back."
+    },
+    {
+        title: "STRIKE THE HOSTILE",
+        text:  "<b>Click the red diamond</b>, press <b>CONFIRM STRIKE</b>, then <b>hold the button for 2 seconds</b>. " +
+               "Hostiles chase planes. In a real run, contact ends the game."
+    }
+];
+const TUT_NAMES = ["DRAG PLANE", "IDENTIFY GHOST", "STRIKE HOSTILE"];
+
+function tutDoneBefore() {
+    try { return localStorage.getItem("ace_tutorial_done") === "1"; } catch (_) { return false; }
+}
+function refreshTutBtn() {
+    $("menuTut").textContent = tutDoneBefore() ? "▶ TUTORIAL ✔ (REPLAY)" : "▶ TUTORIAL (RECOMMENDED)";
+}
+
+// Move a freshly spawned plane sideways off its path (kept on screen)
+function tutOffsetFriendly(f) {
+    const p = f.path;
+    const dx = p.x1 - p.x0, dy = p.y1 - p.y0;
+    const len = Math.hypot(dx, dy) || 1;
+    const nx = -dy / len, ny = dx / len;
+    const M = 50;
+    const inside = (x, y) => x > M && x < FW - M && y > M && y < FH - M;
+
+    let s = 1;
+    const ax = p.x0 + nx * TUT_OFFSET_PX, ay = p.y0 + ny * TUT_OFFSET_PX;
+    const bx = p.x0 - nx * TUT_OFFSET_PX, by = p.y0 - ny * TUT_OFFSET_PX;
+    if (!inside(ax, ay) && inside(bx, by)) s = -1;
+
+    f.x = Math.max(M, Math.min(FW - M, p.x0 + nx * s * TUT_OFFSET_PX));
+    f.y = Math.max(M, Math.min(FH - M, p.y0 + ny * s * TUT_OFFSET_PX));
+    f.off = true;
+    f.maxDev = Math.hypot(f.x - p.x0, f.y - p.y0);
+}
+
+function updateTutUI() {
+    if (!G || !G.tutorial) return;
+    const T = G.tut;
+    const s = Math.min(T.step, 2);
+    const stepDone = T.done[s];
+
+    $("tutStep").textContent = s + 1;
+    if (stepDone) {
+        $("tutTitle").textContent = "✔ NICE WORK";
+        $("tutText").innerHTML = s < 2 ? "Next up…" : "All three skills complete.";
+    } else {
+        $("tutTitle").textContent = TUT_STEPS[s].title;
+        $("tutText").innerHTML = TUT_STEPS[s].text;
+    }
+    for (let i = 0; i < 3; i++) {
+        const el = $("tc" + i);
+        el.textContent = (T.done[i] ? "✔ " : "○ ") + TUT_NAMES[i];
+        el.classList.toggle("done", T.done[i]);
+        el.classList.toggle("cur", !T.done[i] && i === T.step);
+    }
+    // Step 3 shows the strike panel at the bottom, so lift the tutorial panel above it
+    $("tutPanel").classList.toggle("up", s === 2);
+}
+
+function tutComplete(i) {
+    const T = G.tut;
+    if (T.done[i]) return;
+    T.done[i] = true;
+    T.wait = TUT_STEP_PAUSE;
+    T.next = i + 1;
+    updateTutUI();
+}
+
+function enterTutStep(s) {
+    G.tut.step = s;
+    if (s >= 3) { finishTutorial(); return; }
+    updateTutUI();
+}
+
+// Runs every frame while the tutorial is active
+function tutTick(dt) {
+    const T = G.tut;
+
+    if (T.wait > 0) {
+        T.wait -= dt;
+        if (T.wait <= 0) enterTutStep(T.next);
+        return;
+    }
+    if (T.cool > 0) { T.cool -= dt; return; }
+
+    // Keep exactly one target of the current kind on screen
+    if (T.step === 1 && !T.done[1] && G.ghosts.length === 0) spawnGhost();
+    if (T.step === 2 && !T.done[2] && G.enemies.length === 0) spawnEnemy();
+}
+
+function startTutorial() {
+    gameToken++;
+    D = Object.assign({}, DIFFS.easy, {
+        friendlyMax: 1, maxEnemies: 1, maxGhosts: 1, enemySpeed: 25
+    });
+    RNG = makeStreams("tutorial");
+
+    strikeReset();
+    clearField();
+    makePathLayer();
+    G = null;
+    measure();
+
+    G = newState({
+        tutorial: true,
+        tut: { step: 0, done: [false, false, false], wait: 0, next: 0, cool: 0 }
+    });
+
+    for (let i = 0; i < D.friendlyMax; i++) spawnFriendly();
+
+    $("menu").classList.remove("on");
+    $("tutDone").classList.remove("on");
+    board.close(true);
+    $("tutPanel").classList.add("on");
+    state = "play";
+    last = performance.now();
+    updateTutUI();
+    updateHud();
+}
+
+function finishTutorial() {
+    state = "tutdone";
+    strikeReset();
+    try { localStorage.setItem("ace_tutorial_done", "1"); } catch (_) {}
+    refreshTutBtn();
+    $("tutPanel").classList.remove("on");
+    $("tutDone").classList.add("on");
+}
+
+function leaveTutorial() {
+    $("tutPanel").classList.remove("on");
+    $("tutDone").classList.remove("on");
+    strikeReset();
+    clearField();
+    G = null;
+    state = "menu";
+    $("menu").classList.add("on");
+    refreshTutBtn();
+}
+
+$("menuTut").addEventListener("click", startTutorial);
+$("tutSkip").addEventListener("click", leaveTutorial);
+$("tdReplay").addEventListener("click", startTutorial);
+$("tdMenu").addEventListener("click", leaveTutorial);
+
+// =====================================================
+// 8. GAME LOOP
+// =====================================================
+
+function update(dt) {
+    G.t += dt;
+    G.level = 1 + Math.floor(G.t / LEVEL_LEN_S);
+
+
+    // --- Click-and-drag steering (selected friendly only) ---
+    let steerActive = false;
+    const s = G.selected;
+
+    if (s && G.drag && G.drag.friendly === s) {
+        const dx = G.drag.x - s.x;
+        const dy = G.drag.y - s.y;
+        const distance = Math.hypot(dx, dy);
+
+        if (distance > 12) {
+            s.vx += (dx / distance) * STEER_ACCEL * dt;
+            s.vy += (dy / distance) * STEER_ACCEL * dt;
+
+            steerActive = true;
+        }
+    }
+
+    // --- Friendlies ---
+    for (const f of [...G.friendlies]) {
+
+        // Keep a minimum cruise speed when the player isn't steering this plane
+        const pilotedByPlayer = (f === s && steerActive);
+        if (!pilotedByPlayer) {
+            const cruise = Math.hypot(f.vx, f.vy);
+            if (cruise < FRIENDLY_MIN_SPEED) {
+                if (cruise < 0.001) {
+                    f.vx = FRIENDLY_MIN_SPEED;
+                    f.vy = 0;
+                } else {
+                    f.vx = f.vx / cruise * FRIENDLY_MIN_SPEED;
+                    f.vy = f.vy / cruise * FRIENDLY_MIN_SPEED;
+                }
+            }
+        }
+
+        // Speed cap
+        const sp = Math.hypot(f.vx, f.vy);
+        if (sp > FRIENDLY_MAX_SPEED) {
+            f.vx = f.vx / sp * FRIENDLY_MAX_SPEED;
+            f.vy = f.vy / sp * FRIENDLY_MAX_SPEED;
+        }
+
+        // Drift: the plane slowly veers off its path unless the player is dragging it
+        const dragging = G.drag && G.drag.friendly === f;
+        if (dragging) {
+            f.lastDrag = G.t;
+        } else {
+            f.turn += (f.drng() - 0.5) * 2 * DRIFT_JITTER * Math.sqrt(dt);
+            f.turn *= 1 - 0.3 * dt;
+            f.turn = Math.max(-DRIFT_MAX_TURN, Math.min(DRIFT_MAX_TURN, f.turn));
+            const w = f.turn * (0.6 + 0.4 * D.mult) * dt;   // harder levels drift more
+            const c = Math.cos(w), sn = Math.sin(w);
+            const nvx = f.vx * c - f.vy * sn;
+            f.vy = f.vx * sn + f.vy * c;
+            f.vx = nvx;
+        }
+
+        f.x += f.vx * dt;
+        f.y += f.vy * dt;
+        f.life -= dt;
+
+        // Left the screen (with a small buffer) or landed: remove it
+        const MARGIN = 30;
+        const offscreen = f.x < -MARGIN || f.x > FW + MARGIN ||
+                          f.y < -MARGIN || f.y > FH + MARGIN;
+
+        if (offscreen || f.life <= 0) {
+            G.friendlies.splice(G.friendlies.indexOf(f), 1);
+            if (G.selected === f) G.selected = null;
+            if (G.drag && G.drag.friendly === f) G.drag = null;
+            f.el.remove();
+            f.pathEl.remove();
+            continue;
+        }
+
+        // Distance from the flight path
+        const pr = nearestOnSeg(f.x, f.y, f.path);
+        f.dev = pr.d;
+        f.px = pr.x; f.py = pr.y;
+        f.pathEl.setAttribute("x1", pr.x);
+        f.pathEl.setAttribute("y1", pr.y);
+        f.pathEl.setAttribute("x2", f.path.x1);
+        f.pathEl.setAttribute("y2", f.path.y1);
+
+        if (!f.off) {
+            if (f.dev > PATH_OFF_DIST) { f.off = true; f.maxDev = f.dev; }
+        } else {
+            f.maxDev = Math.max(f.maxDev, f.dev);
+            if (f.dev < PATH_ON_DIST) {
+                // Only pay out if the player dragged it back (not if it drifted back by luck)
+                if (G.t - f.lastDrag < 0.4) {
+                    const k = Math.max(0, 1 - f.maxDev / PATH_FAR_DIST);
+                    award(Math.round(PATH_MIN_POINTS + (PATH_MAX_POINTS - PATH_MIN_POINTS) * k), f.x, f.y);
+                    if (G.tutorial && G.tut.step === 0) tutComplete(0);
+                }
+                f.off = false;
+                f.maxDev = 0;
+            }
+        }
+
+        setPos(f);
+        rotateFriendly(f);
+    }
+
+    // Replacement planes spawn immediately to keep the count at the limit
+    while (G.friendlies.length < D.friendlyMax) spawnFriendly();
+
+    if (!G.selected && G.friendlies.length) selectFriendly(G.friendlies[0]);
+
+    // --- Enemies hunt the nearest friendly ---
+    for (const e of G.enemies) {
+        if (!G.friendlies.length) break;
+        let target = null, best = Infinity;
+        for (const f of G.friendlies) {
+            const d = Math.hypot(f.x - e.x, f.y - e.y);
+            if (d < best) { best = d; target = f; }
+        }
+        if (target && best > 0) {
+            e.x += (target.x - e.x) / best * D.enemySpeed * dt;
+            e.y += (target.y - e.y) / best * D.enemySpeed * dt;
+            setPos(e);
+        }
+        if (target && Math.hypot(target.x - e.x, target.y - e.y) < R_ENEMY_FRIENDLY) {
+            if (G.tutorial) {
+                // Tutorial: no game over. Remove it and let tutTick bring a new one.
+                if (strike.enemy === e) strikeReset();
+                G.enemies.splice(G.enemies.indexOf(e), 1);
+                e.el.remove();
+                G.tut.cool = TUT_RESPAWN_S;
+                break;
+            }
+            return endGame("FRIENDLY HIT BY HOSTILE");
+        }
+    }
+
+    // --- Friendly vs friendly ---
+    for (let i = 0; i < G.friendlies.length; i++) {
+        for (let j = i + 1; j < G.friendlies.length; j++) {
+            const a = G.friendlies[i], b = G.friendlies[j];
+            if (Math.hypot(a.x - b.x, a.y - b.y) < R_FRIENDLY_FRIENDLY) {
+                return endGame("FRIENDLY COLLISION");
+            }
+        }
+    }
+
+    // --- Ghosts ---
+    for (const g of [...G.ghosts]) {
+        g.age += dt;
+        if (g.holder !== null) {
+            g.holdT += dt;
+            if (g.holdT >= HOLD_GHOST_S) {
+                G.ghosts.splice(G.ghosts.indexOf(g), 1);
+                g.el.remove();
+                G.ghostIds++;
+                award(GHOST_POINTS, g.x, g.y);
+                if (G.tutorial) tutComplete(1);
+                continue;
+            }
+        }
+        if (g.age >= GHOST_WINDOW_S) {
+            if (G.tutorial) {
+                // Tutorial: no game over. Remove it and let tutTick bring a new one.
+                G.ghosts.splice(G.ghosts.indexOf(g), 1);
+                g.el.remove();
+                G.tut.cool = TUT_RESPAWN_S;
+                continue;
+            }
+            g.el.style.outline = "3px solid #ff3d3d";
+            return endGame("GHOST NOT IDENTIFIED WITHIN 3.0 SECONDS");
+        }
+        g.el.style.setProperty("--rem", (1 - g.age / GHOST_WINDOW_S) * 360 + "deg");
+        g.el.style.setProperty("--hold", Math.min(1, g.holdT / HOLD_GHOST_S) * 360 + "deg");
+    }
+
+    // --- Strike hold ---
+    if (strike.holding) {
+        strike.holdT += dt;
+        const p = Math.min(1, strike.holdT / HOLD_STRIKE_S);
+        $("spProg").style.width = (p * 100) + "%";
+        $("spHoldText").textContent =
+            "AUTHORISING... " + Math.max(0, HOLD_STRIKE_S - strike.holdT).toFixed(1) + "s";
+        if (p >= 1) strikeComplete();
+    }
+
+    // --- Tutorial controls its own spawning ---
+    if (G.tutorial) { tutTick(dt); return; }
+
+    // --- Spawn timers ---
+    // A skipped spawn (cap reached) draws nothing from the daily stream,
+    // so it can't shift the sequence for later spawns.
+    G.enemyTimer -= dt;
+    if (G.enemyTimer <= 0) {
+        if (G.enemies.length < D.maxEnemies) {
+            spawnEnemy();
+            G.enemyTimer = interval(D.enemyStart, D.enemyFloor, RNG.enemy);
+        } else {
+            G.enemyTimer = 0.4;
+        }
+    }
+    G.ghostTimer -= dt;
+    if (G.ghostTimer <= 0) {
+        if (G.ghosts.length < D.maxGhosts) {
+            spawnGhost();
+            G.ghostTimer = interval(D.ghostStart, D.ghostFloor, RNG.ghost);
+        } else {
+            G.ghostTimer = 0.4;
+        }
+    }
+}
+
+function updateHud() {
+    if (!G) return;
+    $("hTime").textContent = formatClock(G.t);
+    $("hPts").textContent = G.points.toLocaleString();
+    $("hCer").textContent = computeCER(G.points, G.t, D.mult).toFixed(1);
+    $("hLvl").textContent = G.level;
+    $("hHost").textContent = G.enemies.length;
+    $("hTime").classList.toggle("ok", G.t >= TARGET_ENDURANCE_S);
+    $("hPts").classList.toggle("ok", G.points >= TARGET_EFFICIENCY);
+}
+
+let last = performance.now();
+function frame(now) {
+    const dt = Math.min(0.05, (now - last) / 1000);
+    last = now;
+    if (state === "play" && G) {
+        update(dt);
+        updateHud();
+    }
+    requestAnimationFrame(frame);
+}
+
+
+// =====================================================
+// 9. START / END
+// =====================================================
+
+function clearField() { field.innerHTML = ""; }
+
+function newState(extra) {
+    return Object.assign({
+        t: 0, level: 1, points: 0, kills: 0, ghostIds: 0,
+        friendlies: [], enemies: [], ghosts: [],
+        selected: null, drag: null, nextId: 1, enemyCounter: 1,
+        friendlyCounter: 0,
+        enemyTimer: 3, ghostTimer: 4.5, friendlyTimer: D.friendlySpawn,
+        failReason: "", result: null,
+        tutorial: false, tut: null
+    }, extra || {});
+}
+
+function startGame(key) {
+    diffKey = key;
+    D = DIFFS[key];
+    gameToken++;
+
+    // Fresh daily streams: same date + same difficulty = same sequence for everyone
+    RNG = makeStreams(key);
+
+    // Make sure the board belongs to today's date (tab may have been open overnight)
+    lbSystem.day = getDaily();
+    lbSystem.entries = [];
+    lbSystem.load();
+
+    strikeReset();
+
+    clearField();
+    makePathLayer();
+    G = null;
+    measure();
+
+    G = newState();
+
+    for (let i = 0; i < D.friendlyMax; i++) spawnFriendly();
+    for (let i = 0; i < 2; i++) spawnEnemy();
+
+    $("menu").classList.remove("on");
+    $("tutPanel").classList.remove("on");
+    $("tutDone").classList.remove("on");
+    board.close(true);
+    state = "play";
+    last = performance.now();
+    updateHud();
+}
+
+function endGame(reason) {
+    if (state !== "play") return;
+    state = "over";
+    playloseSound();
+    strikeReset();
+    G.failReason = reason;
+
+    const seconds = G.t;
+    G.result = {
+        points: G.points,
+        timeMs: Math.round(seconds * 1000),
+        cer: computeCER(G.points, seconds, D.mult),
+        difficulty: diffKey
+    };
+    updateHud();
+
+    const token = gameToken;
+    setTimeout(() => {
+        if (token === gameToken && state === "over") breathing.open();
+    }, 900);
+}
+// =====================================================
+// 9b. BREATHING RESET (4-4-7)
+// =====================================================
+
+const breathing = {
+    runId: 0,
+    pattern: [
+        ["Breathe In",  4, "in"],
+        ["Hold",        4, "hold"],
+        ["Breathe Out", 7, "out"]
+    ],
+
+    phase(label, secs, cls, id) {
+        return new Promise(resolve => {
+            $("brText").textContent = label;
+            $("brCircle").className = "br-circle " + cls;
+            $("brCircle").style.transitionDuration = secs + "s";
+            let left = secs;
+            $("brTimer").textContent = left;
+            const iv = setInterval(() => {
+                if (id !== this.runId) { clearInterval(iv); return; }  // skipped
+                left--;
+                $("brTimer").textContent = left;
+                if (left <= 0) { clearInterval(iv); resolve(); }
+            }, 1000);
+        });
+    },
+
+    async open() {
+        const id = ++this.runId;
+        $("brCircle").className = "br-circle";
+        $("brCircle").style.transitionDuration = "1s";
+        $("brText").textContent = "Get ready";
+        $("brTimer").textContent = "";
+        $("breathOverlay").classList.add("on");
+
+        await new Promise(r => setTimeout(r, 800));
+        for (const [label, secs, cls] of this.pattern) {
+            if (id !== this.runId) return;
+            await this.phase(label, secs, cls, id);
+        }
+        if (id === this.runId) this.finish();
+    },
+
+    finish() {
+        this.runId++;                       // cancels any running phase
+        $("breathOverlay").classList.remove("on");
+        if (state === "over") board.openResult();
+    }
+};
+$("brSkip").addEventListener("click", () => breathing.finish());
+
+// =====================================================
+// 10. LEADERBOARD (Supabase)
+// =====================================================
+// Table: ace_scores. See the SQL given in the chat.
+
+class LeaderboardSystem {
+    constructor() {
+        this.maxEntries = 10;
+        this.day = getDaily();
+        this.entries = [];
+        this.online = false;
+    }
+
+    headers() {
+        return { apikey: SUPABASE_KEY, 'Content-Type': 'application/json' };
+    }
+
+    async load() {
+        const day = this.day;
+        try {
+            const url = `${SUPABASE_URL}/rest/v1/ace_scores` +
+                `?puzzle_day=eq.${day}` +
+                `&select=id,name,points,time_ms,difficulty,cer,created_at` +
+                `&order=cer.desc,created_at.asc` +
+                `&limit=500`;
+
+            const res = await fetch(url, { headers: this.headers() });
+
+            if (!res.ok) {
+                throw new Error('Load failed: ' + res.status + ' ' + await res.text());
+            }
+
+            const rows = await res.json();
+            if (day !== this.day) return this.entries;
+
+            // Rows are sorted best-first, so the first row seen for each name is
+            // that player's daily personal best. Skip the rest.
+            const seen = new Set();
+            const bestRows = [];
+            for (const r of rows) {
+                const key = String(r.name).toUpperCase();
+                if (seen.has(key)) continue;
+                seen.add(key);
+                bestRows.push(r);
+                if (bestRows.length >= this.maxEntries) break;
+            }
+
+            this.entries = bestRows.map(r => ({
+                id: String(r.id),
+                name: r.name,
+                points: r.points,
+                timeMs: r.time_ms,
+                difficulty: r.difficulty,
+                cer: Number(r.cer)
+            }));
+            this.online = true;
+        } catch (err) {
+            console.error('Leaderboard load error:', err);
+            this.online = false;
+        }
+        return this.entries;
+    }
+
+    sanitiseName(name) {
+        const cleaned = String(name ?? '')
+            .replace(/[^\w \-]/g, '')
+            .trim()
+            .toUpperCase()
+            .slice(0, 12);
+        return cleaned || 'UNKNOWN';
+    }
+
+    qualifies(cer) {
+        if (this.entries.length < this.maxEntries) return true;
+        return cer > this.entries[this.entries.length - 1].cer;
+    }
+
+    async submitAccount(result) {
+        // Guests can never save a score
+        if (!account.loggedIn) return { saved: false, error: "NOT_LOGGED_IN" };
+        try {
+            const r = await rpc('ace_submit_score', {
+                p_name: account.name, p_pin: account.pin, p_day: this.day,
+                p_difficulty: result.difficulty, p_points: result.points, p_time_ms: result.timeMs
+            });
+            if (!r.ok) return { saved: false, authError: r.error === 'BAD_LOGIN', error: r.error };
+            await this.load();
+            const index = this.entries.findIndex(e => e.id === String(r.id));
+            return { saved: true, id: String(r.id), rank: index === -1 ? null : index + 1 };
+        } catch (err) {
+            console.error('Account submit error:', err);
+            return { saved: false, error: String(err.message || err) };
+        }
+    }
+}
+
+class LeaderboardView {
+    constructor(lb) {
+        this.lb = lb;
+        this.mode = "closed";        // closed | view | result
+        this.submitted = false;
+        this.highlightId = null;
+        this.pollTimer = null;
+        this.bind();
+    }
+
+    // Guests see a log-in prompt instead of the submit button.
+    // Also re-runs when the player logs in from the result screen.
+    syncSubmitUI() {
+        if (this.mode !== "result") return;
+        const on = account.loggedIn;
+        $("lbGuest").style.display = on ? "none" : "block";
+        $("lbUser").style.display  = on ? "block" : "none";
+        $("lbSubmitButton").style.display = on ? "" : "none";
+        $("lbUserName").textContent = account.name || "";
+        $("lbMy").style.display = on ? "" : "none";
+
+        if (!this.submitted && G && G.result && G.result.timeMs >= MIN_TIME_MS) {
+            $("lbMessage").textContent = on
+                ? (this.lb.qualifies(G.result.cer) ? "THIS RESULT MAKES THE BOARD" : "")
+                : "GUEST RUNS ARE NOT SAVED - LOG IN TO RECORD YOUR SCORE";
+        }
+    }
+
+    bind() {
+        $("lbSubmitButton").addEventListener("click", () => this.submit());
+        $("lbClose").addEventListener("click", () => this.close());
+        $("lbPlay").addEventListener("click", () => startGame(diffKey));
+        $("lbMenu").addEventListener("click", () => {
+            this.close(true);
+            clearField();
+            state = "menu";
+            $("menu").classList.add("on");
+        });
+        $("menuBoard").addEventListener("click", () => this.openView());
+        window.addEventListener("keydown", ev => {
+            if (ev.key === "Escape" && this.mode === "view") this.close();
+        });
+        $("lbOverlay").addEventListener("click", ev => {
+            if (ev.target === $("lbOverlay") && this.mode === "view") this.close();
+        });
+    }
+
+    dayLabel() {
+        const d = String(this.lb.day);
+        $("lbDay").textContent =
+            `DAILY BOARD ${d.slice(0,4)}-${d.slice(4,6)}-${d.slice(6,8)} · ` +
+            (this.lb.online ? "LIVE" : "OFFLINE");
+    }
+
+    openView() {
+        this.mode = "view";
+        $("lbEyebrow").textContent = "GLOBAL DAILY RECORDS";
+        $("lbTitle").textContent = "LEADERBOARD";
+        $("lbReason").style.display = "none";
+        $("metrics").style.display = "none";
+        $("lbSubmit").style.display = "none";
+        $("lbMessage").textContent = "";
+        $("lbPlay").style.display = "none";
+        $("lbMenu").style.display = "none";
+        $("lbClose").style.display = "";
+        $("lbMy").style.display = "none";
+        this.show();
+    }
+
+    openResult() {
+        this.mode = "result";
+        this.submitted = false;
+        this.highlightId = null;
+        const r = G.result;
+        const t = r.timeMs / 1000;
+        const endOK = t >= TARGET_ENDURANCE_S;
+        const effOK = r.points >= TARGET_EFFICIENCY;
+
+        $("lbEyebrow").textContent = "SYSTEM FAILURE";
+        $("lbTitle").textContent = "RUN COMPLETE";
+        $("lbReason").style.display = "block";
+        $("lbReason").textContent = G.failReason;
+
+        const rows = [
+            ["Endurance (target 06:00)",
+                `<span class="${endOK ? 'pass' : 'fail'}">${formatClock(t)} ${endOK ? '✔' : '✘'}</span>`],
+            ["Efficiency (target 20,000)",
+                `<span class="${effOK ? 'pass' : 'fail'}">${r.points.toLocaleString()} ${effOK ? '✔' : '✘'}</span>`],
+            ["Difficulty", `${D.label} × ${D.mult.toFixed(1)}`],
+            ["Hostiles eliminated", G.kills],
+            ["Ghosts identified", G.ghostIds]
+        ];
+        $("metrics").innerHTML = rows.map(x => `<tr><td>${x[0]}</td><td>${x[1]}</td></tr>`).join("");
+        $("metrics").style.display = "table";
+
+        $("lbCer").textContent = r.cer.toFixed(1);
+
+        $("lbMessage").textContent = "";
+        if (r.timeMs < MIN_TIME_MS) {
+            $("lbSubmit").style.display = "none";
+            $("lbMessage").textContent = "RUN TOO SHORT TO RECORD (MIN 3 SECONDS)";
+        } else {
+            $("lbSubmit").style.display = "block";
+        }
+
+        $("lbPlay").style.display = "";
+        $("lbMenu").style.display = "";
+        $("lbClose").style.display = "none";
+        this.syncSubmitUI();      // sets guest / logged-in controls and message
+        this.show();
+    }
+
+    async show() {
+        this.dayLabel();
+        this.render();
+        $("lbOverlay").classList.add("on");
+        await this.refresh();
+        this.startPolling();
+    }
+
+    async refresh() {
+        await this.lb.load();
+        if (this.mode === "closed") return;
+        this.dayLabel();
+        this.render();
+    }
+
+    startPolling() {
+        if (this.pollTimer || this.mode === "closed") return;
+        this.pollTimer = setInterval(() => this.refresh(), 3000);
+    }
+
+    stopPolling() {
+        clearInterval(this.pollTimer);
+        this.pollTimer = null;
+    }
+
+    async submit() {
+        if (this.mode !== "result" || this.submitted || !G || !G.result) return;
+        if (!account.loggedIn) {
+            $("lbMessage").textContent = "GUEST RUNS ARE NOT SAVED - LOG IN TO RECORD YOUR SCORE";
+            return;
+        }
+        const token = gameToken;
+        this.submitted = true;
+        $("lbSubmitButton").disabled = true;
+        $("lbMessage").textContent = "SAVING...";
+
+        const res = await this.lb.submitAccount(G.result);
+
+        $("lbSubmitButton").disabled = false;
+        if (token !== gameToken) return;
+
+        if (!res.saved) {
+            this.submitted = false;
+            if (res.authError) {
+                account.clear(); refreshAccountUI();
+                $("lbMessage").textContent = "LOGIN INVALID - PLEASE LOG IN AGAIN";
+            } else if (res.error === "LOCKED") {
+                $("lbMessage").textContent = "TOO MANY FAILED ATTEMPTS - TRY LATER";
+            } else if (res.error === "NOT_LOGGED_IN") {
+                $("lbMessage").textContent = "GUEST RUNS ARE NOT SAVED - LOG IN TO RECORD YOUR SCORE";
+            } else {
+                $("lbMessage").textContent = "COULD NOT SAVE: " + String(res.error || "SEE CONSOLE (F12)").slice(0, 90);
+            }
+            return;
+        }
+
+        this.highlightId = res.rank ? res.id : null;
+        $("lbSubmit").style.display = "none";
+        const myName = account.name;
+        const alreadyOnBoard = this.lb.entries.some(
+            e => e.name.toUpperCase() === myName.toUpperCase()
+        );
+
+        $("lbMessage").textContent = res.rank
+            ? `RANK #${res.rank} RECORDED` + (res.rank === 1 ? " - TODAY'S ACE" : "")
+            : alreadyOnBoard
+                ? "SAVED - BOARD SHOWS YOUR DAILY BEST"
+                : `DID NOT REACH THE TOP ${this.lb.maxEntries}`;
+        this.dayLabel();
+        this.render();
+    }
+
+    close(silent) {
+        if (this.mode === "closed") return;
+        $("lbOverlay").classList.remove("on");
+        this.stopPolling();
+        this.highlightId = null;
+        this.mode = "closed";
+    }
+
+    render() {
+        const body = $("lbBody");
+        body.textContent = "";
+        const entries = this.lb.entries;
+        $("lbEmpty").style.display = entries.length ? "none" : "block";
+        $("lbTable").style.display = entries.length ? "table" : "none";
+
+        entries.forEach((e, i) => {
+            const tr = document.createElement("tr");
+            if (i < 3) tr.classList.add("top-" + (i + 1));
+            if (e.id === this.highlightId) tr.classList.add("new-entry");
+
+            const cells = [
+                ["c-rank", String(i + 1).padStart(2, "0")],
+                ["c-name", e.name + (i === 0 ? "  ★ ACE" : "")],
+                ["c-cer",  e.cer.toFixed(1)],
+                ["c-pts",  Number(e.points).toLocaleString()],
+                ["c-time", formatClock(e.timeMs / 1000)]
+            ];
+            cells.forEach(([cls, text]) => {
+                const td = document.createElement("td");
+                td.className = cls;
+                td.textContent = text;
+                tr.appendChild(td);
+            });
+            body.appendChild(tr);
+        });
+    }
+}
+
+const lbSystem = new LeaderboardSystem();
+const board = new LeaderboardView(lbSystem);
+lbSystem.load();
+// =====================================================
+// 10b. ACCOUNTS + PERSONAL SCORES
+// =====================================================
+
+async function rpc(fn, args) {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, {
+        method: 'POST',
+        headers: { apikey: SUPABASE_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify(args)
+    });
+    if (!res.ok) throw new Error(fn + ' ' + res.status + ' ' + await res.text());
+    return res.json();
+}
+
+const account = {
+    name: null, pin: null,
+    get loggedIn() { return !!this.name; },
+    set(name, pin) {
+        this.name = name; this.pin = pin;
+        try { localStorage.setItem('ace_account', JSON.stringify({ name, pin })); } catch (_) {}
+    },
+    clear() {
+        this.name = this.pin = null;
+        try { localStorage.removeItem('ace_account'); } catch (_) {}
+    },
+    load() {
+        try {
+            const s = JSON.parse(localStorage.getItem('ace_account'));
+            if (s && s.name && s.pin) { this.name = s.name; this.pin = s.pin; }
+        } catch (_) {}
+    }
+};
+account.load();
+
+function refreshAccountUI() {
+    $("acctLine").innerHTML = account.loggedIn
+        ? 'SIGNED IN AS <b></b>' : 'PLAYING AS GUEST · SCORES WON\'T BE SAVED';
+    if (account.loggedIn) $("acctLine").querySelector("b").textContent = account.name;
+    $("menuAcct").textContent = account.loggedIn ? "LOG OUT" : "LOG IN / SIGN UP";
+    board.syncSubmitUI();
+}
+
+// ---- Login / sign-up modal ----
+let acctCallback = null;
+function openAccount(cb, msg) {
+    acctCallback = cb || null;
+    $("acMsg").textContent = msg || "";
+    $("acPin").value = "";
+    $("acName").value = account.name || "";
+    $("acctOverlay").classList.add("on");
+    $("acName").focus();
+}
+function closeAccount() {
+    $("acctOverlay").classList.remove("on");
+    acctCallback = null;
+}
+const ACCT_ERRORS = {
+    BAD_NAME:   "NAME: 1-50 LETTERS, NUMBERS, SPACE, - OR _",
+    BAD_PIN:    "PIN MUST BE 4-6 DIGITS",
+    NAME_TAKEN: "THAT NAME IS TAKEN",
+    BAD_LOGIN:  "NAME OR PIN INCORRECT",
+    LOCKED:     "TOO MANY ATTEMPTS - TRY AGAIN IN 15 MIN"
+};
+async function doAccount(create) {
+    const raw = $("acName").value.trim();
+    const pin = $("acPin").value.trim();
+    const msg = $("acMsg");
+    if (!raw) { msg.textContent = "ENTER A NAME"; return; }
+    if (!/^\d{4,6}$/.test(pin)) { msg.textContent = ACCT_ERRORS.BAD_PIN; return; }
+    const name = lbSystem.sanitiseName(raw);
+
+    $("acLogin").disabled = $("acCreate").disabled = true;
+    msg.textContent = "...";
+    try {
+        const r = await rpc(create ? 'ace_register' : 'ace_login', { p_name: name, p_pin: pin });
+        if (!r.ok) { msg.textContent = ACCT_ERRORS[r.error] || "ERROR"; return; }
+        account.set(r.name, pin);
+        const cb = acctCallback;
+        closeAccount();
+        refreshAccountUI();
+        if (cb) cb();
+    } catch (err) {
+        console.error('Account error:', err);
+        msg.textContent = "CONNECTION ERROR";
+    } finally {
+        $("acLogin").disabled = $("acCreate").disabled = false;
+    }
+}
+$("acLogin").addEventListener("click", () => doAccount(false));
+$("acCreate").addEventListener("click", () => doAccount(true));
+$("acCancel").addEventListener("click", closeAccount);
+["acName", "acPin"].forEach(id => $(id).addEventListener("keydown", ev => {
+    if (ev.key === "Enter") { ev.preventDefault(); doAccount(false); }
+}));
+$("acPin").addEventListener("input", ev => { ev.target.value = ev.target.value.replace(/\D/g, ""); });
+
+// ---- Personal scores ----
+function drawTrend(vals) {
+    const svg = $("myChart");
+    if (vals.length < 2) { svg.style.display = "none"; $("myChartLab").style.display = "none"; return; }
+    svg.style.display = "block"; $("myChartLab").style.display = "block";
+    const W = 300, H = 80, P = 6;
+    const max = Math.max(...vals), min = Math.min(...vals), span = (max - min) || 1;
+    const pts = vals.map((v, i) => [
+        P + i * (W - 2 * P) / (vals.length - 1),
+        H - P - (v - min) / span * (H - 2 * P)
+    ]);
+    let html = `<polyline points="${pts.map(p => p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ')}"
+        fill="none" stroke="${getComputedStyle(document.documentElement).getPropertyValue('--accent').trim()}" stroke-width="1.5" vector-effect="non-scaling-stroke"/>`;
+    if (pts.length <= 40) {
+        html += pts.map(p => `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="1.8" fill="${getComputedStyle(document.documentElement).getPropertyValue('--success').trim()}"/>`).join('');
+    }
+    svg.innerHTML = html;
+}
+
+function renderMyScores(rows) {
+    const scores = rows.map(r => ({
+        day: String(r.puzzle_day), diff: r.difficulty, pts: r.points,
+        timeMs: r.time_ms, cer: Number(r.cer), at: r.created_at, id: r.id
+    })); // newest first
+    const bestCer = scores.length ? Math.max(...scores.map(s => s.cer)) : 0;
+    $("myRuns").textContent = scores.length;
+    $("myBestCer").textContent = bestCer.toFixed(1);
+    $("myBestPts").textContent = (scores.length ? Math.max(...scores.map(s => s.pts)) : 0).toLocaleString();
+    $("myBestTime").textContent = formatClock((scores.length ? Math.max(...scores.map(s => s.timeMs)) : 0) / 1000);
+    // Personal averages (daily = today's UTC puzzle day, same as the daily seed)
+    const avg = arr => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : null;
+    const today = String(getDaily());
+    const todays = scores.filter(s => s.day === today);
+
+    const dayCer = avg(todays.map(s => s.cer));
+    const allCer = avg(scores.map(s => s.cer));
+    const dayPts = avg(todays.map(s => s.pts));
+    const allPts = avg(scores.map(s => s.pts));
+
+    $("myDayCer").textContent = dayCer === null ? "-" : dayCer.toFixed(1);
+    $("myAllCer").textContent = allCer === null ? "-" : allCer.toFixed(1);
+    $("myDayPts").textContent = dayPts === null ? "-" : Math.round(dayPts).toLocaleString();
+    $("myAllPts").textContent = allPts === null ? "-" : Math.round(allPts).toLocaleString();
+    drawTrend(scores.slice().reverse().map(s => s.cer));
+
+    const body = $("myBody");
+    body.textContent = "";
+    scores.forEach(s => {
+        const tr = document.createElement("tr");
+        const d = new Date(s.at);
+        const cells = [
+            ["", isNaN(d) ? s.day : d.toLocaleDateString()],
+            ["", (s.diff || "").slice(0, 1).toUpperCase()],
+            ["cer" + (s.cer === bestCer ? " best" : ""), s.cer.toFixed(1) + (s.cer === bestCer ? " ★" : "")],
+            ["", Number(s.pts).toLocaleString()],
+            ["", formatClock(s.timeMs / 1000)]
+        ];
+        cells.forEach(([cls, text]) => {
+            const td = document.createElement("td");
+            if (cls) td.className = cls;
+            td.textContent = text;
+            tr.appendChild(td);
+        });
+        body.appendChild(tr);
+    });
+    $("myMsg").textContent = scores.length ? "" : "NO RUNS RECORDED YET";
+}
+
+async function openMyScores() {
+    if (!account.loggedIn) { openAccount(openMyScores); return; }
+    $("myTitle").textContent = account.name;
+    $("myMsg").textContent = "LOADING...";
+    $("myBody").textContent = "";
+    ["myDayCer","myAllCer","myDayPts","myAllPts"].forEach(id => $(id).textContent = "-");
+    $("myChart").style.display = "none"; $("myChartLab").style.display = "none";
+    $("myOverlay").classList.add("on");
+    try {
+        const r = await rpc('ace_my_scores', { p_name: account.name, p_pin: account.pin });
+        if (!r.ok) {
+            if (r.error === "BAD_LOGIN") {
+                account.clear(); refreshAccountUI();
+                $("myOverlay").classList.remove("on");
+                openAccount(openMyScores, "PLEASE LOG IN AGAIN");
+            } else {
+                $("myMsg").textContent = ACCT_ERRORS[r.error] || "ERROR";
+            }
+            return;
+        }
+        renderMyScores(r.scores);
+    } catch (err) {
+        console.error('My scores error:', err);
+        $("myMsg").textContent = "COULD NOT LOAD SCORES";
+    }
+}
+$("myClose").addEventListener("click", () => $("myOverlay").classList.remove("on"));
+
+// ---- Wiring ----
+$("menuMy").addEventListener("click", openMyScores);
+$("lbMy").addEventListener("click", openMyScores);
+$("lbLogin").addEventListener("click", () => openAccount());
+$("menuAcct").addEventListener("click", () => {
+    if (account.loggedIn) { account.clear(); refreshAccountUI(); }
+    else openAccount();
+});
+refreshAccountUI();
+
+// =====================================================
+// 11. MENU
+// =====================================================
+
+function buildMenu() {
+    const box = $("levels");
+    box.innerHTML = "";
+    for (const k in DIFFS) {
+        const d = DIFFS[k];
+        const b = document.createElement("button");
+        b.className = "lvl";
+        b.innerHTML = `<em>×${d.mult.toFixed(1)}</em><b>${d.label}</b><span>${d.blurb}</span>`;
+        b.addEventListener("click", () => startGame(k));
+        box.appendChild(b);
+    }
+}
+
+buildMenu();
+refreshTutBtn();
+measure();
+requestAnimationFrame(frame);
+
+// =====================================================
+// SEASONAL THEME SELECTOR
+// =====================================================
+
+const themeSelect = document.getElementById("themeSelect");
+
+function applyTheme(theme) {
+    document.documentElement.dataset.theme = theme;
+    try { localStorage.setItem("gameTheme", theme); } catch (_) {}
+}
+
+themeSelect.addEventListener("change", () => {
+    applyTheme(themeSelect.value);
+});
+
+// Load the saved theme
+let savedTheme = "spring";
+try { savedTheme = localStorage.getItem("gameTheme") || "spring"; } catch (_) {}
+
+themeSelect.value = savedTheme;
+applyTheme(savedTheme);
+</script>
+
+</body>
+</html>

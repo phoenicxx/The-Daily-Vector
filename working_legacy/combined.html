@@ -1,0 +1,2832 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Vector Management Game</title>
+
+<style>
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    overflow: hidden;
+    background: #050d18;
+    color: white;
+    font-family: Arial, sans-serif;
+}
+
+#hud {
+    position: absolute;
+    top: 20px;
+    left: 25px;
+    z-index: 2;
+    pointer-events: none;
+}
+
+h2 {
+    letter-spacing: 3px;
+    color: #55c8ff;
+    font-size: 20px;
+}
+
+#score {
+    font-size: 16px;
+    color: white;
+}
+
+#instructions {
+    color: #8da9bd;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+#reset {
+    position: absolute;
+    bottom: 25px;
+    left: 25px;
+    z-index: 3;
+    padding: 12px 22px;
+    background: #12344c;
+    border: 1px solid #55c8ff;
+    color: white;
+    cursor: pointer;
+}
+
+#reset:hover {
+    background: #205577;
+}
+
+canvas {
+    display: block;
+    touch-action: none;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div id="hud">
+
+    <h2>VECTOR MANAGEMENT</h2>
+
+    <div id="score">
+        Aligned: 0 / 6
+    </div>
+
+    <p id="instructions">
+        Drag the blue circles onto their corresponding vector paths.
+    </p>
+
+</div>
+
+<button id="reset">RESET SESSION</button>
+
+
+<script type="importmap">
+{
+    "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js"
+    }
+}
+</script>
+
+
+<script type="module">
+
+import * as THREE from 'three';
+
+
+// =====================================
+// 1. SCENE SETUP
+// =====================================
+
+const scene = new THREE.Scene();
+
+scene.background = new THREE.Color(0x050d18);
+
+const camera = new THREE.OrthographicCamera(
+    -8, 8,
+    4.5, -4.5,
+    0.1, 100
+);
+
+camera.position.set(0, 0, 20);
+
+const renderer = new THREE.WebGLRenderer({
+    antialias: true
+});
+
+renderer.setSize(
+    window.innerWidth,
+    window.innerHeight
+);
+
+renderer.setPixelRatio(
+    Math.min(window.devicePixelRatio, 2)
+);
+
+document.body.appendChild(renderer.domElement);
+
+
+// =====================================
+// 2. DAILY SEEDED RANDOM GENERATOR
+// =====================================
+
+function getDailySeed() {
+
+    const date = new Date();
+
+    return Number(
+        date.getFullYear().toString() +
+        String(date.getMonth() + 1).padStart(2, '0') +
+        String(date.getDate()).padStart(2, '0')
+    );
+
+}
+
+let seed = getDailySeed();
+
+function random() {
+
+    seed = (seed * 1664525 + 1013904223) >>> 0;
+
+    return seed / 4294967296;
+
+}
+
+
+// =====================================
+// 3. GAME SETTINGS
+// =====================================
+
+const TOTAL = 6;
+
+const paths = [];
+const icons = [];
+
+let score = 0;
+let selected = null;
+
+const raycaster = new THREE.Raycaster();
+
+const pointer = new THREE.Vector2();
+
+const dragPlane = new THREE.Plane(
+    new THREE.Vector3(0, 0, 1),
+    0
+);
+
+const intersection = new THREE.Vector3();
+
+
+// =====================================
+// 4. VECTOR PATH MATHEMATICS
+// =====================================
+
+function getPathY(index, x) {
+
+    const base = 2.7 - index * 0.9;
+
+    return base
+        + Math.sin(x * 0.55 + index) * 0.3
+        + Math.cos(x * 0.8 + index * 0.5) * 0.15;
+
+}
+
+
+// =====================================
+// 5. CREATE VECTOR PATHS
+// =====================================
+
+function createPaths() {
+
+    for (let i = 0; i < TOTAL; i++) {
+
+        const points = [];
+
+        for (let j = 0; j <= 100; j++) {
+
+            const x = -7 + (j / 100) * 14;
+
+            const y = getPathY(i, x);
+
+            points.push(
+                new THREE.Vector3(x, y, 0)
+            );
+
+        }
+
+        const geometry =
+            new THREE.BufferGeometry().setFromPoints(points);
+
+        const material = new THREE.LineBasicMaterial({
+
+            color: 0x1b7599,
+
+            transparent: true,
+
+            opacity: 0.7
+
+        });
+
+        const line = new THREE.Line(
+            geometry,
+            material
+        );
+
+        scene.add(line);
+
+        paths.push(line);
+
+    }
+}
+
+
+// =====================================
+// 6. CREATE MOVING BLUE CIRCLES
+// =====================================
+
+function createIcons() {
+
+    for (let i = 0; i < TOTAL; i++) {
+
+        const geometry =
+            new THREE.CircleGeometry(0.13, 32);
+
+        const material = new THREE.MeshBasicMaterial({
+
+            color: 0x36aaff
+
+        });
+
+        const icon = new THREE.Mesh(
+            geometry,
+            material
+        );
+
+        // Random starting position
+        const x = -5.5 + random() * 11;
+
+        // Random starting drift
+        const drift = (random() - 0.5) * 2.8;
+
+        icon.position.set(
+
+            x,
+
+            getPathY(i, x) + drift,
+
+            0.2
+
+        );
+
+        // Individual movement properties
+        icon.userData = {
+
+            pathIndex: i,
+
+            aligned: false,
+
+            offset: new THREE.Vector3(),
+
+            speed: 0.8 + random() * 0.8,
+
+            direction: random() > 0.5 ? 1 : -1,
+
+            drift: drift
+
+        };
+
+        scene.add(icon);
+
+        icons.push(icon);
+
+    }
+
+}
+
+
+// =====================================
+// 7. POINTER POSITION
+// =====================================
+
+function updatePointer(event) {
+
+    const rect =
+        renderer.domElement.getBoundingClientRect();
+
+    pointer.x =
+        ((event.clientX - rect.left) / rect.width) * 2 - 1;
+
+    pointer.y =
+        -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+    raycaster.setFromCamera(pointer, camera);
+
+}
+
+
+// =====================================
+// 8. DRAG START
+// =====================================
+
+renderer.domElement.addEventListener(
+    'pointerdown',
+
+    (event) => {
+
+        updatePointer(event);
+
+        const hits = raycaster.intersectObjects(icons);
+
+        if (hits.length === 0) return;
+
+        selected = hits[0].object;
+
+        raycaster.ray.intersectPlane(
+            dragPlane,
+            intersection
+        );
+
+        selected.userData.offset.copy(
+            selected.position
+        ).sub(intersection);
+
+        renderer.domElement.setPointerCapture(
+            event.pointerId
+        );
+
+    }
+
+);
+
+
+// =====================================
+// 9. DRAG MOVEMENT
+// =====================================
+
+renderer.domElement.addEventListener(
+    'pointermove',
+
+    (event) => {
+
+        if (!selected) return;
+
+        updatePointer(event);
+
+        if (
+            raycaster.ray.intersectPlane(
+                dragPlane,
+                intersection
+            )
+        ) {
+
+            selected.position.x =
+                intersection.x +
+                selected.userData.offset.x;
+
+            selected.position.y =
+                intersection.y +
+                selected.userData.offset.y;
+
+        }
+
+    }
+
+);
+
+
+// =====================================
+// 10. DRAG RELEASE AND ALIGNMENT
+// =====================================
+
+renderer.domElement.addEventListener(
+    'pointerup',
+
+    () => {
+
+        if (!selected) return;
+
+        const index =
+            selected.userData.pathIndex;
+
+        const targetY = getPathY(
+            index,
+            selected.position.x
+        );
+
+        const distance = Math.abs(
+            selected.position.y - targetY
+        );
+
+        if (distance < 0.28) {
+
+            // Successfully aligned
+            selected.position.y = targetY;
+
+            selected.userData.drift = 0;
+
+            if (!selected.userData.aligned) {
+
+                selected.userData.aligned = true;
+
+                selected.material.color.set(0x45e6a0);
+
+                score++;
+
+                updateScore();
+
+            }
+
+        } else {
+
+            // Preserve the icon's off-course position
+            selected.userData.drift =
+                selected.position.y - targetY;
+
+            if (selected.userData.aligned) {
+
+                selected.userData.aligned = false;
+
+                selected.material.color.set(0x36aaff);
+
+                score--;
+
+                updateScore();
+
+            }
+
+        }
+
+        selected = null;
+
+    }
+
+);
+
+
+// =====================================
+// 11. SCORE DISPLAY
+// =====================================
+
+function updateScore() {
+
+    document.getElementById('score').innerText =
+        `Aligned: ${score} / ${TOTAL}`;
+
+}
+
+
+// =====================================
+// 12. RESET GAME
+// =====================================
+
+function resetGame() {
+
+    // Remove old objects
+    icons.forEach(icon => scene.remove(icon));
+
+    paths.forEach(path => scene.remove(path));
+
+    icons.length = 0;
+
+    paths.length = 0;
+
+    // Reset game variables
+    score = 0;
+
+    selected = null;
+
+    // Reuse the daily seed
+    seed = getDailySeed();
+
+    updateScore();
+
+    createPaths();
+
+    createIcons();
+
+}
+
+document.getElementById('reset').addEventListener(
+    'click',
+    resetGame
+);
+
+
+// =====================================
+// 13. RESPONSIVE SCREEN
+// =====================================
+
+window.addEventListener('resize', () => {
+
+    camera.left = -8;
+
+    camera.right = 8;
+
+    camera.top = 4.5;
+
+    camera.bottom = -4.5;
+
+    camera.updateProjectionMatrix();
+
+    renderer.setSize(
+        window.innerWidth,
+        window.innerHeight
+    );
+
+});
+
+
+// =====================================
+// 14. MOVEMENT ANIMATION
+// =====================================
+
+const clock = new THREE.Clock();
+
+function animate() {
+
+    requestAnimationFrame(animate);
+
+    const delta = Math.min(
+        clock.getDelta(),
+        0.05
+    );
+
+    icons.forEach(icon => {
+
+        const data = icon.userData;
+
+        // Pause automatic movement during dragging
+        if (icon === selected) return;
+
+        // Move horizontally
+        icon.position.x +=
+            data.speed *
+            data.direction *
+            delta;
+
+        // Reverse at boundaries
+        if (icon.position.x > 7) {
+
+            icon.position.x = 7;
+
+            data.direction = -1;
+
+        }
+
+        if (icon.position.x < -7) {
+
+            icon.position.x = -7;
+
+            data.direction = 1;
+
+        }
+
+        // Calculate corresponding vector position
+        const targetY = getPathY(
+            data.pathIndex,
+            icon.position.x
+        );
+
+        // Keep circle following the vector
+        icon.position.y =
+            targetY + data.drift;
+
+    });
+
+    renderer.render(scene, camera);
+
+}
+
+
+// =====================================
+// 15. START GAME
+// =====================================
+
+createPaths();
+
+createIcons();
+
+animate();
+
+
+//PART 2 =================
+
+</script>
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>Cognitive Beep Test – Ghost ID</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#06141a; --scope:#0a2229; --grid:#1b4a50; --ink:#d3ebe5; --dim:#7ea6a3;
+  --ping:#ff3d3d; --ok:#5ee6a8; --amber:#f2b84b; --cca:#58b6ff;
+  --head:"Barlow Condensed","Arial Narrow",sans-serif; --body:"Barlow",system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%;background:var(--bg);color:var(--ink);font-family:var(--body);overflow:hidden}
+canvas{position:fixed;inset:0;width:100%;height:100%;touch-action:none;cursor:crosshair}
+.screen{position:fixed;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;padding:24px;background:rgba(6,20,26,.94);text-align:center;overflow:auto}
+.screen.on{display:flex}
+h1{font-family:var(--head);font-weight:700;font-size:clamp(34px,6vw,60px);letter-spacing:.02em;line-height:1}
+h2{font-family:var(--head);font-weight:700;font-size:clamp(30px,5vw,48px)}
+p.sub{max-width:560px;color:var(--dim);margin:14px 0 26px;line-height:1.5}
+.levels{display:flex;gap:14px;flex-wrap:wrap;justify-content:center}
+.lvl{width:210px;padding:18px 16px;background:var(--scope);border:1px solid var(--grid);border-radius:6px;color:var(--ink);cursor:pointer;text-align:left;font:inherit}
+.lvl:hover,.lvl:focus-visible{border-color:var(--ink);outline:none}
+.lvl b{display:block;font-family:var(--head);font-size:28px;margin-bottom:6px}
+.lvl span{font-size:14px;color:var(--dim);line-height:1.4;display:block}
+.lvl em{font-style:normal;color:var(--amber);font-size:13px;display:block;margin-top:10px}
+.seed{margin-top:26px;color:var(--dim);font-size:14px}
+.btn{margin:6px;padding:12px 26px;font:500 17px var(--body);background:var(--ink);color:var(--bg);border:0;border-radius:4px;cursor:pointer}
+.btn.alt{background:transparent;color:var(--ink);border:1px solid var(--grid)}
+#hud{position:fixed;top:0;left:0;right:0;display:none;justify-content:space-between;align-items:flex-start;padding:14px 20px;pointer-events:none;gap:16px}
+#hud.on{display:flex}
+.stat{font-family:var(--head);font-size:15px;color:var(--dim)}
+.stat b{display:block;font-size:34px;color:var(--ink);font-weight:700;line-height:1}
+#load{width:min(300px,36vw)}
+#bar{height:12px;background:var(--scope);border:1px solid var(--grid);position:relative;margin-top:6px}
+#fill{height:100%;width:0;background:var(--ok);transition:background .3s}
+#redmark{position:absolute;left:85%;top:-4px;bottom:-4px;width:2px;background:var(--ping)}
+#count{position:fixed;inset:0;display:none;align-items:center;justify-content:center;font-family:var(--head);font-weight:700;font-size:min(30vw,220px);pointer-events:none;color:var(--ink)}
+#count.on{display:flex}
+table{border-collapse:collapse;margin:20px 0;min-width:min(420px,90vw)}
+td{padding:8px 14px;border-bottom:1px solid var(--grid);text-align:left}
+td:last-child{text-align:right;font-family:var(--head);font-size:22px}
+.fail{color:var(--ping)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<canvas id="cv" aria-label="Radar scope"></canvas>
+
+<div id="hud">
+  <div class="stat">Level<b id="hLvl">1</b></div>
+  <div class="stat">Contacts identified<b id="hIds">0</b></div>
+  <div class="stat" id="load">Operator load <span id="hLoad"></span><div id="bar"><div id="fill"></div><div id="redmark"></div></div></div>
+</div>
+<div id="count"></div>
+
+<section class="screen on" id="menu">
+  <h1>Cognitive Beep Test</h1>
+  <p class="sub">Ghost identification under rising load. Red pings pulse for 3.0 seconds. Press and hold each one for 0.5 seconds to identify it. Miss one and the run ends. Contact rate climbs every level until you hit your redline.</p>
+  <div class="levels" id="levels"></div>
+  <div class="seed" id="seedLine"></div>
+</section>
+
+<section class="screen" id="result">
+  <h2 id="rTitle"></h2>
+  <p class="sub" id="rSub"></p>
+  <table id="rTable"></table>
+  <div><button class="btn" id="again">Run again</button><button class="btn alt" id="toMenu">Change difficulty</button></div>
+</section>
+
+<script>
+"use strict";
+/* ---------- Config ---------- */
+const HOLD_MS = 500, WINDOW_MS = 3000, REDLINE = 0.85;
+const DIFFS = {
+  easy:  {label:"Easy",   blurb:"Wide targets, slow ramp, steady contacts.",           start:3.0, floor:1.4, decay:0.93, lvlLen:12, drift:0,    maxActive:2, hit:0.075},
+  normal:{label:"Normal", blurb:"Standard target size, faster ramp, overlapping pings.", start:2.4, floor:1.0, decay:0.91, lvlLen:10, drift:0,    maxActive:3, hit:0.062},
+  hard:  {label:"Hard",   blurb:"Small, drifting contacts and a steep ramp.",            start:1.9, floor:0.7, decay:0.89, lvlLen:8,  drift:0.045,maxActive:4, hit:0.052}
+};
+
+/* ---------- Daily seed ---------- */
+function todayKey(){const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
+function hashStr(s){let h=1779033703^s.length;for(let i=0;i<s.length;i++){h=Math.imul(h^s.charCodeAt(i),3432918353);h=h<<13|h>>>19;}return(h>>>0);}
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;}}
+
+/* ---------- State ---------- */
+const cv=document.getElementById("cv"),ctx=cv.getContext("2d");
+let W,H,cx,cy,R,dpr;
+let diffKey="normal",D=DIFFS.normal,rng,state="menu";
+let G; // game data
+const pingSound = new Audio("./sounds/ping.mp3");
+pingSound.preload = "auto";
+
+function playPingSound() {
+    pingSound.currentTime = 0;
+    pingSound.play().catch(error => {
+        console.warn("Ping sound could not play:", error);
+    });
+}
+const holds=new Map(); // pointerId -> {x,y,ping}
+const $=id=>document.getElementById(id);
+
+function resize(){
+  dpr=window.devicePixelRatio||1;W=innerWidth;H=innerHeight;
+  cv.width=W*dpr;cv.height=H*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);
+  cx=W/2;cy=H/2+20;R=Math.min(W,H-60)/2-8;
+}
+addEventListener("resize",resize);resize();
+
+/* ---------- Menu ---------- */
+const best=()=>JSON.parse(localStorage.getItem("cbt-"+todayKey()+"-"+diffKey)||"null");
+function buildMenu(){
+  const box=$("levels");box.innerHTML="";
+  for(const k in DIFFS){
+    const d=DIFFS[k];diffKey=k;const b=best();
+    const el=document.createElement("button");el.className="lvl";
+    el.innerHTML="<b>"+d.label+"</b><span>"+d.blurb+"</span><em>"+(b?"Today's best: level "+b.level+" · "+b.ids+" IDs":"No run yet today")+"</em>";
+    el.onclick=()=>{diffKey=k;start();};
+    box.appendChild(el);
+  }
+  $("seedLine").textContent="Daily seed "+todayKey()+" – everyone on the same day and level faces the same contact pattern.";
+}
+function show(id){document.querySelectorAll(".screen").forEach(s=>s.classList.toggle("on",s.id===id));}
+
+/* ---------- Game ---------- */
+function start(){
+  D=DIFFS[diffKey];
+  rng=mulberry32(hashStr(todayKey()+"|"+diffKey));
+  holds.clear();
+  G={t:0,level:1,pings:[],ids:0,latencies:[],nextSpawn:1.2,count:3,over:false,fx:[],sweep:0,
+     cca:[0,1,2].map(i=>({a:rng()*6.28,r:0.35+i*0.2,s:(0.06+rng()*0.05)*(i%2?1:-1)}))};
+  state="count";show("none");$("hud").classList.add("on");$("count").classList.add("on");
+  last=performance.now();
+}
+function interval(){return Math.max(D.floor,D.start*Math.pow(D.decay,G.level-1));}
+function loadNow(){return (HOLD_MS/1000+0.5)/interval();} // fraction of operator time committed
+
+function spawn(){
+  let u,v,tries=0;
+  do{const a=rng()*6.283,r=Math.sqrt(rng())*0.86;u=Math.cos(a)*r;v=Math.sin(a)*r;tries++;}
+  while(tries<30&&G.pings.some(p=>Math.hypot(p.u-u,p.v-v)<0.3));
+  const da=rng()*6.283;
+  G.pings.push({u,v,age:0,holdT:0,holder:null,phase:0,du:Math.cos(da)*D.drift,dv:Math.sin(da)*D.drift});
+  G.nextSpawn=G.t+interval()*(0.8+rng()*0.4);
+}
+
+function update(dt){
+  G.sweep+=dt*1.2;
+  G.cca.forEach(c=>c.a+=c.s*dt);
+  if(state==="count"){
+    G.count-=dt;$("count").textContent=G.count>0?Math.ceil(G.count):"";
+    if(G.count<=0){state="play";$("count").classList.remove("on");}
+    return;
+  }
+  if(state!=="play")return;
+  G.t+=dt;G.level=1+Math.floor(G.t/D.lvlLen);
+  if(G.t>=G.nextSpawn){ if(G.pings.length<D.maxActive)spawn(); else G.nextSpawn=G.t+0.25; }
+  for(const p of G.pings.slice()){
+    p.age+=dt;p.phase+=dt*(2+p.age*1.6)*6.283;
+    if(D.drift){p.u+=p.du*dt;p.v+=p.dv*dt;
+      if(Math.hypot(p.u,p.v)>0.9){const n=Math.hypot(p.u,p.v),dot=(p.du*p.u+p.dv*p.v)/n;p.du-=2*dot*p.u/n;p.dv-=2*dot*p.v/n;p.u*=0.97;p.v*=0.97;}}
+    if(p.holder!==null){
+      const h=holds.get(p.holder);
+      if(!h||Math.hypot(h.x-(cx+p.u*R),h.y-(cy+p.v*R))>D.hit*R*1.35){cancelHold(p);}
+      else{p.holdT+=dt;
+        if(p.holdT>=HOLD_MS/1000){ident(p);continue;}}
+    }
+    if(p.age>=WINDOW_MS/1000){fail(p);return;}
+  }
+}
+function ident(p){
+  holds.delete(p.holder);G.pings.splice(G.pings.indexOf(p),1);
+  G.ids++;G.latencies.push(p.age);
+  G.fx.push({x:cx+p.u*R,y:cy+p.v*R,t:0});
+}
+function cancelHold(p){if(p.holder!==null)holds.delete(p.holder);p.holder=null;p.holdT=0;}
+function fail(p){
+  state="over";G.failed=p;
+  G.failLoad=loadNow();
+  setTimeout(showResult,1100);
+}
+
+/* ---------- Result ---------- */
+function showResult(){
+  $("hud").classList.remove("on");
+  const lat=G.latencies.length?G.latencies.reduce((a,b)=>a+b,0)/G.latencies.length:0;
+  const b=best();
+  if(!b||G.level>b.level||(G.level===b.level&&G.ids>b.ids))
+    localStorage.setItem("cbt-"+todayKey()+"-"+diffKey,JSON.stringify({level:G.level,ids:G.ids}));
+  const nb=best();
+  $("rTitle").innerHTML='<span class="fail">Contact missed</span> – redline reached';
+  $("rSub").textContent="A ghost expired before it was identified. "+D.label+" · seed "+todayKey()+".";
+  const rows=[["Level reached",G.level],["Contacts identified",G.ids],["Mean time to start ID",lat.toFixed(2)+" s"],
+    ["Operator load at failure",Math.round(G.failLoad*100)+"%"],["Run time",G.t.toFixed(1)+" s"],["Today's best ("+D.label+")","L"+nb.level+" · "+nb.ids+" IDs"]];
+  $("rTable").innerHTML=rows.map(r=>"<tr><td>"+r[0]+"</td><td>"+r[1]+"</td></tr>").join("");
+  show("result");
+}
+$("again").onclick=start;
+$("toMenu").onclick=()=>{state="menu";buildMenu();show("menu");};
+
+/* ---------- Input ---------- */
+cv.addEventListener("pointerdown",e=>{
+  if(state!=="play")return;
+  cv.setPointerCapture(e.pointerId);
+  let hit=null,bd=1e9;
+  for(const p of G.pings){
+    if(p.holder!==null)continue;
+    const d=Math.hypot(e.clientX-(cx+p.u*R),e.clientY-(cy+p.v*R));
+    if(d<=D.hit*R*1.2&&d<bd){bd=d;hit=p;}
+  }
+  if(hit){hit.holder=e.pointerId;hit.holdT=0;holds.set(e.pointerId,{x:e.clientX,y:e.clientY,ping:hit});}
+});
+cv.addEventListener("pointermove",e=>{const h=holds.get(e.pointerId);if(h){h.x=e.clientX;h.y=e.clientY;}});
+const release=e=>{const h=holds.get(e.pointerId);if(h)cancelHold(h.ping);};
+cv.addEventListener("pointerup",release);cv.addEventListener("pointercancel",release);
+cv.addEventListener("contextmenu",e=>e.preventDefault());
+
+/* ---------- Render ---------- */
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle="#06141a";ctx.fillRect(0,0,W,H);
+  // scope
+  ctx.beginPath();ctx.arc(cx,cy,R,0,6.283);ctx.fillStyle="#0a2229";ctx.fill();
+  ctx.strokeStyle="#1b4a50";ctx.lineWidth=1;
+  for(let i=1;i<=4;i++){ctx.beginPath();ctx.arc(cx,cy,R*i/4,0,6.283);ctx.stroke();}
+  ctx.beginPath();ctx.moveTo(cx-R,cy);ctx.lineTo(cx+R,cy);ctx.moveTo(cx,cy-R);ctx.lineTo(cx,cy+R);ctx.stroke();
+  // sweep
+  if(G){
+    const a=G.sweep;ctx.strokeStyle="rgba(94,230,168,.35)";ctx.lineWidth=2;
+    ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+Math.cos(a)*R,cy+Math.sin(a)*R);ctx.stroke();
+    // CCA wingmen (context load, not interactive)
+    G.cca.forEach((c,i)=>{
+      const x=cx+Math.cos(c.a)*c.r*R,y=cy+Math.sin(c.a)*c.r*R;
+      ctx.save();ctx.translate(x,y);ctx.rotate(c.a+(c.s>0?1.57:-1.57));
+      ctx.fillStyle="#58b6ff";ctx.beginPath();ctx.moveTo(0,-8);ctx.lineTo(6,6);ctx.lineTo(-6,6);ctx.closePath();ctx.fill();ctx.restore();
+      ctx.fillStyle="#58b6ff";ctx.font="12px Barlow,sans-serif";ctx.fillText("CCA-"+(i+1),x+10,y+4);
+    });
+    // pings
+    for(const p of G.pings){
+      const x=cx+p.u*R,y=cy+p.v*R,r=D.hit*R,pulse=(Math.sin(p.phase)+1)/2;
+      ctx.fillStyle="rgba(255,61,61,"+(0.25+pulse*0.4)+")";
+      ctx.beginPath();ctx.arc(x,y,r*(0.55+pulse*0.25),0,6.283);ctx.fill();
+      ctx.strokeStyle="rgba(255,61,61,"+(0.9-pulse*0.6)+")";ctx.lineWidth=2;
+      ctx.beginPath();ctx.arc(x,y,r*(1+pulse*0.5),0,6.283);ctx.stroke();
+      // time-remaining arc
+      const rem=1-p.age/(WINDOW_MS/1000);
+      ctx.strokeStyle="#ff3d3d";ctx.lineWidth=3;
+      ctx.beginPath();ctx.arc(x,y,r*1.2,-1.5708,-1.5708+6.283*Math.max(0,rem));ctx.stroke();
+      // hold progress
+      if(p.holder!==null){
+        ctx.strokeStyle="#5ee6a8";ctx.lineWidth=6;
+        ctx.beginPath();ctx.arc(x,y,r*0.8,-1.5708,-1.5708+6.283*Math.min(1,p.holdT/(HOLD_MS/1000)));ctx.stroke();
+      }
+    }
+    // confirmation flashes
+    G.fx=G.fx.filter(f=>f.t<0.4);
+    for(const f of G.fx){f.t+=1/60;ctx.strokeStyle="rgba(94,230,168,"+(1-f.t/0.4)+")";ctx.lineWidth=2;
+      ctx.beginPath();ctx.arc(f.x,f.y,D.hit*R*(0.8+f.t*2.5),0,6.283);ctx.stroke();}
+    // failure marker
+    if(state==="over"&&G.failed){const p=G.failed,x=cx+p.u*R,y=cy+p.v*R;
+      ctx.strokeStyle="#ff3d3d";ctx.lineWidth=4;ctx.beginPath();ctx.arc(x,y,D.hit*R*1.6,0,6.283);ctx.stroke();
+      ctx.fillStyle="#ff3d3d";ctx.font="700 22px 'Barlow Condensed',sans-serif";ctx.textAlign="center";
+      ctx.fillText("UNIDENTIFIED",x,y-D.hit*R*1.8);ctx.textAlign="start";}
+  }
+}
+
+/* ---------- Loop ---------- */
+let last=performance.now();
+function frame(now){
+  const dt=Math.min(0.1,(now-last)/1000);last=now; // clamp so a hidden tab can't cause an unfair fail
+  if(G&&state!=="menu")update(dt);
+  if(G&&(state==="play"||state==="count")){
+    $("hLvl").textContent=G.level;$("hIds").textContent=G.ids;
+    const l=loadNow();$("fill").style.width=Math.min(100,l*100)+"%";
+    $("fill").style.background=l>=REDLINE?"#ff3d3d":l>0.6?"#f2b84b":"#5ee6a8";
+    $("hLoad").textContent=Math.round(l*100)+"%"+(l>=REDLINE?" – redline":"");
+  }
+  draw();requestAnimationFrame(frame);
+}
+buildMenu();requestAnimationFrame(frame);
+</script>
+
+// PART 3 =====
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Strike Authorisation System</title>
+
+<style>
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    overflow: hidden;
+    background: #030b13;
+    color: #d9e8f5;
+    font-family: Arial, sans-serif;
+}
+
+/* =========================================
+   MAIN INTERFACE
+========================================= */
+
+#game {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background:
+        radial-gradient(ellipse at 55% 50%, #10283b 0%, #071522 45%, #030b13 100%);
+}
+
+#game::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.2;
+    background-image:
+        linear-gradient(rgba(65,150,190,0.12) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(65,150,190,0.12) 1px, transparent 1px);
+    background-size: 45px 45px;
+}
+
+/* HEADER */
+
+.header {
+    position: absolute;
+    top: 25px;
+    left: 30px;
+    z-index: 2;
+}
+
+.eyebrow {
+    color: #20bde0;
+    font-size: 10px;
+    letter-spacing: 4px;
+}
+
+h1 {
+    font-size: 27px;
+    font-weight: 300;
+    letter-spacing: 5px;
+    margin: 8px 0;
+}
+
+/* SCORE */
+
+.score-panel {
+    position: absolute;
+    top: 25px;
+    right: 30px;
+    text-align: right;
+    z-index: 2;
+}
+
+.score-label {
+    color: #8298aa;
+    font-size: 10px;
+    letter-spacing: 3px;
+}
+
+#score {
+    color: #20d5ff;
+    font-size: 34px;
+    margin-top: 5px;
+}
+
+/* TARGET FIELD */
+
+#targetField {
+    position: absolute;
+    inset: 100px 0 70px;
+}
+
+/* ENEMY MARKERS */
+
+.enemy {
+    position: absolute;
+    width: 25px;
+    height: 25px;
+    transform: translate(-50%, -50%) rotate(45deg);
+    background: #d52e43;
+    border: 2px solid #ff6574;
+    box-shadow: 0 0 15px rgba(255, 30, 60, 0.65);
+    cursor: pointer;
+    z-index: 2;
+    transition: box-shadow 0.2s, background 0.2s;
+}
+
+.enemy:hover {
+    background: #ff5265;
+    box-shadow: 0 0 25px #ff5265;
+}
+
+.enemy.selected {
+    background: #ff8793;
+    box-shadow: 0 0 25px #ff304f, 0 0 45px #ff304f;
+}
+
+.enemy-label {
+    position: absolute;
+    transform: translate(-50%, 0);
+    color: #ff697a;
+    font-size: 9px;
+    letter-spacing: 2px;
+    white-space: nowrap;
+    pointer-events: none;
+}
+
+/* BOTTOM STATUS */
+
+.status {
+    position: absolute;
+    bottom: 25px;
+    left: 30px;
+    color: #648297;
+    font-size: 10px;
+    letter-spacing: 2px;
+    z-index: 2;
+}
+
+#enemyCount {
+    color: #ff697a;
+}
+
+/* DEMO CONTROLS */
+
+.demo-controls {
+    position: absolute;
+    bottom: 20px;
+    right: 30px;
+    z-index: 2;
+}
+
+.demo-controls button {
+    background: transparent;
+    color: #66899f;
+    border: 1px solid #31536a;
+    padding: 10px 15px;
+    cursor: pointer;
+    font-size: 10px;
+    letter-spacing: 2px;
+}
+
+/* =========================================
+   MODAL / BACKGROUND BLUR
+========================================= */
+
+#modalOverlay {
+    position: fixed;
+    inset: 0;
+    z-index: 10;
+    display: none;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+
+    background: rgba(0, 5, 12, 0.7);
+    backdrop-filter: blur(9px);
+    -webkit-backdrop-filter: blur(9px);
+}
+
+.modal {
+    width: min(430px, 95vw);
+    padding: 35px;
+    background: rgba(5, 19, 33, 0.97);
+    border: 1px solid #20bde0;
+    box-shadow: 0 0 40px rgba(0, 170, 220, 0.15);
+    text-align: center;
+}
+
+.modal-eyebrow {
+    color: #20bde0;
+    font-size: 10px;
+    letter-spacing: 4px;
+}
+
+.modal h2 {
+    font-size: 24px;
+    font-weight: 300;
+    letter-spacing: 4px;
+    margin: 20px 0;
+}
+
+#targetName {
+    color: #ff5265;
+    font-size: 25px;
+    letter-spacing: 4px;
+    margin: 20px 0;
+}
+
+.modal-description {
+    color: #8298aa;
+    font-size: 12px;
+    line-height: 1.8;
+}
+
+.modal-buttons {
+    display: flex;
+    gap: 12px;
+    margin-top: 30px;
+}
+
+.modal-buttons button {
+    flex: 1;
+    min-height: 48px;
+    cursor: pointer;
+    font-size: 11px;
+    letter-spacing: 2px;
+}
+
+#cancelButton {
+    background: transparent;
+    border: 1px solid #526b7d;
+    color: #c5d7e5;
+}
+
+#confirmButton {
+    background: #20bde0;
+    border: 1px solid #20bde0;
+    color: #00101a;
+}
+
+/* =========================================
+   HOLD TO STRIKE
+========================================= */
+
+#holdSection {
+    display: none;
+    margin-top: 25px;
+}
+
+#holdButton {
+    width: 100%;
+    min-height: 60px;
+    position: relative;
+    overflow: hidden;
+    background: #481923;
+    border: 1px solid #ff5265;
+    color: white;
+    cursor: pointer;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+#holdButton:active {
+    background: #70202c;
+}
+
+#holdText {
+    position: relative;
+    z-index: 2;
+    font-size: 12px;
+    letter-spacing: 3px;
+}
+
+#holdProgress {
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 0%;
+    background: rgba(255, 50, 75, 0.55);
+    pointer-events: none;
+}
+
+#holdInstruction {
+    margin-top: 15px;
+    color: #8298aa;
+    font-size: 10px;
+    letter-spacing: 2px;
+}
+
+/* =========================================
+   RESULT MESSAGE
+========================================= */
+
+#resultSection {
+    display: none;
+    margin-top: 25px;
+    color: #20d5ff;
+    font-size: 12px;
+    letter-spacing: 3px;
+}
+
+/* =========================================
+   RESPONSIVE
+========================================= */
+
+@media (max-width: 600px) {
+    .header {
+        left: 18px;
+        top: 18px;
+    }
+
+    .score-panel {
+        right: 18px;
+        top: 18px;
+    }
+
+    h1 {
+        font-size: 20px;
+    }
+
+    .status {
+        left: 18px;
+        bottom: 18px;
+    }
+
+    .demo-controls {
+        right: 18px;
+        bottom: 15px;
+    }
+
+    .modal {
+        padding: 25px 20px;
+    }
+}
+
+/* =========================================
+   OPERATOR ACCESS
+========================================= */
+
+#operatorAccess {
+    position: fixed;
+    bottom: 12px;
+    right: 12px;
+    z-index: 10000;
+}
+
+#operatorPassword {
+    width: 220px;
+    padding: 10px;
+    background: #111;
+    color: #00ff99;
+    border: 1px solid #00ff99;
+    font-family: monospace;
+}
+
+#operatorPanel {
+    position: fixed;
+    bottom: 55px;
+    right: 12px;
+    z-index: 10001;
+    padding: 15px;
+    background: #111;
+    border: 1px solid #00ff99;
+    color: #00ff99;
+}
+
+#operatorPanel button {
+    display: block;
+    width: 100%;
+    margin-top: 8px;
+    padding: 8px;
+    cursor: pointer;
+}
+
+</style>
+</head>
+
+<body>
+
+<div id="game">
+
+    <div class="header">
+        <div class="eyebrow">GLOBAL DEFENCE INITIATIVE</div>
+        <h1>THREAT MANAGEMENT</h1>
+        <div class="eyebrow">ENEMY DECONFLICTION SYSTEM</div>
+    </div>
+
+    <div class="score-panel">
+        <div class="score-label">HOSTILES ELIMINATED</div>
+        <div id="score">000</div>
+    </div>
+
+    <div id="targetField"></div>
+
+    <div class="status">
+        ACTIVE HOSTILES: <span id="enemyCount">0</span>
+    </div>
+
+    <!-- Demo-only button -->
+    <div class="demo-controls">
+        <button id="spawnButton">+ SIMULATE ENEMY</button>
+    </div>
+
+</div>
+
+<!-- =========================================
+     CONFIRMATION MODAL
+========================================= -->
+
+<div id="modalOverlay">
+
+    <div class="modal">
+
+        <div class="modal-eyebrow">
+            COMMAND AUTHORISATION
+        </div>
+
+        <h2>CONFIRM STRIKE?</h2>
+
+        <div id="targetName">
+            HOSTILE 001
+        </div>
+
+        <div class="modal-description" id="modalDescription">
+            Confirm your request to eliminate this hostile target.
+        </div>
+
+        <div class="modal-buttons" id="confirmOptions">
+            <button id="cancelButton">CANCEL</button>
+            <button id="confirmButton">CONFIRM</button>
+        </div>
+
+        <div id="holdSection">
+
+            <button id="holdButton">
+                <div id="holdProgress"></div>
+                <span id="holdText">HOLD TO AUTHORISE STRIKE</span>
+            </button>
+
+            <div id="holdInstruction">
+                MAINTAIN PRESSURE FOR 5 SECONDS
+            </div>
+
+        </div>
+
+        <div id="resultSection">
+            TARGET ELIMINATED
+            <p id="pointsAwarded"></p>
+        </div>
+
+    </div>
+
+</div>
+
+<!-- GAME OVER SCREEN -->
+<div id="gameOverScreen" style="display: none;">
+    <div class="game-over-box">
+        <div class="game-over-label">SYSTEM FAILURE</div>
+        <h2>GAME OVER</h2>
+        <p id="finalScore">FINAL SCORE: 000</p>
+        <button id="restartButton">RESTART MISSION</button>
+    </div>
+</div>
+
+<!-- OPERATOR ACCESS -->
+<div id="operatorAccess">
+    <input
+        id="operatorPassword"
+        type="password"
+        placeholder="ENTER ACCESS COMMAND"
+        autocomplete="off"
+    >
+</div>
+
+
+<!-- OPERATOR ACCESS -->
+</div> <!-- end gameOverScreen -->
+
+<div id="operatorAccess">
+    <input
+        id="operatorPassword"
+        type="password"
+        placeholder="ENTER ACCESS COMMAND"
+        autocomplete="off"
+    >
+</div>
+
+<div id="operatorPanel" style="display:none;">
+    <div class="operator-title">OPERATOR COMMANDS</div>
+
+    <button id="manualReset">RESET GAME</button>
+    <button id="spawnFriendly">SPAWN FRIENDLY</button>
+    <button id="spawnHostile">SPAWN HOSTILE</button>
+    <button id="spawn10Friendly">+10 FRIENDLIES</button>
+    <button id="spawn10Hostile">+10 HOSTILES</button>
+</div>
+
+<script>
+
+// ============================================================
+// 1. GAME CONFIGURATION
+// ============================================================
+
+const GameConfig = {
+    difficulty: "normal",
+
+    aircraft: {
+        initialCount: 3,
+        spawnInterval: 5000,
+        speed: 0.012,
+        landingDistance: 0.03
+    },
+
+
+    enemies: {
+    initialCount: 3,
+    spawnInterval: 5000,
+    speed: 0.008,
+    targetNearestAircraft: true,
+    maxActive: 30
+},
+
+    difficultySettings: {
+        easy: {
+            aircraftSpeedMultiplier: 1.2,
+            enemySpeedMultiplier: 0.7,
+            enemySpawnMultiplier: 0.7
+        },
+
+        normal: {
+            aircraftSpeedMultiplier: 1,
+            enemySpeedMultiplier: 1,
+            enemySpawnMultiplier: 1
+        },
+
+        hard: {
+            aircraftSpeedMultiplier: 0.85,
+            enemySpeedMultiplier: 1.4,
+            enemySpawnMultiplier: 1.5
+        }
+    }
+};
+
+
+// ============================================================
+// 2. EVENT SYSTEM
+// ============================================================
+
+class EventSystem {
+
+    constructor() {
+        this.listeners = {};
+    }
+
+    on(eventName, callback) {
+
+        if (!this.listeners[eventName]) {
+            this.listeners[eventName] = [];
+        }
+
+        this.listeners[eventName].push(callback);
+
+    }
+
+    emit(eventName, data = {}) {
+
+        const callbacks = this.listeners[eventName] || [];
+
+        callbacks.forEach(callback => callback(data));
+
+    }
+
+    off(eventName, callback) {
+
+        if (!this.listeners[eventName]) return;
+
+        this.listeners[eventName] =
+            this.listeners[eventName].filter(
+                item => item !== callback
+            );
+
+    }
+
+}
+
+
+// ============================================================
+// 3. ENEMY SYSTEM
+// ============================================================
+
+class EnemySystem extends EventSystem {
+    getSpawnPosition() {
+    const side = Math.floor(Math.random() * 4);
+    const offset = Math.random() * 80 + 10;
+
+    switch (side) {
+        case 0: return { x: offset, y: 5 };
+        case 1: return { x: 95, y: offset };
+        case 2: return { x: offset, y: 95 };
+        case 3: return { x: 5, y: offset };
+    }
+}
+constructor(config = {}) {
+
+super();
+
+this.enemies = [];
+this.nextEnemyId = 1;
+
+this.config = config;
+
+// Automatically spawn enemies
+this.spawnTimer = setInterval(() => {
+    this.spawnEnemy();
+}, this.config.spawnInterval ?? GameConfig.enemies.spawnInterval);
+
+}
+
+    spawnEnemy(options = {}) {
+        const spawnPosition = this.getSpawnPosition();
+        const enemy = {
+
+            id: this.nextEnemyId++,
+
+            name: options.name ||
+                `HOSTILE ${String(this.nextEnemyId - 1).padStart(3, "0")}`,
+
+                x: options.x ?? spawnPosition.x,
+                y: options.y ?? spawnPosition.y,
+
+            speed: options.speed ??
+                this.config.baseSpeed ?? 0.01,
+
+            active: true
+
+        };
+
+        this.enemies.push(enemy);
+
+        this.emit("enemySpawned", enemy);
+
+        return enemy;
+
+    }
+
+    getEnemy(id) {
+
+        return this.enemies.find(
+            enemy => enemy.id === id && enemy.active
+        );
+
+    }
+
+    removeEnemy(id) {
+
+        const enemy = this.getEnemy(id);
+
+        if (!enemy) return false;
+
+        enemy.active = false;
+
+        this.enemies = this.enemies.filter(
+            item => item.id !== id
+        );
+
+        this.emit("enemyRemoved", enemy);
+
+        return true;
+
+    }
+
+    getActiveEnemies() {
+
+        return [...this.enemies];
+
+    }
+    update() {
+    const aircraft = window.aircraftSystem?.getActiveAircraft() || [];
+
+    this.enemies.forEach(enemy => {
+        if (!aircraft.length) return;
+
+        let target = aircraft.reduce((nearest, plane) => {
+            const d = Math.hypot(
+                plane.x - enemy.x,
+                plane.y - enemy.y
+            );
+
+            return d < nearest.distance
+                ? { plane, distance: d }
+                : nearest;
+        }, { plane: null, distance: Infinity }).plane;
+
+        if (!target) return;
+
+        const dx = target.x - enemy.x;
+        const dy = target.y - enemy.y;
+        const distance = Math.hypot(dx, dy);
+
+        if (distance > 0) {
+            enemy.x += dx / distance * GameConfig.enemies.speed;
+            enemy.y += dy / distance * GameConfig.enemies.speed;
+        }
+
+        enemy.element.style.left = enemy.x + "%";
+        enemy.element.style.top = enemy.y + "%";
+    });
+}
+}
+
+class AircraftSystem {
+    constructor(container, events) {
+        this.container = container;
+        this.events = events;
+        this.aircraft = [];
+        this.nextId = 0;
+        this.selectedAircraft = null;
+        // Click-and-drag flight controls
+this.isDragging = false;
+this.draggedAircraft = null;
+this.dragTarget = null;
+
+this.container.addEventListener("pointerdown", (event) => {
+    const planeElement = event.target.closest(".friendly-aircraft");
+
+    if (!planeElement) return;
+
+    const aircraft = this.aircraft.find(
+        plane => plane.element === planeElement && plane.active
+    );
+
+    if (!aircraft) return;
+
+    event.preventDefault();
+
+    this.isDragging = true;
+    this.draggedAircraft = aircraft;
+
+    this.container.setPointerCapture(event.pointerId);
+
+    this.selectedAircraft = aircraft;
+    this.events.emit("aircraftSelected", aircraft);
+});
+
+this.container.addEventListener("pointermove", (event) => {
+    if (!this.isDragging || !this.draggedAircraft) return;
+
+    const rect = this.container.getBoundingClientRect();
+
+    this.dragTarget = {
+        x: ((event.clientX - rect.left) / rect.width) * 100,
+        y: ((event.clientY - rect.top) / rect.height) * 100
+    };
+});
+
+const stopDragging = () => {
+    this.isDragging = false;
+    this.draggedAircraft = null;
+    this.dragTarget = null;
+};
+
+this.container.addEventListener("pointerup", stopDragging);
+this.container.addEventListener("pointercancel", stopDragging);
+
+        // Flight correction crosshair
+        this.crosshair = document.createElement("div");
+
+        this.crosshair.textContent = "⌖";
+
+        this.crosshair.style.position = "absolute";
+this.crosshair.style.color = "#00ffff";
+this.crosshair.style.fontSize = "55px";
+this.crosshair.style.fontWeight = "bold";
+this.crosshair.style.pointerEvents = "none";
+this.crosshair.style.transform = "translate(-50%, -50%)";
+this.crosshair.style.zIndex = "9999";
+this.crosshair.style.display = "none";
+
+        this.container.appendChild(this.crosshair);
+
+        for (let i = 0; i < GameConfig.aircraft.initialCount; i++) {
+            this.spawnAircraft();
+        }
+
+        setInterval(() => {
+            this.spawnAircraft();
+        }, GameConfig.aircraft.spawnInterval);
+    }
+
+    getSpawnPosition() {
+
+const side = Math.floor(Math.random() * 4);
+const offset = Math.random() * 80 + 10;
+
+switch (side) {
+
+    case 0:
+        return { x: offset, y: 5 };   // Top
+
+    case 1:
+        return { x: 95, y: offset }; // Right
+
+    case 2:
+        return { x: offset, y: 95 }; // Bottom
+
+    case 3:
+        return { x: 5, y: offset };  // Left
+
+}
+}
+    spawnAircraft() {
+        const plane = document.createElement("div");
+
+        plane.textContent = "✈";
+        plane.classList.add("friendly-aircraft");
+plane.style.touchAction = "none";
+        plane.style.position = "absolute";
+        plane.style.color = "#38aaff";
+        plane.style.fontSize = "40px";
+        plane.style.cursor = "pointer";
+        plane.style.zIndex = "200";
+        plane.style.width = "55px";
+        plane.style.height = "55px";
+        plane.style.display = "flex";
+        plane.style.alignItems = "center";
+        plane.style.justifyContent = "center";
+        plane.style.transform = "translate(-50%, -50%)";
+        plane.style.pointerEvents = "auto";
+        const aircraft = {
+            id: this.nextId++,
+            element: plane,
+            ...this.getSpawnPosition(),
+            dx: (Math.random() - 0.5) * 0.5,
+            dy: (Math.random() - 0.5) * 0.5,
+            active: true
+        };
+
+        plane.style.left = aircraft.x + "%";
+        plane.style.top = aircraft.y + "%";
+
+        plane.addEventListener("click", (event) => {
+
+event.stopPropagation();
+
+this.selectedAircraft = aircraft;
+
+this.crosshair.style.display = "block";
+this.crosshair.style.left = aircraft.x + "%";
+this.crosshair.style.top = aircraft.y + "%";
+
+console.log("SELECTED AIRCRAFT:", aircraft.id);
+
+this.events.emit("aircraftSelected", aircraft);
+
+});
+
+        this.container.appendChild(plane);
+        this.aircraft.push(aircraft);
+
+        this.events.emit("aircraftSpawned", aircraft);
+    }
+
+    update() {
+
+// WASD steering
+// Click-and-drag steering
+if (this.isDragging && this.draggedAircraft && this.dragTarget) {
+
+const plane = this.draggedAircraft;
+
+const dx = this.dragTarget.x - plane.x;
+const dy = this.dragTarget.y - plane.y;
+
+const distance = Math.hypot(dx, dy);
+
+if (distance > 0.5) {
+
+    const steering = 0.002;
+
+    plane.dx += (dx / distance) * steering;
+    plane.dy += (dy / distance) * steering;
+
+    const speed = Math.hypot(plane.dx, plane.dy);
+    const maxSpeed = 0.5;
+
+    if (speed > maxSpeed) {
+        plane.dx = plane.dx / speed * maxSpeed;
+        plane.dy = plane.dy / speed * maxSpeed;
+    }
+}
+}
+
+// Aircraft movement
+this.aircraft.forEach(plane => {
+
+    if (!plane.active) return;
+
+    plane.x += plane.dx;
+    plane.y += plane.dy;
+
+    if (
+        plane.x < 0 || plane.x > 95 ||
+        plane.y < 0 || plane.y > 95
+    ) {
+        plane.active = false;
+        plane.element.remove();
+        return;
+    }
+
+    plane.element.style.left = plane.x + "%";
+    plane.element.style.top = plane.y + "%";
+});
+
+this.aircraft = this.aircraft.filter(p => p.active);
+
+// Crosshair tracking
+if (this.selectedAircraft && this.selectedAircraft.active) {
+
+    this.crosshair.style.display = "block";
+    this.crosshair.style.left = this.selectedAircraft.x + "%";
+    this.crosshair.style.top = this.selectedAircraft.y + "%";
+
+} else {
+
+    this.selectedAircraft = null;
+    this.crosshair.style.display = "none";
+}
+}
+
+getActiveAircraft() {
+return this.aircraft.filter(p => p.active);
+}
+}
+
+// ============================================================
+// 4. SCORING SYSTEM
+// ============================================================
+
+class ScoreSystem extends EventSystem {
+
+    constructor(config = {}) {
+
+        super();
+
+        this.score = 0;
+
+        this.pointsPerEnemy =
+            config.pointsPerEnemy ?? 1;
+
+    }
+
+    awardPoints(amount = this.pointsPerEnemy) {
+
+        this.score += amount;
+
+        this.emit("scoreChanged", {
+            score: this.score,
+            awarded: amount
+        });
+
+    }
+
+    reset() {
+
+        this.score = 0;
+
+        this.emit("scoreChanged", {
+            score: this.score,
+            awarded: 0
+        });
+
+    }
+
+    getScore() {
+
+        return this.score;
+
+    }
+
+}
+
+
+// ============================================================
+// 5. STRIKE AUTHORISATION SYSTEM
+// ============================================================
+
+class StrikeSystem extends EventSystem {
+
+    constructor(options = {}) {
+
+        super();
+
+        this.enemySystem = options.enemySystem;
+        this.scoreSystem = options.scoreSystem;
+
+        this.config = options.config || {};
+
+        this.holdDuration =
+            this.config.holdDuration ?? 5000;
+
+        this.selectedEnemyId = null;
+
+        this.isHolding = false;
+        this.holdStartTime = null;
+        this.animationFrame = null;
+
+        this.elements = options.elements || {};
+
+        this.state = "idle";
+
+        this.bindEvents();
+
+    }
+
+
+    // --------------------------------------------------------
+    // INITIALISE BUTTONS
+    // --------------------------------------------------------
+
+    bindEvents() {
+
+        const e = this.elements;
+
+        e.cancelButton.addEventListener(
+            "click",
+            () => this.cancel()
+        );
+
+        e.confirmButton.addEventListener(
+            "click",
+            () => this.confirm()
+        );
+
+        e.holdButton.addEventListener(
+            "pointerdown",
+            event => this.startHold(event)
+        );
+
+        e.holdButton.addEventListener(
+            "pointerup",
+            () => this.endHold()
+        );
+
+        e.holdButton.addEventListener(
+            "pointercancel",
+            () => this.endHold()
+        );
+
+        e.holdButton.addEventListener(
+            "lostpointercapture",
+            () => this.endHold()
+        );
+
+        window.addEventListener(
+            "blur",
+            () => this.endHold()
+        );
+
+    }
+
+
+    // --------------------------------------------------------
+    // SELECT ENEMY
+    // --------------------------------------------------------
+
+    selectEnemy(enemyId) {
+
+        const enemy = this.enemySystem.getEnemy(enemyId);
+
+        if (!enemy) return false;
+
+        if (this.state !== "idle") return false;
+
+        this.selectedEnemyId = enemyId;
+
+        this.state = "confirming";
+
+        this.openModal(enemy);
+
+        this.emit("enemySelected", {
+            enemyId,
+            enemy
+        });
+
+        return true;
+
+    }
+
+
+    // --------------------------------------------------------
+    // OPEN CONFIRMATION
+    // --------------------------------------------------------
+
+    openModal(enemy) {
+
+        const e = this.elements;
+
+        e.overlay.style.display = "flex";
+
+        e.targetName.textContent = enemy.name;
+
+        e.modalDescription.textContent =
+            "Confirm your request to eliminate this hostile target.";
+
+        e.confirmOptions.style.display = "flex";
+
+        e.holdSection.style.display = "none";
+
+        e.resultSection.style.display = "none";
+
+        e.holdProgress.style.width = "0%";
+
+    }
+
+
+    // --------------------------------------------------------
+    // CONFIRM REQUEST
+    // --------------------------------------------------------
+
+    confirm() {
+
+        if (this.state !== "confirming") return;
+
+        const enemy =
+            this.enemySystem.getEnemy(this.selectedEnemyId);
+
+        if (!enemy) {
+
+            this.cancel();
+            return;
+
+        }
+
+        this.state = "holding";
+
+        const e = this.elements;
+
+        e.confirmOptions.style.display = "none";
+
+        e.holdSection.style.display = "block";
+
+        e.modalDescription.textContent =
+            "Strike request received. Maintain the hold to complete authorisation.";
+
+        this.emit("strikeRequested", {
+            enemyId: this.selectedEnemyId
+        });
+
+    }
+
+
+    // --------------------------------------------------------
+    // START FIVE-SECOND HOLD
+    // --------------------------------------------------------
+
+    startHold(event) {
+
+        if (this.state !== "holding") return;
+
+        if (this.isHolding) return;
+
+        event.preventDefault();
+
+        this.isHolding = true;
+
+        this.holdStartTime = performance.now();
+
+        this.elements.holdButton.setPointerCapture(
+            event.pointerId
+        );
+
+        this.emit("holdStarted", {
+            enemyId: this.selectedEnemyId
+        });
+
+        this.updateHold();
+
+    }
+
+
+    // --------------------------------------------------------
+    // HOLD PROGRESS
+    // --------------------------------------------------------
+
+    updateHold() {
+
+        if (!this.isHolding) return;
+
+        const elapsed =
+            performance.now() - this.holdStartTime;
+
+        const progress = Math.min(
+            elapsed / this.holdDuration,
+            1
+        );
+
+        this.elements.holdProgress.style.width =
+            `${progress * 100}%`;
+
+        const remaining = Math.max(
+            0,
+            (this.holdDuration - elapsed) / 1000
+        );
+
+        this.elements.holdText.textContent =
+            `AUTHORISING... ${remaining.toFixed(1)}s`;
+
+        if (progress >= 1) {
+
+            this.completeStrike();
+            return;
+
+        }
+
+        this.animationFrame =
+            requestAnimationFrame(() => this.updateHold());
+
+    }
+
+
+    // --------------------------------------------------------
+    // INTERRUPTED HOLD
+    // --------------------------------------------------------
+
+    endHold() {
+
+        if (!this.isHolding) return;
+
+        this.isHolding = false;
+
+        cancelAnimationFrame(this.animationFrame);
+
+        this.animationFrame = null;
+
+        if (this.state === "holding") {
+
+            this.elements.holdProgress.style.width = "0%";
+
+            this.elements.holdText.textContent =
+                "HOLD TO AUTHORISE STRIKE";
+
+            this.emit("holdInterrupted", {
+                enemyId: this.selectedEnemyId
+            });
+
+        }
+
+    }
+
+
+    // --------------------------------------------------------
+    // COMPLETE STRIKE
+    // --------------------------------------------------------
+
+    completeStrike() {
+
+        if (!this.isHolding) return;
+
+        this.isHolding = false;
+
+        cancelAnimationFrame(this.animationFrame);
+
+        this.animationFrame = null;
+
+        const enemyId = this.selectedEnemyId;
+
+        const removed =
+            this.enemySystem.removeEnemy(enemyId);
+
+        if (!removed) {
+
+            this.cancel();
+            return;
+
+        }
+
+        this.scoreSystem.awardPoints();
+
+        this.state = "completed";
+
+        const e = this.elements;
+
+        e.holdProgress.style.width = "100%";
+
+        e.holdText.textContent = "AUTHORISATION COMPLETE";
+
+        e.holdSection.style.display = "none";
+
+        e.resultSection.style.display = "block";
+
+        e.pointsAwarded.textContent =
+            `+${this.scoreSystem.pointsPerEnemy} POINT`;
+
+        this.emit("strikeCompleted", {
+            enemyId,
+            points: this.scoreSystem.pointsPerEnemy
+        });
+
+        // Automatically close the completed modal
+        // after a short delay.
+        setTimeout(() => {
+
+            if (this.state === "completed") {
+                this.closeModal();
+            }
+
+        }, 1200);
+
+    }
+
+
+    // --------------------------------------------------------
+    // CANCEL
+    // --------------------------------------------------------
+
+    cancel() {
+
+        this.endHold();
+
+        if (this.state === "idle") return;
+
+        const previousEnemyId = this.selectedEnemyId;
+
+        this.state = "idle";
+
+        this.selectedEnemyId = null;
+
+        this.elements.overlay.style.display = "none";
+
+        this.emit("strikeCancelled", {
+            enemyId: previousEnemyId
+        });
+
+    }
+
+
+    // --------------------------------------------------------
+    // CLOSE COMPLETED MODAL
+    // --------------------------------------------------------
+
+    closeModal() {
+
+        this.state = "idle";
+
+        this.selectedEnemyId = null;
+
+        this.elements.overlay.style.display = "none";
+
+        this.emit("modalClosed");
+
+    }
+
+}
+
+
+// ============================================================
+// 6. DEMO INTERFACE
+// ============================================================
+
+// These are the HTML elements connected to the system.
+
+const elements = {
+
+    overlay:
+        document.getElementById("modalOverlay"),
+
+    targetName:
+        document.getElementById("targetName"),
+
+    modalDescription:
+        document.getElementById("modalDescription"),
+
+    confirmOptions:
+        document.getElementById("confirmOptions"),
+
+    cancelButton:
+        document.getElementById("cancelButton"),
+
+    confirmButton:
+        document.getElementById("confirmButton"),
+
+    holdSection:
+        document.getElementById("holdSection"),
+
+    holdButton:
+        document.getElementById("holdButton"),
+
+    holdProgress:
+        document.getElementById("holdProgress"),
+
+    holdText:
+        document.getElementById("holdText"),
+
+    resultSection:
+        document.getElementById("resultSection"),
+
+    pointsAwarded:
+        document.getElementById("pointsAwarded")
+
+};
+
+
+// ============================================================
+// 7. CREATE SYSTEM INSTANCES
+// ============================================================
+
+const enemySystem = new EnemySystem(
+    GameConfig.enemies
+);
+
+const scoreSystem = new ScoreSystem(
+    GameConfig.strike
+);
+
+const strikeSystem = new StrikeSystem({
+
+    enemySystem: enemySystem,
+
+    scoreSystem: scoreSystem,
+
+    config: GameConfig.strike,
+
+    elements: elements
+
+});
+
+
+// ============================================================
+// 8. DEMO RENDERING
+// ============================================================
+
+const targetField =
+    document.getElementById("targetField");
+
+const scoreDisplay =
+    document.getElementById("score");
+
+const enemyCountDisplay =
+    document.getElementById("enemyCount");
+
+const enemyElements = new Map();
+
+function renderEnemy(enemy) {
+
+    const marker = document.createElement("div");
+
+    marker.className = "enemy";
+
+    marker.title = enemy.name;
+
+    marker.style.left = `${enemy.x}%`;
+
+    marker.style.top = `${enemy.y}%`;
+
+    marker.addEventListener("click", () => {
+
+        strikeSystem.selectEnemy(enemy.id);
+
+    });
+
+    const label = document.createElement("div");
+
+    label.className = "enemy-label";
+
+    label.textContent = enemy.name;
+
+    label.style.left = `${enemy.x}%`;
+
+    label.style.top = `${enemy.y + 3}%`;
+
+    targetField.appendChild(marker);
+
+    targetField.appendChild(label);
+
+    enemyElements.set(enemy.id, {
+        marker,
+        label
+    });
+
+}
+
+
+// ------------------------------------------------------------
+// ENEMY EVENTS
+// ------------------------------------------------------------
+
+enemySystem.on("enemySpawned", enemy => {
+
+    renderEnemy(enemy);
+
+    updateEnemyCount();
+
+});
+
+
+enemySystem.on("enemyRemoved", enemy => {
+
+    const elements = enemyElements.get(enemy.id);
+
+    if (elements) {
+
+        elements.marker.remove();
+
+        elements.label.remove();
+
+        enemyElements.delete(enemy.id);
+
+    }
+
+    updateEnemyCount();
+
+});
+
+
+// ------------------------------------------------------------
+// SCORE EVENTS
+// ------------------------------------------------------------
+
+scoreSystem.on("scoreChanged", data => {
+
+    scoreDisplay.textContent =
+        String(data.score).padStart(3, "0");
+
+});
+
+
+// ------------------------------------------------------------
+// COUNT UPDATE
+// ------------------------------------------------------------
+
+function updateEnemyCount() {
+
+    enemyCountDisplay.textContent =
+        enemySystem.getActiveEnemies().length;
+
+}
+
+
+// ============================================================
+// 9. DEMO ENEMY SPAWNING
+// ============================================================
+
+document.getElementById("spawnButton")
+    .addEventListener("click", () => {
+
+        enemySystem.spawnEnemy();
+
+    });
+
+
+// INITIAL ENEMIES
+
+for (
+    let i = 0;
+    i < GameConfig.enemies.initialCount;
+    i++
+) {
+
+    enemySystem.spawnEnemy();
+
+}
+
+
+// ============================================================
+// 10. AIRCRAFT INITIALISATION AND GAME LOOP
+// ============================================================
+
+// Initialise friendly aircraft
+window.aircraftSystem = new AircraftSystem(
+    targetField,
+    new EventSystem()
+);
+
+
+// ------------------------------------------------------------
+// ENEMY MOVEMENT
+// ------------------------------------------------------------
+
+function updateEnemyMovement() {
+
+    const aircraft =
+        window.aircraftSystem.getActiveAircraft();
+
+    const enemies =
+        enemySystem.getActiveEnemies();
+
+    enemies.forEach(enemy => {
+
+        if (aircraft.length === 0) return;
+
+        // Find nearest friendly aircraft
+        let target = aircraft.reduce((nearest, plane) => {
+
+            const distance = Math.hypot(
+                plane.x - enemy.x,
+                plane.y - enemy.y
+            );
+
+            return distance < nearest.distance
+                ? { plane, distance }
+                : nearest;
+
+        }, { plane: null, distance: Infinity }).plane;
+
+        if (!target) return;
+
+        // Move enemy towards target
+        const dx = target.x - enemy.x;
+        const dy = target.y - enemy.y;
+
+        const distance = Math.hypot(dx, dy);
+
+        if (distance > 0) {
+
+            const speed = GameConfig.enemies.speed * 10;
+
+            enemy.x += (dx / distance) * speed;
+            enemy.y += (dy / distance) * speed;
+
+        }
+
+        // Update displayed enemy position
+        const elements = enemyElements.get(enemy.id);
+
+        if (elements) {
+
+            elements.marker.style.left = enemy.x + "%";
+            elements.marker.style.top = enemy.y + "%";
+
+            elements.label.style.left = enemy.x + "%";
+            elements.label.style.top = (enemy.y + 3) + "%";
+
+        }
+
+    });
+
+}
+
+
+
+// ------------------------------------------------------------
+// MAIN GAME LOOP
+// ------------------------------------------------------------
+
+// ============================================================
+// GAME STATE
+// ============================================================
+
+let gameOver = false;
+
+
+// ============================================================
+// COLLISION DETECTION
+// ============================================================
+
+function checkCollisions() {
+
+    const aircraft = aircraftSystem.getActiveAircraft();
+    const enemies = enemySystem.getActiveEnemies();
+
+    // Friendly vs hostile
+    for (const plane of aircraft) {
+        for (const enemy of enemies) {
+
+            if (Math.hypot(
+                plane.x - enemy.x,
+                plane.y - enemy.y
+            ) < 2.5) {
+                console.log("COLLISION DETECTED");
+                endGame();
+                console.log("ENDGAME FINISHED");
+                return;
+            }
+        }
+    }
+
+    // Friendly vs friendly
+    for (let i = 0; i < aircraft.length; i++) {
+        for (let j = i + 1; j < aircraft.length; j++) {
+
+            if (Math.hypot(
+                aircraft[i].x - aircraft[j].x,
+                aircraft[i].y - aircraft[j].y
+            ) < 2.5) {
+                console.log("COLLISION DETECTED");
+                endGame();
+                console.log("ENDGAME FINISHED");
+                return;
+            }
+        }
+    }
+}
+
+
+// ============================================================
+// GAME OVER
+// ============================================================
+
+
+function endGame() {
+
+if (gameOver) return;
+
+gameOver = true;
+
+console.log("GAME OVER ACTIVATED");
+
+const screen = document.getElementById("gameOverScreen");
+const finalScore = document.getElementById("finalScore");
+
+finalScore.textContent =
+    "FINAL SCORE: " +
+    String(scoreSystem.getScore()).padStart(3, "0");
+
+screen.style.cssText = `
+    display: flex !important;
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    z-index: 999999 !important;
+    background: rgba(0, 0, 0, 0.9) !important;
+    justify-content: center !important;
+    align-items: center !important;
+`;
+
+if (strikeSystem && typeof strikeSystem.cancel === "function") {
+    strikeSystem.cancel();
+}
+}
+
+
+// ============================================================
+// RESTART
+// ============================================================
+
+function restartGame() {
+
+    gameOver = false;
+
+    enemySystem.getActiveEnemies().forEach(enemy => {
+        enemySystem.removeEnemy(enemy.id);
+    });
+
+    aircraftSystem.aircraft.forEach(plane => {
+        plane.active = false;
+        plane.element.remove();
+    });
+
+    aircraftSystem.aircraft = [];
+
+    scoreSystem.reset();
+
+    scoreDisplay.textContent = "000";
+
+    for (let i = 0; i < GameConfig.aircraft.initialCount; i++) {
+        aircraftSystem.spawnAircraft();
+    }
+
+    for (let i = 0; i < GameConfig.enemies.initialCount; i++) {
+        enemySystem.spawnEnemy();
+    }
+
+    updateEnemyCount();
+
+    document.getElementById("gameOverScreen").style.display = "none";
+}
+
+
+// ============================================================
+// RESTART BUTTON
+// ============================================================
+
+document.getElementById("restartButton")
+    .addEventListener("click", restartGame);
+
+
+// ============================================================
+// MAIN GAME LOOP
+// ============================================================
+
+function gameLoop() {
+
+    requestAnimationFrame(gameLoop);
+
+    if (gameOver) return;
+
+    aircraftSystem.update();
+
+    updateEnemyMovement();
+
+    checkCollisions();
+}
+
+gameLoop();
+
+// ============================================================
+// OPERATOR COMMANDS
+// ============================================================
+
+const operatorPassword = document.getElementById("operatorPassword");
+const operatorPanel = document.getElementById("operatorPanel");
+
+// Reveal operator panel
+operatorPassword.addEventListener("keydown", event => {
+
+    if (event.key === "Enter") {
+
+        if (operatorPassword.value.trim() === "/show operator commands") {
+            operatorPanel.style.display = "block";
+        }
+
+        operatorPassword.value = "";
+    }
+});
+
+
+// Manual reset
+document.getElementById("manualReset")
+    .addEventListener("click", restartGame);
+
+
+// Spawn 1 friendly aircraft
+document.getElementById("spawnFriendly")
+    .addEventListener("click", () => {
+        if (!gameOver) aircraftSystem.spawnAircraft();
+    });
+
+
+// Spawn 1 hostile aircraft
+document.getElementById("spawnHostile")
+    .addEventListener("click", () => {
+        if (!gameOver) enemySystem.spawnEnemy();
+    });
+
+
+// Spawn 10 friendly aircraft
+document.getElementById("spawn10Friendly")
+    .addEventListener("click", () => {
+        if (!gameOver) {
+            for (let i = 0; i < 10; i++) {
+                aircraftSystem.spawnAircraft();
+            }
+        }
+    });
+
+
+// Spawn 10 hostile aircraft
+document.getElementById("spawn10Hostile")
+    .addEventListener("click", () => {
+        if (!gameOver) {
+            for (let i = 0; i < 10; i++) {
+                enemySystem.spawnEnemy();
+            }
+        }
+    });
+
+// ============================================================
+// 10. FUTURE DIFFICULTY CONNECTION POINTS
+// ============================================================
+
+// Difficulty is intentionally NOT applied automatically.
+//
+// Other systems can retrieve the selected settings:
+//
+// const settings =
+//     GameConfig.difficultySettings[GameConfig.difficulty];
+//
+// Example future connections:
+//
+// enemySystem.setSpeedMultiplier(
+//     settings.enemySpeedMultiplier
+// );
+//
+// aircraftSystem.setSpeedMultiplier(
+//     settings.aircraftSpeedMultiplier
+// );
+//
+// enemySpawner.setSpawnMultiplier(
+//     settings.enemySpawnMultiplier
+// );
+//
+// These methods can be implemented when those systems exist.
+
+
+// ============================================================
+// 11. EXTERNAL INTEGRATION INTERFACE
+// ============================================================
+
+// Other game systems can listen for these events:
+//
+// strikeSystem.on("enemySelected", data => {});
+// strikeSystem.on("strikeRequested", data => {});
+// strikeSystem.on("holdStarted", data => {});
+// strikeSystem.on("holdInterrupted", data => {});
+// strikeSystem.on("strikeCompleted", data => {});
+// strikeSystem.on("strikeCancelled", data => {});
+//
+// enemySystem.on("enemySpawned", data => {});
+// enemySystem.on("enemyRemoved", data => {});
+//
+// scoreSystem.on("scoreChanged", data => {});
+//
+// Other systems can also call:
+//
+// strikeSystem.selectEnemy(enemyId);
+// strikeSystem.cancel();
+//
+// enemySystem.spawnEnemy();
+// enemySystem.removeEnemy(enemyId);
+//
+// scoreSystem.getScore();
+// scoreSystem.reset();
+
+
+
+</script>
+
+</body>
+</html>

@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Tactical Reset</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;700&family=Lora:wght@400;700&display=swap" rel="stylesheet" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #1a2533, #16202c);
+            color: #e0e6f2;
+            min-height: 100vh;
+            transition: background 0.3s, color 0.3s;
+        }
+
+        body.dark {
+            background: linear-gradient(135deg, #0e1218, #121a23);
+            color: #d1d9e6;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .controls {
+            text-align: center;
+            margin-bottom: 40px;
+            color: #a0afc9;
+        }
+
+        body.dark .controls {
+            color: #cbd2e0;
+        }
+
+        h1 {
+            font-family: 'Poppins', sans-serif;
+            font-weight: 700;
+            font-size: 2.8rem;
+            margin-bottom: 20px;
+            letter-spacing: 1px;
+        }
+
+        .settings {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        select,
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 25px;
+            background: #2a2f47;
+            color: #e0e6f2;
+            cursor: pointer;
+            font-family: 'Lora', serif;
+            font-size: 1rem;
+            font-weight: 400;
+            transition: all 0.3s ease;
+        }
+
+        select:hover,
+        button:hover {
+            background: #394364;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+        }
+
+        .breathing-container {
+            position: relative;
+            height: 400px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .circle {
+            width: 200px;
+            height: 200px;
+            background: radial-gradient(circle, #1f40c5 0%, #264ebf 70%, transparent 100%);
+            border-radius: 50%;
+            position: absolute;
+            transition: transform 1s ease-in-out;
+            transform: scale(1);
+        }
+
+        body.dark .circle {
+            background: radial-gradient(circle, #1234a5 0%, #142f94 70%, transparent 100%);
+        }
+
+        .inhale {
+            transform: scale(1.5);
+        }
+
+        .hold {
+            transform: scale(1.5);
+        }
+
+        .exhale {
+            transform: scale(1);
+        }
+
+        .instructions {
+            position: relative;
+            text-align: center;
+            color: #d1d9e6;
+            z-index: 1;
+        }
+
+        body.dark .instructions {
+            color: #f0f4ff;
+        }
+
+        #breathText {
+            display: block;
+            font-family: 'Poppins', sans-serif;
+            font-weight: 300;
+            font-size: 2.2rem;
+            margin-bottom: 10px;
+            letter-spacing: 0.5px;
+        }
+
+        #timer {
+            font-family: 'Lora', serif;
+            font-weight: 700;
+            font-size: 3.5rem;
+            line-height: 1;
+        }
+    </style>
+</head>
+
+<body class="dark">
+    <div class="container">
+        <div class="controls">
+            <h1>Tactical Reset</h1>
+            <div class="settings">
+                <button id="startBtn">Start</button>
+            </div>
+        </div>
+
+        <div class="breathing-container">
+            <div class="circle"></div>
+            <div class="instructions">
+                <span id="breathText">Breathe In</span>
+                <span id="timer">4</span>
+            </div>
+        </div>
+
+        <div class="progress">
+            <div class="progress-bar" id="progressBar"></div>
+            <!-- Removed sessionTime span as requested -->
+        </div>
+    </div>
+
+    <script>
+        class BreathingGuide {
+            constructor() {
+                this.circle = document.querySelector('.circle');
+                this.breathText = document.getElementById('breathText');
+                this.timerDisplay = document.getElementById('timer');
+                this.startBtn = document.getElementById('startBtn');
+                this.progressBar = document.getElementById('progressBar');
+
+                this.isRunning = false;
+                this.patterns = {
+                    '447': { inhale: 4, hold: 4, exhale: 7 },
+                };
+
+                this.pattern = this.patterns['447'];
+                this.speed = 1;
+
+                this.initEvents();
+            }
+
+            initEvents() {
+                this.startBtn.addEventListener('click', () => this.toggleExercise());
+            }
+
+            toggleExercise() {
+                if (this.isRunning) {
+                    this.stop();
+                } else {
+                    this.start();
+                }
+            }
+
+            start() {
+                this.isRunning = true;
+                this.startBtn.textContent = 'Stop';
+                this.runSessionOnce();
+            }
+
+            stop() {
+                this.isRunning = false;
+                this.startBtn.textContent = 'Start';
+                clearInterval(this.currentInterval);
+                this.circle.className = 'circle';
+                this.breathText.textContent = 'Paused';
+                this.timerDisplay.textContent = '0';
+                this.progressBar.style.width = '0%'; 
+            }
+
+            async runSessionOnce() {
+                if (!this.isRunning) return;
+                await this.breathe('Breathe In', this.pattern.inhale / this.speed, 'inhale');
+                if (!this.isRunning) return;
+                await this.breathe('Hold', this.pattern.hold / this.speed, 'hold');
+                if (!this.isRunning) return;
+                await this.breathe('Breathe Out', this.pattern.exhale / this.speed, 'exhale');
+                this.stop(); // Stop after one full cycle
+            }
+
+            breathe(text, duration, animation) {
+                return new Promise(resolve => {
+                    this.breathText.textContent = text;
+                    this.circle.className = `circle ${animation}`;
+
+                    let timeLeft = Math.round(duration);
+                    this.timerDisplay.textContent = timeLeft;
+
+                    clearInterval(this.currentInterval);
+                    this.currentInterval = setInterval(() => {
+                        timeLeft--;
+                        this.timerDisplay.textContent = timeLeft;
+                        if (timeLeft <= 0) {
+                            clearInterval(this.currentInterval);
+                            resolve();
+                        }
+                    }, 1000);
+
+                    // Progress bar currently does not update session timing so no updates needed here
+                });
+            }
+        }
+        document.addEventListener('DOMContentLoaded', () => {
+            new BreathingGuide();
+        });
+    </script>
+</body>
+</html>
