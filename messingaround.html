@@ -1080,7 +1080,9 @@ function makeStreams(key) {
 // =====================================================
 // 3. HELPERS / STATE
 // =====================================================
-
+function computekcer(points, seconds, mult) {
+    return (points * seconds * mult) / 1000;
+}
 const $ = id => document.getElementById(id);
 const field = $("field");
 
