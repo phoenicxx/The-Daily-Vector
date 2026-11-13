@@ -44,7 +44,7 @@
     --muted: #d4e7f8; --border: #a2d3f6; --success: #8ff0cc; --danger: #ff8a9a; --gold: #f5e6a8;
 }
 :root[data-theme="christmas"] {
-    --bg: #a32638; --text: #fff6ee; --accent: #9af2b0;
+    --bg: #a32638; --text: #fff6ee; --accent: #53d273;
     --panel: rgba(128, 30, 46, 0.98); --panel-alt: #2e7d4f; --button: #1f8f4e;
     --muted: #f7d3cc; --border: #eb7f76; --success: #7df0a0; --danger: #ffa08f; --gold: #ffd75e;
 }
@@ -874,15 +874,47 @@ function playThemeSound(soundName, volume = 1) {
 
 const theme = document.documentElement.dataset.theme || "classic";
 
+const soundDurations = {
+    classic: {
+        ping: 1.0,
+        point: 1.2,
+        enemy_select: 0.8,
+        lose: 2.0
+    },
+
+    christmas: {
+        ping: 0.3,
+        point: 0.6,
+        enemy_select: 0.5,
+        lose: 1.0
+    },
+
+    spring: {
+        ping: 0.8,
+        point: 1.0,
+        enemy_select: 0.7,
+        lose: 1.5
+    }
+};
+
 const sound = new Audio(
     `./sounds/${theme}/${soundName}.mp3`
 );
 
 sound.volume = volume;
 
-sound.play().catch(error => {
-    console.warn("Sound could not play:", error);
-});
+const duration = soundDurations[theme]?.[soundName];
+
+if (duration !== undefined) {
+    sound.addEventListener("timeupdate", function stopSound() {
+        if (sound.currentTime >= duration) {
+            sound.pause();
+            sound.removeEventListener("timeupdate", stopSound);
+        }
+    });
+}
+
+sound.play().catch(() => {});
 }
 
 function playPingSound() {
