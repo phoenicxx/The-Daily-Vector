@@ -868,70 +868,134 @@ let FW = 0, FH = 0;
 let state = "menu";            // menu | play | over | tutdone
 
 
+
 // SOUNDS ==================================
 
-function playThemeSound(soundName, volume = 1) {
+// Default settings for every theme and sound
+const DEFAULT_SOUND_SETTINGS = {
+    startTime: 0,
+    duration: 1.0
+};
 
-const theme = document.documentElement.dataset.theme || "classic";
+// Individual theme and sound settings
+const THEME_SOUND_SETTINGS = {
 
-const soundDurations = {
     classic: {
-        ping: 1.0,
-        point: 1.2,
-        enemy_select: 0.8,
-        lose: 2.0
-    },
-
-    christmas: {
-        ping: 0.3,
-        point: 0.6,
-        enemy_select: 1.5,
-        lose: 1.0
+        default: { startTime: 0, duration: 1.0 }
     },
 
     spring: {
-        ping: 0.8,
-        point: 1.0,
-        enemy_select: 0.7,
-        lose: 1.5
+        default: { startTime: 0, duration: 1.0 },
+        ping: { startTime: 0, duration: 0.8 },
+        point: { startTime: 0, duration: 1.0 },
+        enemy_select: { startTime: 0, duration: 0.7 },
+        lose: { startTime: 0, duration: 1.5 }
+    },
+
+    summer: {
+        default: { startTime: 0, duration: 1.0 },
+        ping: { startTime: 0, duration: 0.7 },
+        point: { startTime: 0, duration: 1.0 },
+        enemy_select: { startTime: 0, duration: 0.7 },
+        lose: { startTime: 0, duration: 1.5 }
+    },
+
+    autumn: {
+        default: { startTime: 0, duration: 1.0 },
+        ping: { startTime: 0, duration: 0.8 },
+        point: { startTime: 0, duration: 1.0 },
+        enemy_select: { startTime: 0, duration: 0.7 },
+        lose: { startTime: 0, duration: 1.5 }
+    },
+
+    winter: {
+        default: { startTime: 0, duration: 1.0 },
+        ping: { startTime: 0, duration: 0.7 },
+        point: { startTime: 0, duration: 1.0 },
+        enemy_select: { startTime: 0, duration: 0.7 },
+        lose: { startTime: 0, duration: 1.5 }
+    },
+
+    christmas: {
+        default: { startTime: 0, duration: 1.0 },
+        ping: { startTime: 13.0, duration: 0.4 },
+        enemy_select: { startTime: 0, duration: 0.5 },
+        lose: { startTime: 0, duration: 5.0 }
+    },
+
+    halloween: {
+        default: { startTime: 0, duration: 1.0 },
+        ping: { startTime: 0, duration: 0.8 },
+        point: { startTime: 0, duration: 1.0 },
+        enemy_select: { startTime: 0, duration: 0.7 },
+        lose: { startTime: 0, duration: 1.5 }
+    },
+
+    birthday: {
+        default: { startTime: 0, duration: 1.0 },
+        ping: { startTime: 0, duration: 0.8 },
+        point: { startTime: 0, duration: 1.0 },
+        enemy_select: { startTime: 0, duration: 0.7 },
+        lose: { startTime: 0, duration: 1.5 }
     }
 };
 
-const sound = new Audio(
-    `./sounds/${theme}/${soundName}.mp3`
-);
 
-sound.volume = volume;
+function playThemeSound(soundName, volume = 1) {
 
-const duration = soundDurations[theme]?.[soundName];
+    const theme = document.documentElement.dataset.theme || "classic";
 
-if (duration !== undefined) {
+    const themeSettings = THEME_SOUND_SETTINGS[theme] || {};
+    
+    const settings = {
+        ...DEFAULT_SOUND_SETTINGS,
+        ...themeSettings.default,
+        ...themeSettings[soundName]
+    };
+
+    const sound = new Audio(
+        `./sounds/${theme}/${soundName}.mp3`
+    );
+
+    sound.volume = volume;
+
+    sound.addEventListener("loadedmetadata", function () {
+
+        sound.currentTime = Math.min(
+            settings.startTime,
+            sound.duration
+        );
+
+        sound.play().catch(() => {});
+    }, { once: true });
+
     sound.addEventListener("timeupdate", function stopSound() {
-        if (sound.currentTime >= duration) {
+
+        if (sound.currentTime >= settings.startTime + settings.duration) {
             sound.pause();
             sound.removeEventListener("timeupdate", stopSound);
         }
     });
 }
 
-sound.play().catch(() => {});
-}
 
 function playPingSound() {
-playThemeSound("ping");
+    playThemeSound("ping");
 }
 
 function playEnemySelectSound() {
-playThemeSound("enemy_select", 0.6);
+    playThemeSound("enemy_select", 0.6);
 }
 
 function playPointSound() {
-playThemeSound("point", 0.7);
+    playThemeSound("point", 0.7);
 }
 
 function playloseSound() {
-playThemeSound("lose", 0.4);
+    playThemeSound("lose", 0.4);
 }
+
+
 // CONTROLS ================================
 // "touch":    planes = drag, hostiles = tap -> confirm -> hold button, pings = press & hold
 // "keyboard": planes = click then WASD, hostiles = click then hold SPACE, pings = press & hold (mouse)
