@@ -229,15 +229,15 @@ body {
     width: 24px; height: 24px;
     transform: rotate(45deg);
     background: color-mix(in srgb, var(--danger) 75%, var(--panel));
-border: 2px solid var(--danger);
-box-shadow: 0 0 15px color-mix(in srgb, var(--danger) 65%, transparent);
+    border: 2px solid var(--danger);
+    box-shadow: 0 0 15px color-mix(in srgb, var(--danger) 65%, transparent);
 }
 .enemy:hover .dia { background: #ff5265; }
 .enemy.sel .dia { background: #ff8793; box-shadow: 0 0 25px #ff304f, 0 0 45px #ff304f; }
 .enemy .lbl {
     position: absolute; top: 46px; left: 50%;
     transform: translateX(-50%);
-    color: var(--danger);; font-size: 9px; letter-spacing: 2px;
+    color: var(--danger); font-size: 9px; letter-spacing: 2px;
     white-space: nowrap; pointer-events: none;
 }
 
@@ -301,8 +301,8 @@ box-shadow: 0 0 15px color-mix(in srgb, var(--danger) 65%, transparent);
     display: none;
     padding: 16px 18px;
     background: var(--panel);
-border: 1px solid var(--accent);
-box-shadow: 0 0 30px color-mix(in srgb, var(--accent) 20%, transparent);
+    border: 1px solid var(--accent);
+    box-shadow: 0 0 30px color-mix(in srgb, var(--accent) 20%, transparent);
     text-align: center;
 }
 #strikePanel .eyebrow { margin-bottom: 8px; }
@@ -327,8 +327,8 @@ box-shadow: 0 0 30px color-mix(in srgb, var(--accent) 20%, transparent);
 #spHold {
     width: 100%; min-height: 56px; position: relative; overflow: hidden;
     background: color-mix(in srgb, var(--danger) 25%, var(--panel));
-border: 1px solid var(--danger);
-color: var(--text);
+    border: 1px solid var(--danger);
+    color: var(--text);
     touch-action: none;
 }
 #spProg {
@@ -339,6 +339,47 @@ color: var(--text);
     pointer-events: none;
 }
 #spHoldText { position: relative; z-index: 2; }
+
+/* ---------- TUTORIAL PANEL ---------- */
+/* The panel itself ignores pointer events, so it can never block a plane,
+   Ghost or hostile underneath it. Only the exit button is clickable. */
+#tutPanel {
+    position: fixed;
+    bottom: 18px; left: 50%;
+    transform: translateX(-50%);
+    width: min(460px, 94vw);
+    z-index: 25;
+    display: none;
+    padding: 12px 16px;
+    background: color-mix(in srgb, var(--panel) 92%, transparent);
+    border: 1px solid var(--accent);
+    box-shadow: 0 0 30px color-mix(in srgb, var(--accent) 20%, transparent);
+    text-align: center;
+    pointer-events: none;
+}
+#tutPanel.on { display: block; }
+#tutPanel.up { bottom: 182px; }   /* sits above the strike panel on step 3 */
+#tutTitle { font-size: 16px; letter-spacing: 3px; margin: 5px 0 5px; }
+#tutText  { color: var(--muted); font-size: 11px; line-height: 1.5; margin-bottom: 8px; }
+#tutText b { color: var(--text); font-weight: normal; }
+.tut-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+#tutChecks { text-align: left; }
+#tutChecks span {
+    display: inline-block;
+    margin-right: 10px;
+    color: var(--muted);
+    font-size: 9px;
+    letter-spacing: 2px;
+}
+#tutChecks span.cur  { color: var(--accent); }
+#tutChecks span.done { color: var(--success); }
+#tutSkip {
+    pointer-events: auto;
+    min-height: 32px;
+    padding: 0 12px;
+    font-size: 9px;
+}
+#menuTut { width: 100%; margin-bottom: 4px; }
 
 /* ---------- SCREENS ---------- */
 .screen {
@@ -404,8 +445,6 @@ color: var(--text);
     font-size: 12px;
 }
 .lvl b { display: block; letter-spacing: 3px; font-size: 14px; margin-bottom: 4px; }
-
-.lvl em { float: right; font-style: normal; color: #ffd166; font-size: 12px; }
 
 .btn {
     min-height: 46px;
@@ -734,6 +773,21 @@ color: var(--text);
 
 </div>
 
+<!-- Tutorial instructions (clicks pass through, except the exit button) -->
+<div id="tutPanel">
+    <div class="eyebrow">TRAINING · STEP <span id="tutStep">1</span> OF 3</div>
+    <div id="tutTitle">DRAG THE PLANE</div>
+    <div id="tutText"></div>
+    <div class="tut-foot">
+        <div id="tutChecks">
+            <span id="tc0">○ DRAG PLANE</span>
+            <span id="tc1">○ IDENTIFY GHOST</span>
+            <span id="tc2">○ STRIKE HOSTILE</span>
+        </div>
+        <button class="btn" id="tutSkip">EXIT TUTORIAL</button>
+    </div>
+</div>
+
 <!-- Strike authorisation (does not pause the game) -->
 <div id="strikePanel">
     <div class="eyebrow">COMMAND AUTHORISATION</div>
@@ -759,11 +813,12 @@ color: var(--text);
             <b>Click and drag a friendly</b> (✈) to steer it.
             Friendlies can fly off the screen safely, and a replacement spawns right away.
             Keep friendlies clear of each other and of hostiles. They land on their own after about 30 seconds.<br><br>
-            <br><br><b>Follow the dotted grey flight path.</b> Planes drift off course. Drag them back onto the path for points, and the sooner you catch them, the more you score.
+            <b>Follow the dotted grey flight path.</b> Planes drift off course. Drag them back onto the path for points, and the sooner you catch them, the more you score.
             <b>Click a hostile</b>, confirm, then <b>hold 2 seconds</b> to strike it.<br><br>
             <b>Press and hold a red Ghost for 0.5 s</b> to identify it. Each Ghost expires after <b>3.0 s</b>.<br><br>
             Any failure ends the run. Your daily rank is your <b>CER = (Points / Time) × Difficulty</b>.
         </div>
+        <button class="btn" id="menuTut">▶ TUTORIAL (RECOMMENDED)</button>
         <div class="levels" id="levels"></div>
         <div class="theme-picker">
             <label for="themeSelect">SELECT THEME</label>
@@ -775,10 +830,8 @@ color: var(--text);
                 <option value="christmas">CHRISTMAS</option>
                 <option value="halloween">HALLOWEEN</option>
             </select>
-
-            </button>
         </div>
-        
+
         <div class="acct-line" id="acctLine"></div>
         <div class="menu-row">
             <button class="btn" id="menuAcct">LOG IN / SIGN UP</button>
@@ -787,6 +840,23 @@ color: var(--text);
         </div>
     </div>
 </div>
+
+<!-- Tutorial complete -->
+<div class="screen" id="tutDone">
+    <div class="modal">
+        <div class="eyebrow">TRAINING</div>
+        <h2>TUTORIAL COMPLETE</h2>
+        <div class="sub">
+            You've steered a plane, identified a Ghost and struck a hostile.<br><br>
+            Pick a difficulty from the menu to play for the daily leaderboard.
+        </div>
+        <div class="btn-row">
+            <button class="btn" id="tdReplay">REPLAY</button>
+            <button class="btn primary" id="tdMenu">CHOOSE DIFFICULTY</button>
+        </div>
+    </div>
+</div>
+
 <!-- Breathing reset (shown after a loss, before results) -->
 <div class="screen" id="breathOverlay">
     <div class="modal">
@@ -818,9 +888,8 @@ color: var(--text);
             <div class="lb-label">YOUR CER</div>
             <div id="lbCer">0.0</div>
             <div id="lbGuest">
-                <input id="lbName" type="text" maxlength="12" placeholder="ENTER NAME" autocomplete="off" spellcheck="false">
-                <div class="acct-hint">Want to track your progress over time?
-                    <button class="linkbtn" id="lbLogin">Log in or create an account</button></div>
+                <div class="acct-hint">You need an account to submit your score.</div>
+                <button class="btn primary" id="lbLogin" style="width:100%;margin-top:10px">LOG IN / CREATE ACCOUNT</button>
             </div>
             <div id="lbUser" class="lb-label" style="display:none">SUBMITTING AS <b id="lbUserName" style="color:#45e6a0;font-weight:normal"></b></div>
             <button class="btn primary" id="lbSubmitButton">SUBMIT RESULT</button>
@@ -959,6 +1028,11 @@ const DRIFT_JITTER     = 0.5;   // how erratically planes veer
 const DRIFT_MAX_TURN   = 0.3;   // rad/s: maximum veer rate
 const SVG_NS = "http://www.w3.org/2000/svg";
 
+// Tutorial
+const TUT_OFFSET_PX  = 110;     // how far off its path the tutorial plane starts
+const TUT_STEP_PAUSE = 1.4;     // seconds to show "nice work" between steps
+const TUT_RESPAWN_S  = 0.8;     // pause before a missed Ghost / hostile is replaced
+
 // =====================================================
 // 2. DAILY SEED
 // =====================================================
@@ -1008,7 +1082,7 @@ const $ = id => document.getElementById(id);
 const field = $("field");
 
 let FW = 0, FH = 0;
-let state = "menu";            // menu | play | over
+let state = "menu";            // menu | play | over | tutdone
 
 // SOUNDS ==================================
 
@@ -1038,28 +1112,28 @@ function playEnemySelectSound() {
 const pointSound = new Audio("./sounds/point.mp3");
 
 pointSound.preload = "auto";
-pointSound.volume = 0.7
+pointSound.volume = 0.7;
 
 function playPointSound() {
-    pointSound.currentTime=0;
+    pointSound.currentTime = 0;
 
     pointSound.play().catch(error => {
         console.warn("Score sound failed:", error);
-    })
+    });
 }
 
 
 const loseSound = new Audio("./sounds/lose.mp3");
 
 loseSound.preload = "auto";
-loseSound.volume = 0.4
+loseSound.volume = 0.4;
 
 function playloseSound() {
-    loseSound.currentTime=0;
+    loseSound.currentTime = 0;
 
     loseSound.play().catch(error => {
         console.warn("Lose sound failed:", error);
-    })
+    });
 }
 
 
@@ -1229,6 +1303,10 @@ function spawnFriendly() {
     });
     field.appendChild(el);
     G.friendlies.push(f);
+
+    // Tutorial step 1: start the plane off its path so there's something to fix
+    if (G.tutorial && G.tut.step === 0 && !G.tut.done[0]) tutOffsetFriendly(f);
+
     setPos(f);
     rotateFriendly(f);
     if (!G.selected) selectFriendly(f);
@@ -1433,7 +1511,173 @@ function strikeComplete() {
     e.el.remove();
     G.kills++;
     award(STRIKE_POINTS, e.x, e.y);
+    if (G.tutorial) tutComplete(2);
 }
+
+// =====================================================
+// 7. TUTORIAL
+// =====================================================
+// Three guided steps: drag a plane back onto its path, identify a Ghost,
+// strike a hostile. Nothing in the tutorial can end the run or reach the
+// leaderboard: a missed Ghost or a hostile that reaches a plane is simply
+// replaced after a short pause.
+
+const TUT_STEPS = [
+    {
+        title: "DRAG THE PLANE",
+        text:  "This plane has strayed from its <b>dotted grey flight path</b>. " +
+               "<b>Click and drag the plane (✈)</b> back onto the path to score. " +
+               "The sooner you catch a stray, the more you score."
+    },
+    {
+        title: "IDENTIFY THE GHOST",
+        text:  "A red <b>Ghost</b> appeared. <b>Press and hold it for 0.5 s</b> before its " +
+               "red ring runs out (3 s). In a real run, a missed Ghost ends the game. Here it just comes back."
+    },
+    {
+        title: "STRIKE THE HOSTILE",
+        text:  "<b>Click the red diamond</b>, press <b>CONFIRM STRIKE</b>, then <b>hold the button for 2 seconds</b>. " +
+               "Hostiles chase planes. In a real run, contact ends the game."
+    }
+];
+const TUT_NAMES = ["DRAG PLANE", "IDENTIFY GHOST", "STRIKE HOSTILE"];
+
+function tutDoneBefore() {
+    try { return localStorage.getItem("ace_tutorial_done") === "1"; } catch (_) { return false; }
+}
+function refreshTutBtn() {
+    $("menuTut").textContent = tutDoneBefore() ? "▶ TUTORIAL ✔ (REPLAY)" : "▶ TUTORIAL (RECOMMENDED)";
+}
+
+// Move a freshly spawned plane sideways off its path (kept on screen)
+function tutOffsetFriendly(f) {
+    const p = f.path;
+    const dx = p.x1 - p.x0, dy = p.y1 - p.y0;
+    const len = Math.hypot(dx, dy) || 1;
+    const nx = -dy / len, ny = dx / len;
+    const M = 50;
+    const inside = (x, y) => x > M && x < FW - M && y > M && y < FH - M;
+
+    let s = 1;
+    const ax = p.x0 + nx * TUT_OFFSET_PX, ay = p.y0 + ny * TUT_OFFSET_PX;
+    const bx = p.x0 - nx * TUT_OFFSET_PX, by = p.y0 - ny * TUT_OFFSET_PX;
+    if (!inside(ax, ay) && inside(bx, by)) s = -1;
+
+    f.x = Math.max(M, Math.min(FW - M, p.x0 + nx * s * TUT_OFFSET_PX));
+    f.y = Math.max(M, Math.min(FH - M, p.y0 + ny * s * TUT_OFFSET_PX));
+    f.off = true;
+    f.maxDev = Math.hypot(f.x - p.x0, f.y - p.y0);
+}
+
+function updateTutUI() {
+    if (!G || !G.tutorial) return;
+    const T = G.tut;
+    const s = Math.min(T.step, 2);
+    const stepDone = T.done[s];
+
+    $("tutStep").textContent = s + 1;
+    if (stepDone) {
+        $("tutTitle").textContent = "✔ NICE WORK";
+        $("tutText").innerHTML = s < 2 ? "Next up…" : "All three skills complete.";
+    } else {
+        $("tutTitle").textContent = TUT_STEPS[s].title;
+        $("tutText").innerHTML = TUT_STEPS[s].text;
+    }
+    for (let i = 0; i < 3; i++) {
+        const el = $("tc" + i);
+        el.textContent = (T.done[i] ? "✔ " : "○ ") + TUT_NAMES[i];
+        el.classList.toggle("done", T.done[i]);
+        el.classList.toggle("cur", !T.done[i] && i === T.step);
+    }
+    // Step 3 shows the strike panel at the bottom, so lift the tutorial panel above it
+    $("tutPanel").classList.toggle("up", s === 2);
+}
+
+function tutComplete(i) {
+    const T = G.tut;
+    if (T.done[i]) return;
+    T.done[i] = true;
+    T.wait = TUT_STEP_PAUSE;
+    T.next = i + 1;
+    updateTutUI();
+}
+
+function enterTutStep(s) {
+    G.tut.step = s;
+    if (s >= 3) { finishTutorial(); return; }
+    updateTutUI();
+}
+
+// Runs every frame while the tutorial is active
+function tutTick(dt) {
+    const T = G.tut;
+
+    if (T.wait > 0) {
+        T.wait -= dt;
+        if (T.wait <= 0) enterTutStep(T.next);
+        return;
+    }
+    if (T.cool > 0) { T.cool -= dt; return; }
+
+    // Keep exactly one target of the current kind on screen
+    if (T.step === 1 && !T.done[1] && G.ghosts.length === 0) spawnGhost();
+    if (T.step === 2 && !T.done[2] && G.enemies.length === 0) spawnEnemy();
+}
+
+function startTutorial() {
+    gameToken++;
+    D = Object.assign({}, DIFFS.easy, {
+        friendlyMax: 1, maxEnemies: 1, maxGhosts: 1, enemySpeed: 25
+    });
+    RNG = makeStreams("tutorial");
+
+    strikeReset();
+    clearField();
+    makePathLayer();
+    G = null;
+    measure();
+
+    G = newState({
+        tutorial: true,
+        tut: { step: 0, done: [false, false, false], wait: 0, next: 0, cool: 0 }
+    });
+
+    for (let i = 0; i < D.friendlyMax; i++) spawnFriendly();
+
+    $("menu").classList.remove("on");
+    $("tutDone").classList.remove("on");
+    board.close(true);
+    $("tutPanel").classList.add("on");
+    state = "play";
+    last = performance.now();
+    updateTutUI();
+    updateHud();
+}
+
+function finishTutorial() {
+    state = "tutdone";
+    strikeReset();
+    try { localStorage.setItem("ace_tutorial_done", "1"); } catch (_) {}
+    refreshTutBtn();
+    $("tutPanel").classList.remove("on");
+    $("tutDone").classList.add("on");
+}
+
+function leaveTutorial() {
+    $("tutPanel").classList.remove("on");
+    $("tutDone").classList.remove("on");
+    strikeReset();
+    clearField();
+    G = null;
+    state = "menu";
+    $("menu").classList.add("on");
+    refreshTutBtn();
+}
+
+$("menuTut").addEventListener("click", startTutorial);
+$("tutSkip").addEventListener("click", leaveTutorial);
+$("tdReplay").addEventListener("click", startTutorial);
+$("tdMenu").addEventListener("click", leaveTutorial);
 
 // =====================================================
 // 8. GAME LOOP
@@ -1537,6 +1781,7 @@ function update(dt) {
                 if (G.t - f.lastDrag < 0.4) {
                     const k = Math.max(0, 1 - f.maxDev / PATH_FAR_DIST);
                     award(Math.round(PATH_MIN_POINTS + (PATH_MAX_POINTS - PATH_MIN_POINTS) * k), f.x, f.y);
+                    if (G.tutorial && G.tut.step === 0) tutComplete(0);
                 }
                 f.off = false;
                 f.maxDev = 0;
@@ -1566,6 +1811,14 @@ function update(dt) {
             setPos(e);
         }
         if (target && Math.hypot(target.x - e.x, target.y - e.y) < R_ENEMY_FRIENDLY) {
+            if (G.tutorial) {
+                // Tutorial: no game over. Remove it and let tutTick bring a new one.
+                if (strike.enemy === e) strikeReset();
+                G.enemies.splice(G.enemies.indexOf(e), 1);
+                e.el.remove();
+                G.tut.cool = TUT_RESPAWN_S;
+                break;
+            }
             return endGame("FRIENDLY HIT BY HOSTILE");
         }
     }
@@ -1590,10 +1843,18 @@ function update(dt) {
                 g.el.remove();
                 G.ghostIds++;
                 award(GHOST_POINTS, g.x, g.y);
+                if (G.tutorial) tutComplete(1);
                 continue;
             }
         }
         if (g.age >= GHOST_WINDOW_S) {
+            if (G.tutorial) {
+                // Tutorial: no game over. Remove it and let tutTick bring a new one.
+                G.ghosts.splice(G.ghosts.indexOf(g), 1);
+                g.el.remove();
+                G.tut.cool = TUT_RESPAWN_S;
+                continue;
+            }
             g.el.style.outline = "3px solid #ff3d3d";
             return endGame("GHOST NOT IDENTIFIED WITHIN 3.0 SECONDS");
         }
@@ -1610,6 +1871,9 @@ function update(dt) {
             "AUTHORISING... " + Math.max(0, HOLD_STRIKE_S - strike.holdT).toFixed(1) + "s";
         if (p >= 1) strikeComplete();
     }
+
+    // --- Tutorial controls its own spawning ---
+    if (G.tutorial) { tutTick(dt); return; }
 
     // --- Spawn timers ---
     // A skipped spawn (cap reached) draws nothing from the daily stream,
@@ -1663,6 +1927,18 @@ function frame(now) {
 
 function clearField() { field.innerHTML = ""; }
 
+function newState(extra) {
+    return Object.assign({
+        t: 0, level: 1, points: 0, kills: 0, ghostIds: 0,
+        friendlies: [], enemies: [], ghosts: [],
+        selected: null, drag: null, nextId: 1, enemyCounter: 1,
+        friendlyCounter: 0,
+        enemyTimer: 3, ghostTimer: 4.5, friendlyTimer: D.friendlySpawn,
+        failReason: "", result: null,
+        tutorial: false, tut: null
+    }, extra || {});
+}
+
 function startGame(key) {
     diffKey = key;
     D = DIFFS[key];
@@ -1683,19 +1959,14 @@ function startGame(key) {
     G = null;
     measure();
 
-    G = {
-        t: 0, level: 1, points: 0, kills: 0, ghostIds: 0,
-        friendlies: [], enemies: [], ghosts: [],
-        selected: null, drag: null, nextId: 1, enemyCounter: 1,
-        friendlyCounter: 0,
-        enemyTimer: 3, ghostTimer: 4.5, friendlyTimer: D.friendlySpawn,
-        failReason: "", result: null
-    };
+    G = newState();
 
     for (let i = 0; i < D.friendlyMax; i++) spawnFriendly();
     for (let i = 0; i < 2; i++) spawnEnemy();
 
     $("menu").classList.remove("on");
+    $("tutPanel").classList.remove("on");
+    $("tutDone").classList.remove("on");
     board.close(true);
     state = "play";
     last = performance.now();
@@ -1795,42 +2066,42 @@ class LeaderboardSystem {
     async load() {
         const day = this.day;
         try {
-        const url = `${SUPABASE_URL}/rest/v1/ace_scores` +
-            `?puzzle_day=eq.${day}` +
-            `&select=id,name,points,time_ms,difficulty,cer,created_at` +
-            `&order=cer.desc,created_at.asc` +
-            `&limit=500`;
+            const url = `${SUPABASE_URL}/rest/v1/ace_scores` +
+                `?puzzle_day=eq.${day}` +
+                `&select=id,name,points,time_ms,difficulty,cer,created_at` +
+                `&order=cer.desc,created_at.asc` +
+                `&limit=500`;
 
-        const res = await fetch(url, { headers: this.headers() });
+            const res = await fetch(url, { headers: this.headers() });
 
-        if (!res.ok) {
-            throw new Error('Load failed: ' + res.status + ' ' + await res.text());
-        }
+            if (!res.ok) {
+                throw new Error('Load failed: ' + res.status + ' ' + await res.text());
+            }
 
-        const rows = await res.json();
-        if (day !== this.day) return this.entries;
+            const rows = await res.json();
+            if (day !== this.day) return this.entries;
 
-        // Rows are sorted best-first, so the first row seen for each name is
-        // that player's daily personal best. Skip the rest.
-        const seen = new Set();
-        const bestRows = [];
-        for (const r of rows) {
-            const key = String(r.name).toUpperCase();
-            if (seen.has(key)) continue;
-            seen.add(key);
-            bestRows.push(r);
-            if (bestRows.length >= this.maxEntries) break;
-        }
+            // Rows are sorted best-first, so the first row seen for each name is
+            // that player's daily personal best. Skip the rest.
+            const seen = new Set();
+            const bestRows = [];
+            for (const r of rows) {
+                const key = String(r.name).toUpperCase();
+                if (seen.has(key)) continue;
+                seen.add(key);
+                bestRows.push(r);
+                if (bestRows.length >= this.maxEntries) break;
+            }
 
-        this.entries = bestRows.map(r => ({
-            id: String(r.id),
-            name: r.name,
-            points: r.points,
-            timeMs: r.time_ms,
-            difficulty: r.difficulty,
-            cer: Number(r.cer)
-        }));
-        this.online = true;
+            this.entries = bestRows.map(r => ({
+                id: String(r.id),
+                name: r.name,
+                points: r.points,
+                timeMs: r.time_ms,
+                difficulty: r.difficulty,
+                cer: Number(r.cer)
+            }));
+            this.online = true;
         } catch (err) {
             console.error('Leaderboard load error:', err);
             this.online = false;
@@ -1852,37 +2123,6 @@ class LeaderboardSystem {
         return cer > this.entries[this.entries.length - 1].cer;
     }
 
-    async submit(name, result) {
-        try {
-            const res = await fetch(`${SUPABASE_URL}/rest/v1/ace_scores`, {
-                method: 'POST',
-                headers: { ...this.headers(), Prefer: 'return=representation' },
-                body: JSON.stringify({
-                    puzzle_day: this.day,
-                    name: this.sanitiseName(name),
-                    difficulty: result.difficulty,
-                    points: result.points,
-                    time_ms: result.timeMs
-                })
-            });
-
-            if (!res.ok) {
-                const text = await res.text();
-                console.error('Insert failed:', res.status, text);
-                if (text.includes('NAME_RESERVED')) return { saved: false, reserved: true };
-                return { saved: false, error: res.status + ' ' + text.slice(0, 80) };
-            }
-
-            const [row] = await res.json();
-            await this.load();
-
-            const index = this.entries.findIndex(e => e.id === String(row.id));
-            return { saved: true, id: String(row.id), rank: index === -1 ? null : index + 1 };
-        } catch (err) {
-            console.error('Leaderboard submit error:', err);
-            return { saved: false, error: String(err.message || err) };
-        }
-    }
     async submitAccount(result) {
         try {
             const r = await rpc('ace_submit_score', {
@@ -1901,14 +2141,6 @@ class LeaderboardSystem {
 }
 
 class LeaderboardView {
-    syncSubmitUI() {
-        if (this.mode !== "result") return;
-        const on = account.loggedIn;
-        $("lbGuest").style.display = on ? "none" : "block";
-        $("lbUser").style.display  = on ? "block" : "none";
-        $("lbUserName").textContent = account.name || "";
-        $("lbMy").style.display = on ? "" : "none";
-    }
     constructor(lb) {
         this.lb = lb;
         this.mode = "closed";        // closed | view | result
@@ -1918,11 +2150,18 @@ class LeaderboardView {
         this.bind();
     }
 
+    syncSubmitUI() {
+        if (this.mode !== "result") return;
+        const on = account.loggedIn;
+        $("lbGuest").style.display = on ? "none" : "block";
+        $("lbUser").style.display  = on ? "block" : "none";
+        $("lbSubmitButton").style.display = on ? "" : "none";
+        $("lbUserName").textContent = account.name || "";
+        $("lbMy").style.display = on ? "" : "none";
+    }
+
     bind() {
         $("lbSubmitButton").addEventListener("click", () => this.submit());
-        $("lbName").addEventListener("keydown", ev => {
-            if (ev.key === "Enter") { ev.preventDefault(); this.submit(); }
-        });
         $("lbClose").addEventListener("click", () => this.close());
         $("lbPlay").addEventListener("click", () => startGame(diffKey));
         $("lbMenu").addEventListener("click", () => {
@@ -1989,7 +2228,6 @@ class LeaderboardView {
         $("metrics").style.display = "table";
 
         $("lbCer").textContent = r.cer.toFixed(1);
-        $("lbName").value = "";
 
         if (r.timeMs < MIN_TIME_MS) {
             $("lbSubmit").style.display = "none";
@@ -2004,7 +2242,6 @@ class LeaderboardView {
         $("lbClose").style.display = "none";
         this.syncSubmitUI();
         this.show();
-        if (r.timeMs >= MIN_TIME_MS && !account.loggedIn) $("lbName").focus();
     }
 
     async show() {
@@ -2034,14 +2271,16 @@ class LeaderboardView {
 
     async submit() {
         if (this.mode !== "result" || this.submitted || !G || !G.result) return;
+        if (!account.loggedIn) {
+            $("lbMessage").textContent = "LOG IN TO SUBMIT YOUR SCORE";
+            return;
+        }
         const token = gameToken;
         this.submitted = true;
         $("lbSubmitButton").disabled = true;
         $("lbMessage").textContent = "SAVING...";
 
-        const res = account.loggedIn
-            ? await this.lb.submitAccount(G.result)
-            : await this.lb.submit($("lbName").value, G.result);
+        const res = await this.lb.submitAccount(G.result);
 
         $("lbSubmitButton").disabled = false;
         if (token !== gameToken) return;
@@ -2053,8 +2292,6 @@ class LeaderboardView {
                 $("lbMessage").textContent = "LOGIN INVALID - PLEASE LOG IN AGAIN";
             } else if (res.error === "LOCKED") {
                 $("lbMessage").textContent = "TOO MANY FAILED ATTEMPTS - TRY LATER";
-            } else if (res.reserved) {
-                $("lbMessage").textContent = "THAT NAME BELONGS TO A REGISTERED PLAYER - LOG IN OR PICK ANOTHER NAME";
             } else {
                 $("lbMessage").textContent = "COULD NOT SAVE: " + String(res.error || "SEE CONSOLE (F12)").slice(0, 90);
             }
@@ -2063,9 +2300,7 @@ class LeaderboardView {
 
         this.highlightId = res.rank ? res.id : null;
         $("lbSubmit").style.display = "none";
-        const myName = account.loggedIn
-            ? account.name
-            : this.lb.sanitiseName($("lbName").value);
+        const myName = account.name;
         const alreadyOnBoard = this.lb.entries.some(
             e => e.name.toUpperCase() === myName.toUpperCase()
         );
@@ -2340,6 +2575,7 @@ function buildMenu() {
 }
 
 buildMenu();
+refreshTutBtn();
 measure();
 requestAnimationFrame(frame);
 
@@ -2348,11 +2584,10 @@ requestAnimationFrame(frame);
 // =====================================================
 
 const themeSelect = document.getElementById("themeSelect");
-console.log("Theme selector:", themeSelect);
 
 function applyTheme(theme) {
     document.documentElement.dataset.theme = theme;
-    localStorage.setItem("gameTheme", theme);
+    try { localStorage.setItem("gameTheme", theme); } catch (_) {}
 }
 
 themeSelect.addEventListener("change", () => {
@@ -2360,7 +2595,8 @@ themeSelect.addEventListener("change", () => {
 });
 
 // Load the saved theme
-const savedTheme = localStorage.getItem("gameTheme") || "spring";
+let savedTheme = "spring";
+try { savedTheme = localStorage.getItem("gameTheme") || "spring"; } catch (_) {}
 
 themeSelect.value = savedTheme;
 applyTheme(savedTheme);
@@ -2368,4 +2604,3 @@ applyTheme(savedTheme);
 
 </body>
 </html>
-
