@@ -80,6 +80,16 @@ body {
     width: min(430px, 100vw); /* vertical phone-sized layout */
 }
 
+/* Desktop / wide screens: use the whole window. Phones keep the portrait layout above. */
+@media (min-width: 700px) {
+    #game { left: 0; width: 100%; transform: none; }
+    #hud { padding: 14px 28px; }
+    #hud h1 { font-size: 22px; letter-spacing: 5px; }
+    .stats { gap: 24px; }
+    .stat .lab { font-size: 9px; letter-spacing: 3px; }
+    .stat .val { font-size: 26px; }
+}
+
 #game::before {
     content: "";
     position: absolute;
