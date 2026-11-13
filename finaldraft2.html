@@ -340,6 +340,47 @@ body {
 }
 #spHoldText { position: relative; z-index: 2; }
 
+/* ---------- TUTORIAL PANEL ---------- */
+/* The panel itself ignores pointer events, so it can never block a plane,
+   Ghost or hostile underneath it. Only the exit button is clickable. */
+#tutPanel {
+    position: fixed;
+    bottom: 18px; left: 50%;
+    transform: translateX(-50%);
+    width: min(460px, 94vw);
+    z-index: 25;
+    display: none;
+    padding: 12px 16px;
+    background: color-mix(in srgb, var(--panel) 92%, transparent);
+    border: 1px solid var(--accent);
+    box-shadow: 0 0 30px color-mix(in srgb, var(--accent) 20%, transparent);
+    text-align: center;
+    pointer-events: none;
+}
+#tutPanel.on { display: block; }
+#tutPanel.up { bottom: 182px; }   /* sits above the strike panel on step 3 */
+#tutTitle { font-size: 16px; letter-spacing: 3px; margin: 5px 0 5px; }
+#tutText  { color: var(--muted); font-size: 11px; line-height: 1.5; margin-bottom: 8px; }
+#tutText b { color: var(--text); font-weight: normal; }
+.tut-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+#tutChecks { text-align: left; }
+#tutChecks span {
+    display: inline-block;
+    margin-right: 10px;
+    color: var(--muted);
+    font-size: 9px;
+    letter-spacing: 2px;
+}
+#tutChecks span.cur  { color: var(--accent); }
+#tutChecks span.done { color: var(--success); }
+#tutSkip {
+    pointer-events: auto;
+    min-height: 32px;
+    padding: 0 12px;
+    font-size: 9px;
+}
+#menuTut { width: 100%; margin-bottom: 4px; }
+
 /* ---------- SCREENS ---------- */
 .screen {
     position: fixed; inset: 0; z-index: 100;
@@ -732,6 +773,21 @@ body {
 
 </div>
 
+<!-- Tutorial instructions (clicks pass through, except the exit button) -->
+<div id="tutPanel">
+    <div class="eyebrow">TRAINING · STEP <span id="tutStep">1</span> OF 3</div>
+    <div id="tutTitle">DRAG THE PLANE</div>
+    <div id="tutText"></div>
+    <div class="tut-foot">
+        <div id="tutChecks">
+            <span id="tc0">○ DRAG PLANE</span>
+            <span id="tc1">○ IDENTIFY GHOST</span>
+            <span id="tc2">○ STRIKE HOSTILE</span>
+        </div>
+        <button class="btn" id="tutSkip">EXIT TUTORIAL</button>
+    </div>
+</div>
+
 <!-- Strike authorisation (does not pause the game) -->
 <div id="strikePanel">
     <div class="eyebrow">COMMAND AUTHORISATION</div>
@@ -762,6 +818,7 @@ body {
             <b>Press and hold a red Ghost for 0.5 s</b> to identify it. Each Ghost expires after <b>3.0 s</b>.<br><br>
             Any failure ends the run. Your daily rank is your <b>CER = (Points / Time) × Difficulty</b>.
         </div>
+        <button class="btn" id="menuTut">▶ TUTORIAL (RECOMMENDED)</button>
         <div class="levels" id="levels"></div>
         <div class="theme-picker">
             <label for="themeSelect">SELECT THEME</label>
@@ -783,6 +840,23 @@ body {
         </div>
     </div>
 </div>
+
+<!-- Tutorial complete -->
+<div class="screen" id="tutDone">
+    <div class="modal">
+        <div class="eyebrow">TRAINING</div>
+        <h2>TUTORIAL COMPLETE</h2>
+        <div class="sub">
+            You've steered a plane, identified a Ghost and struck a hostile.<br><br>
+            Pick a difficulty from the menu to play for the daily leaderboard.
+        </div>
+        <div class="btn-row">
+            <button class="btn" id="tdReplay">REPLAY</button>
+            <button class="btn primary" id="tdMenu">CHOOSE DIFFICULTY</button>
+        </div>
+    </div>
+</div>
+
 <!-- Breathing reset (shown after a loss, before results) -->
 <div class="screen" id="breathOverlay">
     <div class="modal">
@@ -954,6 +1028,11 @@ const DRIFT_JITTER     = 0.5;   // how erratically planes veer
 const DRIFT_MAX_TURN   = 0.3;   // rad/s: maximum veer rate
 const SVG_NS = "http://www.w3.org/2000/svg";
 
+// Tutorial
+const TUT_OFFSET_PX  = 110;     // how far off its path the tutorial plane starts
+const TUT_STEP_PAUSE = 1.4;     // seconds to show "nice work" between steps
+const TUT_RESPAWN_S  = 0.8;     // pause before a missed Ghost / hostile is replaced
+
 // =====================================================
 // 2. DAILY SEED
 // =====================================================
@@ -1003,7 +1082,7 @@ const $ = id => document.getElementById(id);
 const field = $("field");
 
 let FW = 0, FH = 0;
-let state = "menu";            // menu | play | over
+let state = "menu";            // menu | play | over | tutdone
 
 // SOUNDS ==================================
 
@@ -1224,6 +1303,10 @@ function spawnFriendly() {
     });
     field.appendChild(el);
     G.friendlies.push(f);
+
+    // Tutorial step 1: start the plane off its path so there's something to fix
+    if (G.tutorial && G.tut.step === 0 && !G.tut.done[0]) tutOffsetFriendly(f);
+
     setPos(f);
     rotateFriendly(f);
     if (!G.selected) selectFriendly(f);
@@ -1428,7 +1511,173 @@ function strikeComplete() {
     e.el.remove();
     G.kills++;
     award(STRIKE_POINTS, e.x, e.y);
+    if (G.tutorial) tutComplete(2);
 }
+
+// =====================================================
+// 7. TUTORIAL
+// =====================================================
+// Three guided steps: drag a plane back onto its path, identify a Ghost,
+// strike a hostile. Nothing in the tutorial can end the run or reach the
+// leaderboard: a missed Ghost or a hostile that reaches a plane is simply
+// replaced after a short pause.
+
+const TUT_STEPS = [
+    {
+        title: "DRAG THE PLANE",
+        text:  "This plane has strayed from its <b>dotted grey flight path</b>. " +
+               "<b>Click and drag the plane (✈)</b> back onto the path to score. " +
+               "The sooner you catch a stray, the more you score."
+    },
+    {
+        title: "IDENTIFY THE GHOST",
+        text:  "A red <b>Ghost</b> appeared. <b>Press and hold it for 0.5 s</b> before its " +
+               "red ring runs out (3 s). In a real run, a missed Ghost ends the game. Here it just comes back."
+    },
+    {
+        title: "STRIKE THE HOSTILE",
+        text:  "<b>Click the red diamond</b>, press <b>CONFIRM STRIKE</b>, then <b>hold the button for 2 seconds</b>. " +
+               "Hostiles chase planes. In a real run, contact ends the game."
+    }
+];
+const TUT_NAMES = ["DRAG PLANE", "IDENTIFY GHOST", "STRIKE HOSTILE"];
+
+function tutDoneBefore() {
+    try { return localStorage.getItem("ace_tutorial_done") === "1"; } catch (_) { return false; }
+}
+function refreshTutBtn() {
+    $("menuTut").textContent = tutDoneBefore() ? "▶ TUTORIAL ✔ (REPLAY)" : "▶ TUTORIAL (RECOMMENDED)";
+}
+
+// Move a freshly spawned plane sideways off its path (kept on screen)
+function tutOffsetFriendly(f) {
+    const p = f.path;
+    const dx = p.x1 - p.x0, dy = p.y1 - p.y0;
+    const len = Math.hypot(dx, dy) || 1;
+    const nx = -dy / len, ny = dx / len;
+    const M = 50;
+    const inside = (x, y) => x > M && x < FW - M && y > M && y < FH - M;
+
+    let s = 1;
+    const ax = p.x0 + nx * TUT_OFFSET_PX, ay = p.y0 + ny * TUT_OFFSET_PX;
+    const bx = p.x0 - nx * TUT_OFFSET_PX, by = p.y0 - ny * TUT_OFFSET_PX;
+    if (!inside(ax, ay) && inside(bx, by)) s = -1;
+
+    f.x = Math.max(M, Math.min(FW - M, p.x0 + nx * s * TUT_OFFSET_PX));
+    f.y = Math.max(M, Math.min(FH - M, p.y0 + ny * s * TUT_OFFSET_PX));
+    f.off = true;
+    f.maxDev = Math.hypot(f.x - p.x0, f.y - p.y0);
+}
+
+function updateTutUI() {
+    if (!G || !G.tutorial) return;
+    const T = G.tut;
+    const s = Math.min(T.step, 2);
+    const stepDone = T.done[s];
+
+    $("tutStep").textContent = s + 1;
+    if (stepDone) {
+        $("tutTitle").textContent = "✔ NICE WORK";
+        $("tutText").innerHTML = s < 2 ? "Next up…" : "All three skills complete.";
+    } else {
+        $("tutTitle").textContent = TUT_STEPS[s].title;
+        $("tutText").innerHTML = TUT_STEPS[s].text;
+    }
+    for (let i = 0; i < 3; i++) {
+        const el = $("tc" + i);
+        el.textContent = (T.done[i] ? "✔ " : "○ ") + TUT_NAMES[i];
+        el.classList.toggle("done", T.done[i]);
+        el.classList.toggle("cur", !T.done[i] && i === T.step);
+    }
+    // Step 3 shows the strike panel at the bottom, so lift the tutorial panel above it
+    $("tutPanel").classList.toggle("up", s === 2);
+}
+
+function tutComplete(i) {
+    const T = G.tut;
+    if (T.done[i]) return;
+    T.done[i] = true;
+    T.wait = TUT_STEP_PAUSE;
+    T.next = i + 1;
+    updateTutUI();
+}
+
+function enterTutStep(s) {
+    G.tut.step = s;
+    if (s >= 3) { finishTutorial(); return; }
+    updateTutUI();
+}
+
+// Runs every frame while the tutorial is active
+function tutTick(dt) {
+    const T = G.tut;
+
+    if (T.wait > 0) {
+        T.wait -= dt;
+        if (T.wait <= 0) enterTutStep(T.next);
+        return;
+    }
+    if (T.cool > 0) { T.cool -= dt; return; }
+
+    // Keep exactly one target of the current kind on screen
+    if (T.step === 1 && !T.done[1] && G.ghosts.length === 0) spawnGhost();
+    if (T.step === 2 && !T.done[2] && G.enemies.length === 0) spawnEnemy();
+}
+
+function startTutorial() {
+    gameToken++;
+    D = Object.assign({}, DIFFS.easy, {
+        friendlyMax: 1, maxEnemies: 1, maxGhosts: 1, enemySpeed: 25
+    });
+    RNG = makeStreams("tutorial");
+
+    strikeReset();
+    clearField();
+    makePathLayer();
+    G = null;
+    measure();
+
+    G = newState({
+        tutorial: true,
+        tut: { step: 0, done: [false, false, false], wait: 0, next: 0, cool: 0 }
+    });
+
+    for (let i = 0; i < D.friendlyMax; i++) spawnFriendly();
+
+    $("menu").classList.remove("on");
+    $("tutDone").classList.remove("on");
+    board.close(true);
+    $("tutPanel").classList.add("on");
+    state = "play";
+    last = performance.now();
+    updateTutUI();
+    updateHud();
+}
+
+function finishTutorial() {
+    state = "tutdone";
+    strikeReset();
+    try { localStorage.setItem("ace_tutorial_done", "1"); } catch (_) {}
+    refreshTutBtn();
+    $("tutPanel").classList.remove("on");
+    $("tutDone").classList.add("on");
+}
+
+function leaveTutorial() {
+    $("tutPanel").classList.remove("on");
+    $("tutDone").classList.remove("on");
+    strikeReset();
+    clearField();
+    G = null;
+    state = "menu";
+    $("menu").classList.add("on");
+    refreshTutBtn();
+}
+
+$("menuTut").addEventListener("click", startTutorial);
+$("tutSkip").addEventListener("click", leaveTutorial);
+$("tdReplay").addEventListener("click", startTutorial);
+$("tdMenu").addEventListener("click", leaveTutorial);
 
 // =====================================================
 // 8. GAME LOOP
@@ -1532,6 +1781,7 @@ function update(dt) {
                 if (G.t - f.lastDrag < 0.4) {
                     const k = Math.max(0, 1 - f.maxDev / PATH_FAR_DIST);
                     award(Math.round(PATH_MIN_POINTS + (PATH_MAX_POINTS - PATH_MIN_POINTS) * k), f.x, f.y);
+                    if (G.tutorial && G.tut.step === 0) tutComplete(0);
                 }
                 f.off = false;
                 f.maxDev = 0;
@@ -1561,6 +1811,14 @@ function update(dt) {
             setPos(e);
         }
         if (target && Math.hypot(target.x - e.x, target.y - e.y) < R_ENEMY_FRIENDLY) {
+            if (G.tutorial) {
+                // Tutorial: no game over. Remove it and let tutTick bring a new one.
+                if (strike.enemy === e) strikeReset();
+                G.enemies.splice(G.enemies.indexOf(e), 1);
+                e.el.remove();
+                G.tut.cool = TUT_RESPAWN_S;
+                break;
+            }
             return endGame("FRIENDLY HIT BY HOSTILE");
         }
     }
@@ -1585,10 +1843,18 @@ function update(dt) {
                 g.el.remove();
                 G.ghostIds++;
                 award(GHOST_POINTS, g.x, g.y);
+                if (G.tutorial) tutComplete(1);
                 continue;
             }
         }
         if (g.age >= GHOST_WINDOW_S) {
+            if (G.tutorial) {
+                // Tutorial: no game over. Remove it and let tutTick bring a new one.
+                G.ghosts.splice(G.ghosts.indexOf(g), 1);
+                g.el.remove();
+                G.tut.cool = TUT_RESPAWN_S;
+                continue;
+            }
             g.el.style.outline = "3px solid #ff3d3d";
             return endGame("GHOST NOT IDENTIFIED WITHIN 3.0 SECONDS");
         }
@@ -1605,6 +1871,9 @@ function update(dt) {
             "AUTHORISING... " + Math.max(0, HOLD_STRIKE_S - strike.holdT).toFixed(1) + "s";
         if (p >= 1) strikeComplete();
     }
+
+    // --- Tutorial controls its own spawning ---
+    if (G.tutorial) { tutTick(dt); return; }
 
     // --- Spawn timers ---
     // A skipped spawn (cap reached) draws nothing from the daily stream,
@@ -1658,6 +1927,18 @@ function frame(now) {
 
 function clearField() { field.innerHTML = ""; }
 
+function newState(extra) {
+    return Object.assign({
+        t: 0, level: 1, points: 0, kills: 0, ghostIds: 0,
+        friendlies: [], enemies: [], ghosts: [],
+        selected: null, drag: null, nextId: 1, enemyCounter: 1,
+        friendlyCounter: 0,
+        enemyTimer: 3, ghostTimer: 4.5, friendlyTimer: D.friendlySpawn,
+        failReason: "", result: null,
+        tutorial: false, tut: null
+    }, extra || {});
+}
+
 function startGame(key) {
     diffKey = key;
     D = DIFFS[key];
@@ -1678,19 +1959,14 @@ function startGame(key) {
     G = null;
     measure();
 
-    G = {
-        t: 0, level: 1, points: 0, kills: 0, ghostIds: 0,
-        friendlies: [], enemies: [], ghosts: [],
-        selected: null, drag: null, nextId: 1, enemyCounter: 1,
-        friendlyCounter: 0,
-        enemyTimer: 3, ghostTimer: 4.5, friendlyTimer: D.friendlySpawn,
-        failReason: "", result: null
-    };
+    G = newState();
 
     for (let i = 0; i < D.friendlyMax; i++) spawnFriendly();
     for (let i = 0; i < 2; i++) spawnEnemy();
 
     $("menu").classList.remove("on");
+    $("tutPanel").classList.remove("on");
+    $("tutDone").classList.remove("on");
     board.close(true);
     state = "play";
     last = performance.now();
@@ -1699,4 +1975,632 @@ function startGame(key) {
 
 function endGame(reason) {
     if (state !== "play") return;
-    state = "over"; }
+    state = "over";
+    playloseSound();
+    strikeReset();
+    G.failReason = reason;
+
+    const seconds = G.t;
+    G.result = {
+        points: G.points,
+        timeMs: Math.round(seconds * 1000),
+        cer: computeCER(G.points, seconds, D.mult),
+        difficulty: diffKey
+    };
+    updateHud();
+
+    const token = gameToken;
+    setTimeout(() => {
+        if (token === gameToken && state === "over") breathing.open();
+    }, 900);
+}
+// =====================================================
+// 9b. BREATHING RESET (4-4-7)
+// =====================================================
+
+const breathing = {
+    runId: 0,
+    pattern: [
+        ["Breathe In",  4, "in"],
+        ["Hold",        4, "hold"],
+        ["Breathe Out", 7, "out"]
+    ],
+
+    phase(label, secs, cls, id) {
+        return new Promise(resolve => {
+            $("brText").textContent = label;
+            $("brCircle").className = "br-circle " + cls;
+            $("brCircle").style.transitionDuration = secs + "s";
+            let left = secs;
+            $("brTimer").textContent = left;
+            const iv = setInterval(() => {
+                if (id !== this.runId) { clearInterval(iv); return; }  // skipped
+                left--;
+                $("brTimer").textContent = left;
+                if (left <= 0) { clearInterval(iv); resolve(); }
+            }, 1000);
+        });
+    },
+
+    async open() {
+        const id = ++this.runId;
+        $("brCircle").className = "br-circle";
+        $("brCircle").style.transitionDuration = "1s";
+        $("brText").textContent = "Get ready";
+        $("brTimer").textContent = "";
+        $("breathOverlay").classList.add("on");
+
+        await new Promise(r => setTimeout(r, 800));
+        for (const [label, secs, cls] of this.pattern) {
+            if (id !== this.runId) return;
+            await this.phase(label, secs, cls, id);
+        }
+        if (id === this.runId) this.finish();
+    },
+
+    finish() {
+        this.runId++;                       // cancels any running phase
+        $("breathOverlay").classList.remove("on");
+        if (state === "over") board.openResult();
+    }
+};
+$("brSkip").addEventListener("click", () => breathing.finish());
+
+// =====================================================
+// 10. LEADERBOARD (Supabase)
+// =====================================================
+// Table: ace_scores. See the SQL given in the chat.
+
+class LeaderboardSystem {
+    constructor() {
+        this.maxEntries = 10;
+        this.day = getDaily();
+        this.entries = [];
+        this.online = false;
+    }
+
+    headers() {
+        return { apikey: SUPABASE_KEY, 'Content-Type': 'application/json' };
+    }
+
+    async load() {
+        const day = this.day;
+        try {
+            const url = `${SUPABASE_URL}/rest/v1/ace_scores` +
+                `?puzzle_day=eq.${day}` +
+                `&select=id,name,points,time_ms,difficulty,cer,created_at` +
+                `&order=cer.desc,created_at.asc` +
+                `&limit=500`;
+
+            const res = await fetch(url, { headers: this.headers() });
+
+            if (!res.ok) {
+                throw new Error('Load failed: ' + res.status + ' ' + await res.text());
+            }
+
+            const rows = await res.json();
+            if (day !== this.day) return this.entries;
+
+            // Rows are sorted best-first, so the first row seen for each name is
+            // that player's daily personal best. Skip the rest.
+            const seen = new Set();
+            const bestRows = [];
+            for (const r of rows) {
+                const key = String(r.name).toUpperCase();
+                if (seen.has(key)) continue;
+                seen.add(key);
+                bestRows.push(r);
+                if (bestRows.length >= this.maxEntries) break;
+            }
+
+            this.entries = bestRows.map(r => ({
+                id: String(r.id),
+                name: r.name,
+                points: r.points,
+                timeMs: r.time_ms,
+                difficulty: r.difficulty,
+                cer: Number(r.cer)
+            }));
+            this.online = true;
+        } catch (err) {
+            console.error('Leaderboard load error:', err);
+            this.online = false;
+        }
+        return this.entries;
+    }
+
+    sanitiseName(name) {
+        const cleaned = String(name ?? '')
+            .replace(/[^\w \-]/g, '')
+            .trim()
+            .toUpperCase()
+            .slice(0, 12);
+        return cleaned || 'UNKNOWN';
+    }
+
+    qualifies(cer) {
+        if (this.entries.length < this.maxEntries) return true;
+        return cer > this.entries[this.entries.length - 1].cer;
+    }
+
+    async submitAccount(result) {
+        try {
+            const r = await rpc('ace_submit_score', {
+                p_name: account.name, p_pin: account.pin, p_day: this.day,
+                p_difficulty: result.difficulty, p_points: result.points, p_time_ms: result.timeMs
+            });
+            if (!r.ok) return { saved: false, authError: r.error === 'BAD_LOGIN', error: r.error };
+            await this.load();
+            const index = this.entries.findIndex(e => e.id === String(r.id));
+            return { saved: true, id: String(r.id), rank: index === -1 ? null : index + 1 };
+        } catch (err) {
+            console.error('Account submit error:', err);
+            return { saved: false, error: String(err.message || err) };
+        }
+    }
+}
+
+class LeaderboardView {
+    constructor(lb) {
+        this.lb = lb;
+        this.mode = "closed";        // closed | view | result
+        this.submitted = false;
+        this.highlightId = null;
+        this.pollTimer = null;
+        this.bind();
+    }
+
+    syncSubmitUI() {
+        if (this.mode !== "result") return;
+        const on = account.loggedIn;
+        $("lbGuest").style.display = on ? "none" : "block";
+        $("lbUser").style.display  = on ? "block" : "none";
+        $("lbSubmitButton").style.display = on ? "" : "none";
+        $("lbUserName").textContent = account.name || "";
+        $("lbMy").style.display = on ? "" : "none";
+    }
+
+    bind() {
+        $("lbSubmitButton").addEventListener("click", () => this.submit());
+        $("lbClose").addEventListener("click", () => this.close());
+        $("lbPlay").addEventListener("click", () => startGame(diffKey));
+        $("lbMenu").addEventListener("click", () => {
+            this.close(true);
+            clearField();
+            state = "menu";
+            $("menu").classList.add("on");
+        });
+        $("menuBoard").addEventListener("click", () => this.openView());
+        window.addEventListener("keydown", ev => {
+            if (ev.key === "Escape" && this.mode === "view") this.close();
+        });
+        $("lbOverlay").addEventListener("click", ev => {
+            if (ev.target === $("lbOverlay") && this.mode === "view") this.close();
+        });
+    }
+
+    dayLabel() {
+        const d = String(this.lb.day);
+        $("lbDay").textContent =
+            `DAILY BOARD ${d.slice(0,4)}-${d.slice(4,6)}-${d.slice(6,8)} · ` +
+            (this.lb.online ? "LIVE" : "OFFLINE");
+    }
+
+    openView() {
+        this.mode = "view";
+        $("lbEyebrow").textContent = "GLOBAL DAILY RECORDS";
+        $("lbTitle").textContent = "LEADERBOARD";
+        $("lbReason").style.display = "none";
+        $("metrics").style.display = "none";
+        $("lbSubmit").style.display = "none";
+        $("lbMessage").textContent = "";
+        $("lbPlay").style.display = "none";
+        $("lbMenu").style.display = "none";
+        $("lbClose").style.display = "";
+        $("lbMy").style.display = "none";
+        this.show();
+    }
+
+    openResult() {
+        this.mode = "result";
+        this.submitted = false;
+        this.highlightId = null;
+        const r = G.result;
+        const t = r.timeMs / 1000;
+        const endOK = t >= TARGET_ENDURANCE_S;
+        const effOK = r.points >= TARGET_EFFICIENCY;
+
+        $("lbEyebrow").textContent = "SYSTEM FAILURE";
+        $("lbTitle").textContent = "RUN COMPLETE";
+        $("lbReason").style.display = "block";
+        $("lbReason").textContent = G.failReason;
+
+        const rows = [
+            ["Endurance (target 06:00)",
+                `<span class="${endOK ? 'pass' : 'fail'}">${formatClock(t)} ${endOK ? '✔' : '✘'}</span>`],
+            ["Efficiency (target 20,000)",
+                `<span class="${effOK ? 'pass' : 'fail'}">${r.points.toLocaleString()} ${effOK ? '✔' : '✘'}</span>`],
+            ["Difficulty", `${D.label} × ${D.mult.toFixed(1)}`],
+            ["Hostiles eliminated", G.kills],
+            ["Ghosts identified", G.ghostIds]
+        ];
+        $("metrics").innerHTML = rows.map(x => `<tr><td>${x[0]}</td><td>${x[1]}</td></tr>`).join("");
+        $("metrics").style.display = "table";
+
+        $("lbCer").textContent = r.cer.toFixed(1);
+
+        if (r.timeMs < MIN_TIME_MS) {
+            $("lbSubmit").style.display = "none";
+            $("lbMessage").textContent = "RUN TOO SHORT TO RECORD (MIN 3 SECONDS)";
+        } else {
+            $("lbSubmit").style.display = "block";
+            $("lbMessage").textContent = this.lb.qualifies(r.cer) ? "THIS RESULT MAKES THE BOARD" : "";
+        }
+
+        $("lbPlay").style.display = "";
+        $("lbMenu").style.display = "";
+        $("lbClose").style.display = "none";
+        this.syncSubmitUI();
+        this.show();
+    }
+
+    async show() {
+        this.dayLabel();
+        this.render();
+        $("lbOverlay").classList.add("on");
+        await this.refresh();
+        this.startPolling();
+    }
+
+    async refresh() {
+        await this.lb.load();
+        if (this.mode === "closed") return;
+        this.dayLabel();
+        this.render();
+    }
+
+    startPolling() {
+        if (this.pollTimer || this.mode === "closed") return;
+        this.pollTimer = setInterval(() => this.refresh(), 3000);
+    }
+
+    stopPolling() {
+        clearInterval(this.pollTimer);
+        this.pollTimer = null;
+    }
+
+    async submit() {
+        if (this.mode !== "result" || this.submitted || !G || !G.result) return;
+        if (!account.loggedIn) {
+            $("lbMessage").textContent = "LOG IN TO SUBMIT YOUR SCORE";
+            return;
+        }
+        const token = gameToken;
+        this.submitted = true;
+        $("lbSubmitButton").disabled = true;
+        $("lbMessage").textContent = "SAVING...";
+
+        const res = await this.lb.submitAccount(G.result);
+
+        $("lbSubmitButton").disabled = false;
+        if (token !== gameToken) return;
+
+        if (!res.saved) {
+            this.submitted = false;
+            if (res.authError) {
+                account.clear(); refreshAccountUI();
+                $("lbMessage").textContent = "LOGIN INVALID - PLEASE LOG IN AGAIN";
+            } else if (res.error === "LOCKED") {
+                $("lbMessage").textContent = "TOO MANY FAILED ATTEMPTS - TRY LATER";
+            } else {
+                $("lbMessage").textContent = "COULD NOT SAVE: " + String(res.error || "SEE CONSOLE (F12)").slice(0, 90);
+            }
+            return;
+        }
+
+        this.highlightId = res.rank ? res.id : null;
+        $("lbSubmit").style.display = "none";
+        const myName = account.name;
+        const alreadyOnBoard = this.lb.entries.some(
+            e => e.name.toUpperCase() === myName.toUpperCase()
+        );
+
+        $("lbMessage").textContent = res.rank
+            ? `RANK #${res.rank} RECORDED` + (res.rank === 1 ? " - TODAY'S ACE" : "")
+            : alreadyOnBoard
+                ? "SAVED - BOARD SHOWS YOUR DAILY BEST"
+                : `DID NOT REACH THE TOP ${this.lb.maxEntries}`;
+        this.dayLabel();
+        this.render();
+    }
+
+    close(silent) {
+        if (this.mode === "closed") return;
+        $("lbOverlay").classList.remove("on");
+        this.stopPolling();
+        this.highlightId = null;
+        this.mode = "closed";
+    }
+
+    render() {
+        const body = $("lbBody");
+        body.textContent = "";
+        const entries = this.lb.entries;
+        $("lbEmpty").style.display = entries.length ? "none" : "block";
+        $("lbTable").style.display = entries.length ? "table" : "none";
+
+        entries.forEach((e, i) => {
+            const tr = document.createElement("tr");
+            if (i < 3) tr.classList.add("top-" + (i + 1));
+            if (e.id === this.highlightId) tr.classList.add("new-entry");
+
+            const cells = [
+                ["c-rank", String(i + 1).padStart(2, "0")],
+                ["c-name", e.name + (i === 0 ? "  ★ ACE" : "")],
+                ["c-cer",  e.cer.toFixed(1)],
+                ["c-pts",  Number(e.points).toLocaleString()],
+                ["c-time", formatClock(e.timeMs / 1000)]
+            ];
+            cells.forEach(([cls, text]) => {
+                const td = document.createElement("td");
+                td.className = cls;
+                td.textContent = text;
+                tr.appendChild(td);
+            });
+            body.appendChild(tr);
+        });
+    }
+}
+
+const lbSystem = new LeaderboardSystem();
+const board = new LeaderboardView(lbSystem);
+lbSystem.load();
+// =====================================================
+// 10b. ACCOUNTS + PERSONAL SCORES
+// =====================================================
+
+async function rpc(fn, args) {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, {
+        method: 'POST',
+        headers: { apikey: SUPABASE_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify(args)
+    });
+    if (!res.ok) throw new Error(fn + ' ' + res.status + ' ' + await res.text());
+    return res.json();
+}
+
+const account = {
+    name: null, pin: null,
+    get loggedIn() { return !!this.name; },
+    set(name, pin) {
+        this.name = name; this.pin = pin;
+        try { localStorage.setItem('ace_account', JSON.stringify({ name, pin })); } catch (_) {}
+    },
+    clear() {
+        this.name = this.pin = null;
+        try { localStorage.removeItem('ace_account'); } catch (_) {}
+    },
+    load() {
+        try {
+            const s = JSON.parse(localStorage.getItem('ace_account'));
+            if (s && s.name && s.pin) { this.name = s.name; this.pin = s.pin; }
+        } catch (_) {}
+    }
+};
+account.load();
+
+function refreshAccountUI() {
+    $("acctLine").innerHTML = account.loggedIn
+        ? 'SIGNED IN AS <b></b>' : 'PLAYING AS GUEST';
+    if (account.loggedIn) $("acctLine").querySelector("b").textContent = account.name;
+    $("menuAcct").textContent = account.loggedIn ? "LOG OUT" : "LOG IN / SIGN UP";
+    board.syncSubmitUI();
+}
+
+// ---- Login / sign-up modal ----
+let acctCallback = null;
+function openAccount(cb, msg) {
+    acctCallback = cb || null;
+    $("acMsg").textContent = msg || "";
+    $("acPin").value = "";
+    $("acName").value = account.name || "";
+    $("acctOverlay").classList.add("on");
+    $("acName").focus();
+}
+function closeAccount() {
+    $("acctOverlay").classList.remove("on");
+    acctCallback = null;
+}
+const ACCT_ERRORS = {
+    BAD_NAME:   "NAME: 1-50 LETTERS, NUMBERS, SPACE, - OR _",
+    BAD_PIN:    "PIN MUST BE 4-6 DIGITS",
+    NAME_TAKEN: "THAT NAME IS TAKEN",
+    BAD_LOGIN:  "NAME OR PIN INCORRECT",
+    LOCKED:     "TOO MANY ATTEMPTS - TRY AGAIN IN 15 MIN"
+};
+async function doAccount(create) {
+    const raw = $("acName").value.trim();
+    const pin = $("acPin").value.trim();
+    const msg = $("acMsg");
+    if (!raw) { msg.textContent = "ENTER A NAME"; return; }
+    if (!/^\d{4,6}$/.test(pin)) { msg.textContent = ACCT_ERRORS.BAD_PIN; return; }
+    const name = lbSystem.sanitiseName(raw);
+
+    $("acLogin").disabled = $("acCreate").disabled = true;
+    msg.textContent = "...";
+    try {
+        const r = await rpc(create ? 'ace_register' : 'ace_login', { p_name: name, p_pin: pin });
+        if (!r.ok) { msg.textContent = ACCT_ERRORS[r.error] || "ERROR"; return; }
+        account.set(r.name, pin);
+        const cb = acctCallback;
+        closeAccount();
+        refreshAccountUI();
+        if (cb) cb();
+    } catch (err) {
+        console.error('Account error:', err);
+        msg.textContent = "CONNECTION ERROR";
+    } finally {
+        $("acLogin").disabled = $("acCreate").disabled = false;
+    }
+}
+$("acLogin").addEventListener("click", () => doAccount(false));
+$("acCreate").addEventListener("click", () => doAccount(true));
+$("acCancel").addEventListener("click", closeAccount);
+["acName", "acPin"].forEach(id => $(id).addEventListener("keydown", ev => {
+    if (ev.key === "Enter") { ev.preventDefault(); doAccount(false); }
+}));
+$("acPin").addEventListener("input", ev => { ev.target.value = ev.target.value.replace(/\D/g, ""); });
+
+// ---- Personal scores ----
+function drawTrend(vals) {
+    const svg = $("myChart");
+    if (vals.length < 2) { svg.style.display = "none"; $("myChartLab").style.display = "none"; return; }
+    svg.style.display = "block"; $("myChartLab").style.display = "block";
+    const W = 300, H = 80, P = 6;
+    const max = Math.max(...vals), min = Math.min(...vals), span = (max - min) || 1;
+    const pts = vals.map((v, i) => [
+        P + i * (W - 2 * P) / (vals.length - 1),
+        H - P - (v - min) / span * (H - 2 * P)
+    ]);
+    let html = `<polyline points="${pts.map(p => p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ')}"
+        fill="none" stroke="${getComputedStyle(document.documentElement).getPropertyValue('--accent').trim()}" stroke-width="1.5" vector-effect="non-scaling-stroke"/>`;
+    if (pts.length <= 40) {
+        html += pts.map(p => `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="1.8" fill="${getComputedStyle(document.documentElement).getPropertyValue('--success').trim()}"/>`).join('');
+    }
+    svg.innerHTML = html;
+}
+
+function renderMyScores(rows) {
+    const scores = rows.map(r => ({
+        day: String(r.puzzle_day), diff: r.difficulty, pts: r.points,
+        timeMs: r.time_ms, cer: Number(r.cer), at: r.created_at, id: r.id
+    })); // newest first
+    const bestCer = scores.length ? Math.max(...scores.map(s => s.cer)) : 0;
+    $("myRuns").textContent = scores.length;
+    $("myBestCer").textContent = bestCer.toFixed(1);
+    $("myBestPts").textContent = (scores.length ? Math.max(...scores.map(s => s.pts)) : 0).toLocaleString();
+    $("myBestTime").textContent = formatClock((scores.length ? Math.max(...scores.map(s => s.timeMs)) : 0) / 1000);
+    // Personal averages (daily = today's UTC puzzle day, same as the daily seed)
+    const avg = arr => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : null;
+    const today = String(getDaily());
+    const todays = scores.filter(s => s.day === today);
+
+    const dayCer = avg(todays.map(s => s.cer));
+    const allCer = avg(scores.map(s => s.cer));
+    const dayPts = avg(todays.map(s => s.pts));
+    const allPts = avg(scores.map(s => s.pts));
+
+    $("myDayCer").textContent = dayCer === null ? "-" : dayCer.toFixed(1);
+    $("myAllCer").textContent = allCer === null ? "-" : allCer.toFixed(1);
+    $("myDayPts").textContent = dayPts === null ? "-" : Math.round(dayPts).toLocaleString();
+    $("myAllPts").textContent = allPts === null ? "-" : Math.round(allPts).toLocaleString();
+    drawTrend(scores.slice().reverse().map(s => s.cer));
+
+    const body = $("myBody");
+    body.textContent = "";
+    scores.forEach(s => {
+        const tr = document.createElement("tr");
+        const d = new Date(s.at);
+        const cells = [
+            ["", isNaN(d) ? s.day : d.toLocaleDateString()],
+            ["", (s.diff || "").slice(0, 1).toUpperCase()],
+            ["cer" + (s.cer === bestCer ? " best" : ""), s.cer.toFixed(1) + (s.cer === bestCer ? " ★" : "")],
+            ["", Number(s.pts).toLocaleString()],
+            ["", formatClock(s.timeMs / 1000)]
+        ];
+        cells.forEach(([cls, text]) => {
+            const td = document.createElement("td");
+            if (cls) td.className = cls;
+            td.textContent = text;
+            tr.appendChild(td);
+        });
+        body.appendChild(tr);
+    });
+    $("myMsg").textContent = scores.length ? "" : "NO RUNS RECORDED YET";
+}
+
+async function openMyScores() {
+    if (!account.loggedIn) { openAccount(openMyScores); return; }
+    $("myTitle").textContent = account.name;
+    $("myMsg").textContent = "LOADING...";
+    $("myBody").textContent = "";
+    ["myDayCer","myAllCer","myDayPts","myAllPts"].forEach(id => $(id).textContent = "-");
+    $("myChart").style.display = "none"; $("myChartLab").style.display = "none";
+    $("myOverlay").classList.add("on");
+    try {
+        const r = await rpc('ace_my_scores', { p_name: account.name, p_pin: account.pin });
+        if (!r.ok) {
+            if (r.error === "BAD_LOGIN") {
+                account.clear(); refreshAccountUI();
+                $("myOverlay").classList.remove("on");
+                openAccount(openMyScores, "PLEASE LOG IN AGAIN");
+            } else {
+                $("myMsg").textContent = ACCT_ERRORS[r.error] || "ERROR";
+            }
+            return;
+        }
+        renderMyScores(r.scores);
+    } catch (err) {
+        console.error('My scores error:', err);
+        $("myMsg").textContent = "COULD NOT LOAD SCORES";
+    }
+}
+$("myClose").addEventListener("click", () => $("myOverlay").classList.remove("on"));
+
+// ---- Wiring ----
+$("menuMy").addEventListener("click", openMyScores);
+$("lbMy").addEventListener("click", openMyScores);
+$("lbLogin").addEventListener("click", () => openAccount());
+$("menuAcct").addEventListener("click", () => {
+    if (account.loggedIn) { account.clear(); refreshAccountUI(); }
+    else openAccount();
+});
+refreshAccountUI();
+
+// =====================================================
+// 11. MENU
+// =====================================================
+
+function buildMenu() {
+    const box = $("levels");
+    box.innerHTML = "";
+    for (const k in DIFFS) {
+        const d = DIFFS[k];
+        const b = document.createElement("button");
+        b.className = "lvl";
+        b.innerHTML = `<em>×${d.mult.toFixed(1)}</em><b>${d.label}</b><span>${d.blurb}</span>`;
+        b.addEventListener("click", () => startGame(k));
+        box.appendChild(b);
+    }
+}
+
+buildMenu();
+refreshTutBtn();
+measure();
+requestAnimationFrame(frame);
+
+// =====================================================
+// SEASONAL THEME SELECTOR
+// =====================================================
+
+const themeSelect = document.getElementById("themeSelect");
+
+function applyTheme(theme) {
+    document.documentElement.dataset.theme = theme;
+    try { localStorage.setItem("gameTheme", theme); } catch (_) {}
+}
+
+themeSelect.addEventListener("change", () => {
+    applyTheme(themeSelect.value);
+});
+
+// Load the saved theme
+let savedTheme = "spring";
+try { savedTheme = localStorage.getItem("gameTheme") || "spring"; } catch (_) {}
+
+themeSelect.value = savedTheme;
+applyTheme(savedTheme);
+</script>
+
+</body>
+</html>
