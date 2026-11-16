@@ -2720,7 +2720,6 @@ $("ctrlSelect").value = controls;
 applyTheme(savedTheme);
 
 
-
 // OPERATOR PANEL
 
 const ENABLE_OPERATOR_PANEL = true;
@@ -2732,7 +2731,13 @@ const operatorControls = document.getElementById("operatorControls");
 const operatorLevel = document.getElementById("operatorLevel");
 const operatorWave = document.getElementById("operatorWave");
 
-if (ENABLE_OPERATOR_PANEL && operatorTrigger && operatorPanel) {
+if (ENABLE_OPERATOR_PANEL &&
+    operatorTrigger &&
+    operatorPanel &&
+    operatorCommand &&
+    operatorControls &&
+    operatorLevel &&
+    operatorWave) {
 
     operatorTrigger.addEventListener("click", () => {
         operatorPanel.hidden = !operatorPanel.hidden;
@@ -2748,13 +2753,10 @@ if (ENABLE_OPERATOR_PANEL && operatorTrigger && operatorPanel) {
     });
 
     function updateOperatorWaves() {
-        const level = Number(operatorLevel.value);
-
-        const waveCount = LEVEL_WAVES[level - 1];
+        const waveCounts = [3, 5, 11, 100];
+        const count = waveCounts[Number(operatorLevel.value) - 1];
 
         operatorWave.innerHTML = "";
-
-        const count = level === 4 ? 100 : waveCount;
 
         for (let wave = 1; wave <= count; wave++) {
             const option = document.createElement("option");
@@ -2768,6 +2770,7 @@ if (ENABLE_OPERATOR_PANEL && operatorTrigger && operatorPanel) {
 
     updateOperatorWaves();
 }
+
 </script>
 
 </body>
