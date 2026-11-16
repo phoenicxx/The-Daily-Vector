@@ -547,9 +547,9 @@ body {
 
 #operatorPanel {
     position: absolute;
-    top: 45px;
+    top: 20px;
     left: 190px;
-    width: 230px;
+    width: 100px;
     padding: 12px;
     background: var(--panel);
     color: var(--text);
@@ -2721,22 +2721,53 @@ applyTheme(savedTheme);
 
 
 
-// OPERATOR PANEL TOGGLE
+// OPERATOR PANEL
 
 const ENABLE_OPERATOR_PANEL = true;
 
 const operatorTrigger = document.getElementById("operatorTrigger");
 const operatorPanel = document.getElementById("operatorPanel");
+const operatorCommand = document.getElementById("operatorCommand");
+const operatorControls = document.getElementById("operatorControls");
+const operatorLevel = document.getElementById("operatorLevel");
+const operatorWave = document.getElementById("operatorWave");
 
 if (ENABLE_OPERATOR_PANEL && operatorTrigger && operatorPanel) {
+
     operatorTrigger.addEventListener("click", () => {
         operatorPanel.hidden = !operatorPanel.hidden;
-        if (!operatorPanel.hidden) {
-    document.getElementById("operatorCommand").focus();
-}
-    });
-}
 
+        if (!operatorPanel.hidden) {
+            operatorCommand.focus();
+        }
+    });
+
+    operatorCommand.addEventListener("input", () => {
+        operatorControls.hidden =
+            operatorCommand.value.trim() !== "/skipto";
+    });
+
+    function updateOperatorWaves() {
+        const level = Number(operatorLevel.value);
+
+        const waveCount = LEVEL_WAVES[level - 1];
+
+        operatorWave.innerHTML = "";
+
+        const count = level === 4 ? 100 : waveCount;
+
+        for (let wave = 1; wave <= count; wave++) {
+            const option = document.createElement("option");
+            option.value = wave;
+            option.textContent = "Wave " + wave;
+            operatorWave.appendChild(option);
+        }
+    }
+
+    operatorLevel.addEventListener("change", updateOperatorWaves);
+
+    updateOperatorWaves();
+}
 </script>
 
 </body>
