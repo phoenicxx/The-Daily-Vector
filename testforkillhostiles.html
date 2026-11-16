@@ -61,6 +61,23 @@
 :root[data-theme="christmas"] .friendly { color: #63c985; }
 :root[data-theme="christmas"] .friendly.sel { color: #8fe0a2; }
 
+:root[data-theme="space"] {
+    --bg: #0b1e3d;          /* Deep space navy */
+    --text: #e0e7ff;        /* Soft starlight white */
+    --accent: #ff9e00;      /* Warm star glow (like a sun flare) */
+
+    --panel: rgba(40, 52, 93, 0.98);  /* Dark nebula panel */
+    --panel-alt: #4a5a9e;   /* Space dust purple-blue */
+    --button: #6e8aff;      /* Bright comet blue */
+
+    --muted: #5c6bc0;       /* Distant galaxy hue */
+    --border: #3a4a94;      /* Deep cosmic border */
+    --success: #23d997;     /* Alien vegetation green */
+    --danger: #ff6159;      /* Meteor warning red */
+    --gold: #ffce4b;        /* Star shine gold */
+}
+
+
 body {
     margin: 0;
     overflow: hidden;
@@ -944,6 +961,14 @@ const THEME_SOUND_SETTINGS = {
     },
 
     birthday: {
+        default: { startTime: 0, duration: 1.0 },
+        ping: { startTime: 0, duration: 0.8 },
+        point: { startTime: 0, duration: 1.0 },
+        enemy_select: { startTime: 0, duration: 0.7 },
+        lose: { startTime: 0, duration: 1.5 }
+    },
+    
+    space: {
         default: { startTime: 0, duration: 1.0 },
         ping: { startTime: 0, duration: 0.8 },
         point: { startTime: 0, duration: 1.0 },
