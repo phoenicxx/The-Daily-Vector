@@ -886,7 +886,8 @@ const DEFAULT_SOUND_SETTINGS = {
     startTime: 0,
     duration: 1.0,
     volume: 0.8,
-    playbackRate: 1.0
+    playbackRate: 1.0,
+    fadeOut: 0
 };
 
 // Individual theme and sound settings
@@ -898,8 +899,9 @@ const THEME_SOUND_SETTINGS = {
 
     spring: {
         default: { startTime: 0, duration: 1.0 },
-        enemy_select: { startTime: 1.0, duration: 1.0 },
-        lose: { startTime: 2, duration: 2.0 }
+        enemy_select: { startTime: 1.0, duration: 1.0, volume: 1 },
+        lose: { startTime: 2, duration: 2.0 },
+        ping: {volume: 0.6, fadeOut: 0.5}
     },
 
     summer: {
@@ -954,47 +956,64 @@ const THEME_SOUND_SETTINGS = {
 
 function playThemeSound(soundName, volume = 1) {
 
-    const theme = document.documentElement.dataset.theme || "classic";
+const theme = document.documentElement.dataset.theme || "classic";
 
-    const themeSettings = THEME_SOUND_SETTINGS[theme] || {};
+const themeSettings = THEME_SOUND_SETTINGS[theme] || {};
 
-    const settings = {
-        ...DEFAULT_SOUND_SETTINGS,
-        ...themeSettings.default,
-        ...themeSettings[soundName]
-    };
+const settings = {
+    ...DEFAULT_SOUND_SETTINGS,
+    ...themeSettings.default,
+    ...themeSettings[soundName]
+};
 
-    const sound = new Audio(
-        `./sounds/theme/${soundName}.mp3`
+const sound = new Audio(
+    `./sounds/${theme}/${soundName}.mp3`
+);
+
+const finalVolume = volume !== 1 ? volume : settings.volume;
+
+sound.volume = finalVolume;
+sound.playbackRate = settings.playbackRate;
+
+sound.addEventListener("loadedmetadata", function () {
+
+    sound.currentTime = Math.min(
+        settings.startTime,
+        sound.duration
     );
 
-    sound.volume = volume !== 1 ? volume : settings.volume;
-    sound.playbackRate = settings.playbackRate;
+    const stopAt = Math.min(
+        settings.startTime + settings.duration,
+        sound.duration
+    );
 
-    sound.addEventListener("loadedmetadata", function () {
+    const fadeOut = Math.min(
+        settings.fadeOut || 0,
+        settings.duration
+    );
 
-        sound.currentTime = Math.min(
-            settings.startTime,
-            sound.duration
-        );
+    sound.addEventListener("timeupdate", function stopSound() {
 
-        const stopAt = Math.min(
-            settings.startTime + settings.duration,
-            sound.duration
-        );
+        const remaining = stopAt - sound.currentTime;
 
-        sound.addEventListener("timeupdate", function stopSound() {
+        if (fadeOut > 0 && remaining <= fadeOut) {
+            sound.volume = Math.max(
+                0,
+                finalVolume * (remaining / fadeOut)
+            );
+        }
 
-            if (sound.currentTime >= stopAt) {
-                sound.pause();
-                sound.removeEventListener("timeupdate", stopSound);
-            }
-        });
+        if (sound.currentTime >= stopAt) {
+            sound.pause();
+            sound.removeEventListener("timeupdate", stopSound);
+        }
+    });
 
-        sound.play().catch(() => {});
+    sound.play().catch(() => {});
 
-    }, { once: true });
+}, { once: true });
 }
+ 
 
 
 
@@ -1612,7 +1631,6 @@ function queueWave(pos) {
 }
 
 function startWave() {
-    G.gateNotified = false;
     const sp = waveSpec(G.level, G.wave);
     G.enemySpeed = sp.speed;
     G.drift = sp.drift;
@@ -1625,35 +1643,17 @@ function startWave() {
     for (let i = 0; i < sp.planes; i++) spawnFriendly();
 }
 
-// Level 2 gate: a wave can't end (so Level 3 can't be reached) until every
-// hostile in it has spawned AND been struck down.
-function hostilesCleared() {
-    return G.enemyQueue === 0 && G.enemies.length === 0;
-}
-function canAdvanceFromWave(level) {
-    if (level === 2) return hostilesCleared();
-    return true;
-}
-
 function waveTick(dt) {
     if (G.inter > 0) {
         G.inter -= dt;
         if (G.inter <= 0) { G.inter = 0; startWave(); }
         return;
     }
-    // Wave is cleared once every plane has landed / left the screen,
-    // and (on Level 2) every hostile has been killed
+    // Wave is cleared once every plane has landed / left the screen
     if (G.friendlies.length === 0) {
-        if (canAdvanceFromWave(G.level)) {
-            G.cleared++;
-            queueWave(nextWavePos(G.level, G.wave));
-            return;
-        }
-        if (!G.gateNotified) {
-            G.gateNotified = true;
-            showBanner("HOSTILES REMAIN", "STRIKE ALL HOSTILES TO ADVANCE");
-        }
-        // fall through so queued hostiles keep spawning and can be struck
+        G.cleared++;
+        queueWave(nextWavePos(G.level, G.wave));
+        return;
     }
     // Hostiles arrive one at a time
     if (G.enemyQueue > 0) {
@@ -1853,7 +1853,7 @@ function update(dt) {
                 continue;
             }
             g.el.style.outline = "3px solid #ff3d3d";
-            return endGame("GHOST NOT IDENTIFIED WITHIN 3.0 SECONDS");
+            return endGame("PING NOT IDENTIFIED WITHIN 3.0 SECONDS");
         }
         g.el.style.setProperty("--rem", (1 - g.age / GHOST_WINDOW_S) * 360 + "deg");
         g.el.style.setProperty("--hold", Math.min(1, g.holdT / HOLD_GHOST_S) * 360 + "deg");
@@ -1909,7 +1909,7 @@ function newState(extra) {
         friendlies: [], enemies: [], ghosts: [],
         selected: null, drag: null, nextId: 1, enemyCounter: 1,
         friendlyCounter: 0,
-        inter: 0, enemyQueue: 0, enemyTimer: 0, gateNotified: false,
+        inter: 0, enemyQueue: 0, enemyTimer: 0,
         ghostTimer: Infinity, pingGap: 0, maxGhosts: 0,
         enemySpeed: 40, ghostR: 28, drift: 1,
         failReason: "", result: null,
