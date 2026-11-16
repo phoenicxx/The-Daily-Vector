@@ -62,8 +62,7 @@
 :root[data-theme="christmas"] .friendly.sel { color: #8fe0a2; }
 
 :root[data-theme="space"] {
-    --bg: #0b1e3d;             /* Deep space navy */
-    --text: #ffffffcc;          /* Bright white with slight transparency for readability */
+    --bg: #0b1e3d;    --text: #ffffffcc;          /* Bright white with slight transparency for readability */
     --accent: #ffb84d;          /* Brighter warm star glow */
 
     --panel: rgba(40, 52, 93, 1);  /* Solid dark nebula panel for contrast */
@@ -949,14 +948,12 @@ const THEME_SOUND_SETTINGS = {
         default: { startTime: 0, duration: 1.0 },
         ping: { startTime: 13.0, duration: 0.4 },
         enemy_select: { startTime: 0, duration: 0.5 },
-        lose: { startTime: 0, duration: 1.5 }
+        lose: { startTime: 0, duration: 2.0, playbackRate: 0.4 }
     },
 
     halloween: {
         default: { startTime: 0, duration: 1.0 },
-        ping: { startTime: 0, duration: 0.8 },
-        point: { startTime: 0, duration: 1.0 },
-        enemy_select: { startTime: 0, duration: 0.7 },
+        point: { startTime: 0, duration: 1.0, volume: 1.4 },
         lose: { startTime: 0, duration: 1.5 }
     },
 
