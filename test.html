@@ -899,7 +899,7 @@ const THEME_SOUND_SETTINGS = {
 
     spring: {
         default: { startTime: 0, duration: 1.0 },
-        enemy_select: { startTime: 1.0, duration: 1.0, volume: 1 },
+        enemy_select: { startTime: 1.0, duration: 1.0, volume: 1.4 },
         lose: { startTime: 2, duration: 2.0 },
         ping: {volume: 0.6, fadeOut: 0.5}
     },
@@ -1853,7 +1853,7 @@ function update(dt) {
                 continue;
             }
             g.el.style.outline = "3px solid #ff3d3d";
-            return endGame("PI NOT IDENTIFIED WITHIN 3.0 SECONDS");
+            return endGame("P NOT IDENTIFIED WITHIN 3.0 SECONDS");
         }
         g.el.style.setProperty("--rem", (1 - g.age / GHOST_WINDOW_S) * 360 + "deg");
         g.el.style.setProperty("--hold", Math.min(1, g.holdT / HOLD_GHOST_S) * 360 + "deg");
