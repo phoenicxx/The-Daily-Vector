@@ -144,6 +144,7 @@ body {
 }
 .friendly .icon { display: inline-block; pointer-events: none; line-height: 1; }
 .friendly .icon.bob { animation: bob 0.9s ease-in-out infinite alternate; }
+.friendly .icon .face { display: inline-block; line-height: 1; }
 @keyframes bob { from { transform: translateY(-3px) rotate(-6deg); } to { transform: translateY(3px) rotate(6deg); } }
 .friendly.sel { color: #00ffff; }
 .friendly.warn { color: #ff697a; }
@@ -584,6 +585,7 @@ body {
                 <option value="christmas">CHRISTMAS</option>
                 <option value="halloween">HALLOWEEN</option>
                 <option value="birthday">BIRTHDAY</option>
+                <option value"""
             </select>
         </div>
 
@@ -822,12 +824,13 @@ const TUT_RESPAWN_S  = 0.8;
 const ICONS = {
     classic:   { plane: "✈",  rot: true,  enemy: "",   ping: ""   },
     spring:    { plane: "🌷", rot: false, enemy: "🦋", ping: "🌼" },
-    summer:    { plane: "🐠", rot: false, enemy: "🦈", ping: "🐚" },
+    summer:    { plane: "🐠", rot: false, face: "left", enemy: "🦈", ping: "🐚" },
     autumn:    { plane: "🍁", rot: false, enemy: "🦃", ping: "🌰" },
     winter:    { plane: "❄️", rot: false, enemy: "☃️", ping: "🧊" },
-    christmas: { plane: "🛷", rot: false, enemy: "👹", ping: "🎁" },
-    halloween: { plane: "🦇", rot: false, enemy: "💀", ping: "🎃" },
-    birthday:  { plane: "🎂", rot: false, enemy: "🔪", ping: "🎈" }
+    christmas: { plane: "🛷", rot: false, face: "left", enemy: "👹", ping: "🎁" },
+    halloween: { plane: "🦇", rot: false, face: "left", enemy: "💀", ping: "🎃" },
+    birthday:  { plane: "🎂", rot: false, enemy: "🔪", ping: "🎈" },
+    space:     {plane: "🚀", rot: false, face: "right", enemy: "👽", ping: "☄️" }
 };
 function curIcons() {
     return ICONS[document.documentElement.dataset.theme] || ICONS.classic;
@@ -912,17 +915,16 @@ const THEME_SOUND_SETTINGS = {
 
     autumn: {
         default: { startTime: 0, duration: 1.0 },
-        ping: { startTime: 0, duration: 0.8 },
-        point: { startTime: 0, duration: 1.0 },
-        enemy_select: { startTime: 0, duration: 0.7 },
-        lose: { startTime: 0, duration: 1.5 }
+        ping: { startTime: 0, duration: 2},
+        point: { startTime: 0.5, duration: 1.5, volume: 1.2, playbackRate: 1.4 },
+        lose: { startTime: 14, duration: 4 }
     },
 
     winter: {
         default: { startTime: 0, duration: 1.0 },
         ping: { startTime: 0, duration: 0.5, volume: 0.9 },
         point: { startTime: 0, duration: 1.0, playbackRate: 1.5 },
-        enemy_select: { startTime: 0, duration: 3, playbackRate: 1.2 },
+        enemy_select: { startTime: 0, duration: 3, playbackRate: 1.2, volume: 1.5 },
         lose: { startTime: 0, duration: 6.0, fadeOut: 2 }
     },
 
@@ -1165,8 +1167,7 @@ function spawnFriendly() {
 
     const el = document.createElement("div");
     el.className = "friendly";
-    el.innerHTML = '<span class="icon' + (ICON.rot ? '' : ' bob') + '">' + ICON.plane + '</span>';
-
+    el.innerHTML = '<span class="icon' + (ICON.rot ? '' : ' bob') + '"><span class="face">' + ICON.plane + '</span></span>';
     const pathEl = document.createElementNS(SVG_NS, "line");
     pathEl.setAttribute("class", "fpath");
     pathLayer.appendChild(pathEl);
@@ -1174,6 +1175,8 @@ function spawnFriendly() {
     const id = G.nextId++;
     const f = {
         id, el, x, y, path, pathEl, px: x, py: y, rot: ICON.rot,
+        face: ICON.face || "left",                 // which way the emoji natively faces
+        dir: Math.cos(ang) >= 0 ? 1 : -1,          // current horizontal facing (+1 right, -1 left)
         vx: Math.cos(ang) * FRIENDLY_BASE_SPEED,
         vy: Math.sin(ang) * FRIENDLY_BASE_SPEED,
         life,
@@ -1211,9 +1214,24 @@ function spawnFriendly() {
 }
 
 function rotateFriendly(f) {
-    if (!f.rot) return;
-    const deg = Math.atan2(f.vy, f.vx) * 180 / Math.PI + 45;
-    f.el.firstChild.style.transform = `rotate(${deg}deg)`;
+    const face = f.el.firstChild.firstChild;
+
+    // Classic plane: simple rotation (unchanged behaviour)
+    if (f.rot) {
+        const deg = Math.atan2(f.vy, f.vx) * 180 / Math.PI + 45;
+        face.style.transform = `rotate(${deg}deg)`;
+        return;
+    }
+
+    // Emoji themes: flip horizontally to face left/right, then tilt toward travel direction
+    if (Math.abs(f.vx) > 4) f.dir = f.vx > 0 ? 1 : -1;   // small dead-zone stops flicker when moving vertically
+
+    const a = Math.atan2(f.vy, f.vx) * 180 / Math.PI;      // -180..180
+    const tilt = f.dir > 0 ? a : (a > 0 ? a - 180 : a + 180);   // keeps tilt within ±90° so it's never upside-down
+
+    const native = f.face === "right" ? 1 : -1;
+    const flip = f.dir !== native ? " scaleX(-1)" : "";
+    face.style.transform = `rotate(${tilt}deg)${flip}`;
 }
 
 function selectFriendly(f) {
