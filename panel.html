@@ -520,12 +520,21 @@ body {
 /* OPERATOR ACCESS */
 
 #operatorTrigger {
+    position: absolute;
+    top: 12px;
+    left: 190px;
     width: 50px !important;
     height: 50px !important;
     font-size: 42px !important;
-    opacity: 0.5 !important;
-    padding: 0 !important;
-    z-index: 9999 !important;
+    font-weight: bold;
+    color: var(--accent);
+    background: transparent;
+    border: none;
+    padding: 0;
+    opacity: 0.5;
+    cursor: pointer;
+    z-index: 9999;
+    line-height: 1;
 }
 
 #operatorTrigger:hover {
@@ -562,7 +571,7 @@ body {
 
         
         <button id="operatorTrigger" type="button"
-    aria-label="Operator access">·</button>
+    aria-label="Operator access">●</button>
 
 <div id="operatorPanel" hidden>
     <input id="operatorCommand"
