@@ -62,7 +62,8 @@
 :root[data-theme="christmas"] .friendly.sel { color: #8fe0a2; }
 
 :root[data-theme="space"] {
-    --bg: #0b1e3d;    --text: #ffffffcc;          /* Bright white with slight transparency for readability */
+    --bg: #0b1e3d;             /* Deep space navy */
+    --text: #ffffffcc;          /* Bright white with slight transparency for readability */
     --accent: #ffb84d;          /* Brighter warm star glow */
 
     --panel: rgba(40, 52, 93, 1);  /* Solid dark nebula panel for contrast */
@@ -947,14 +948,13 @@ const THEME_SOUND_SETTINGS = {
     christmas: {
         default: { startTime: 0, duration: 1.0 },
         ping: { startTime: 13.0, duration: 0.4 },
-        enemy_select: { startTime: 0, duration: 0.5 },
-        lose: { startTime: 0, duration: 2.0, playbackRate: 0.4 }
+        enemy_select: { startTime: 0, duration: 0.5 }
     },
 
     halloween: {
         default: { startTime: 0, duration: 1.0 },
-        point: { startTime: 0, duration: 1.0, volume: 1.4 },
-        lose: { startTime: 0, duration: 1.5 }
+        point: { startTime: 0, duration: 1.0, volume: 1.5 },
+        lose: { startTime: 0, duration: 2.0, playbackRate: 0.4 }
     },
 
     birthday: {
@@ -1476,16 +1476,16 @@ function strikeComplete() {
 // 7. TUTORIAL
 // =====================================================
 
-const TUT_NAMES = ["DRAG PLANE", "IDENTIFY PING", "STRIKE ENEMY"];
+const TUT_NAMES = ["DRAG FRIENDLY", "IDENTIFY PING", "STRIKE ENEMY"];
 
 function tutStepInfo(s) {
     const I = curIcons();
     const kb = isKB();
     if (s === 0) return {
-        title: kb ? "STEER THE PLANE" : "DRAG THE PLANE",
-        text: "This plane has strayed from its <b>dotted grey flight path</b>. " +
-              (kb ? "<b>Click the plane (" + I.plane + ")</b> to select it, then steer it back onto the path with <b>W A S D</b> (or arrow keys). "
-                  : "<b>Click and drag the plane (" + I.plane + ")</b> back onto the path to score. ") +
+        title: kb ? "STEER THE FRIENDLY" : "DRAG THE FRIENDLY",
+        text: "This FRIENDLY has strayed from its <b>dotted grey flight path</b>. " +
+              (kb ? "<b>Click the friendly (" + I.plane + ")</b> to select it, then steer it back onto the path with <b>W A S D</b> (or arrow keys). "
+                  : "<b>Click and drag the friendly (" + I.plane + ")</b> back onto the path to score. ") +
               "The sooner you catch a stray, the more you score."
     };
     if (s === 1) return {
@@ -1496,9 +1496,9 @@ function tutStepInfo(s) {
     return {
         title: "STRIKE THE ENEMY",
         text: kb ? "<b>Click the hostile</b>, then <b>hold SPACE for 2 seconds</b>. " +
-                   "Hostiles chase planes. In a real run, contact ends the game."
+                   "Hostiles chase friendlies. In a real run, contact ends the game."
                  : "<b>Tap the hostile</b>, press <b>CONFIRM STRIKE</b>, then <b>hold the button for 2 seconds</b>. " +
-                   "Hostiles chase planes. In a real run, contact ends the game."
+                   "Hostiles chase friendlies. In a real run, contact ends the game."
     };
 }
 
