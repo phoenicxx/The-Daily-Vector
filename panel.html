@@ -2703,16 +2703,26 @@ applyTheme(savedTheme);
 
 const ENABLE_OPERATOR_PANEL = true;
 
-const operatorTrigger = document.getElementById("operatorTrigger");
-const operatorPanel = document.getElementById("operatorPanel");
+document.addEventListener("DOMContentLoaded", () => {
 
-if (ENABLE_OPERATOR_PANEL && operatorTrigger && operatorPanel) {
+    const operatorTrigger =
+        document.getElementById("operatorTrigger");
+
+    const operatorPanel =
+        document.getElementById("operatorPanel");
+
+    if (!ENABLE_OPERATOR_PANEL) return;
+
+    if (!operatorTrigger || !operatorPanel) {
+        console.error("Operator elements not found");
+        return;
+    }
 
     operatorTrigger.addEventListener("click", () => {
         operatorPanel.hidden = !operatorPanel.hidden;
     });
 
-}
+});
 
 
 
