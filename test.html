@@ -884,7 +884,10 @@ let state = "menu";            // menu | play | over | tutdone
 // Default settings for every theme and sound
 const DEFAULT_SOUND_SETTINGS = {
     startTime: 0,
-    duration: 1.0
+    duration: 1.0,
+    volume: 0.8,
+    playbackRate: 1.0,
+    fadeOut: 0
 };
 
 // Individual theme and sound settings
@@ -897,7 +900,8 @@ const THEME_SOUND_SETTINGS = {
     spring: {
         default: { startTime: 0, duration: 1.0 },
         enemy_select: { startTime: 1.0, duration: 1.0 },
-        lose: { startTime: 2, duration: 2.0 }
+        lose: { startTime: 2, duration: 2.0 },
+        ping: {volume: 0, fadeOut: 1.0}
     },
 
     summer: {
@@ -949,42 +953,68 @@ const THEME_SOUND_SETTINGS = {
 };
 
 
+
 function playThemeSound(soundName, volume = 1) {
 
-    const theme = document.documentElement.dataset.theme || "classic";
+const theme = document.documentElement.dataset.theme || "classic";
 
-    const themeSettings = THEME_SOUND_SETTINGS[theme] || {};
-    
-    const settings = {
-        ...DEFAULT_SOUND_SETTINGS,
-        ...themeSettings.default,
-        ...themeSettings[soundName]
-    };
+const themeSettings = THEME_SOUND_SETTINGS[theme] || {};
 
-    const sound = new Audio(
-        `./sounds/${theme}/${soundName}.mp3`
+const settings = {
+    ...DEFAULT_SOUND_SETTINGS,
+    ...themeSettings.default,
+    ...themeSettings[soundName]
+};
+
+const sound = new Audio(
+    `./sounds/${theme}/${soundName}.mp3`
+);
+
+const finalVolume = volume !== 1 ? volume : settings.volume;
+
+sound.volume = finalVolume;
+sound.playbackRate = settings.playbackRate;
+
+sound.addEventListener("loadedmetadata", function () {
+
+    sound.currentTime = Math.min(
+        settings.startTime,
+        sound.duration
     );
 
-    sound.volume = volume;
+    const stopAt = Math.min(
+        settings.startTime + settings.duration,
+        sound.duration
+    );
 
-    sound.addEventListener("loadedmetadata", function () {
-
-        sound.currentTime = Math.min(
-            settings.startTime,
-            sound.duration
-        );
-
-        sound.play().catch(() => {});
-    }, { once: true });
+    const fadeOut = Math.min(
+        settings.fadeOut || 0,
+        settings.duration
+    );
 
     sound.addEventListener("timeupdate", function stopSound() {
 
-        if (sound.currentTime >= settings.startTime + settings.duration) {
+        const remaining = stopAt - sound.currentTime;
+
+        if (fadeOut > 0 && remaining <= fadeOut) {
+            sound.volume = Math.max(
+                0,
+                finalVolume * (remaining / fadeOut)
+            );
+        }
+
+        if (sound.currentTime >= stopAt) {
             sound.pause();
             sound.removeEventListener("timeupdate", stopSound);
         }
     });
+
+    sound.play().catch(() => {});
+
+}, { once: true });
 }
+ 
+
 
 
 function playPingSound() {
