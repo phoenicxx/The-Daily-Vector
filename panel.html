@@ -2720,7 +2720,9 @@ $("ctrlSelect").value = controls;
 applyTheme(savedTheme);
 
 
+// =====================================================
 // OPERATOR PANEL
+// =====================================================
 
 const ENABLE_OPERATOR_PANEL = true;
 
@@ -2730,15 +2732,20 @@ const operatorCommand = document.getElementById("operatorCommand");
 const operatorControls = document.getElementById("operatorControls");
 const operatorLevel = document.getElementById("operatorLevel");
 const operatorWave = document.getElementById("operatorWave");
+const operatorConfirm = document.getElementById("operatorConfirm");
 
-if (ENABLE_OPERATOR_PANEL &&
+if (
+    ENABLE_OPERATOR_PANEL &&
     operatorTrigger &&
     operatorPanel &&
     operatorCommand &&
     operatorControls &&
     operatorLevel &&
-    operatorWave) {
+    operatorWave &&
+    operatorConfirm
+) {
 
+    // Open and close operator panel
     operatorTrigger.addEventListener("click", () => {
         operatorPanel.hidden = !operatorPanel.hidden;
 
@@ -2747,11 +2754,13 @@ if (ENABLE_OPERATOR_PANEL &&
         }
     });
 
+    // Show level and wave selectors only for /skipto
     operatorCommand.addEventListener("input", () => {
         operatorControls.hidden =
             operatorCommand.value.trim() !== "/skipto";
     });
 
+    // Populate wave selector based on chosen level
     function updateOperatorWaves() {
         const waveCounts = [3, 5, 11, 100];
         const count = waveCounts[Number(operatorLevel.value) - 1];
@@ -2769,8 +2778,39 @@ if (ENABLE_OPERATOR_PANEL &&
     operatorLevel.addEventListener("change", updateOperatorWaves);
 
     updateOperatorWaves();
-}
 
+    // Confirm selected level and wave
+    operatorConfirm.addEventListener("click", () => {
+
+        const level = Number(operatorLevel.value);
+        const wave = Number(operatorWave.value);
+
+        // Clear existing friendly aircraft
+        for (const f of G.friendlies) {
+            f.el.remove();
+            f.pathEl.remove();
+        }
+
+        // Clear existing pings
+        for (const g of G.ghosts) {
+            g.el.remove();
+        }
+
+        G.friendlies = [];
+        G.ghosts = [];
+        G.selected = null;
+        G.drag = null;
+
+        // Queue the selected wave
+        queueWave({ level, wave });
+
+        // Close and reset operator panel
+        operatorPanel.hidden = true;
+        operatorCommand.value = "";
+        operatorControls.hidden = true;
+    });
+
+}
 </script>
 
 </body>
