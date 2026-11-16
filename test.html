@@ -1853,7 +1853,7 @@ function update(dt) {
                 continue;
             }
             g.el.style.outline = "3px solid #ff3d3d";
-            return endGame("PING NOT IDENTIFIED WITHIN 3.0 SECONDS");
+            return endGame("PI NOT IDENTIFIED WITHIN 3.0 SECONDS");
         }
         g.el.style.setProperty("--rem", (1 - g.age / GHOST_WINDOW_S) * 360 + "deg");
         g.el.style.setProperty("--hold", Math.min(1, g.holdT / HOLD_GHOST_S) * 360 + "deg");
