@@ -528,8 +528,8 @@ body {
     color: var(--accent);
     opacity: 0.12;
     cursor: pointer;
-    font-size: 20px;
-    padding: 4px 8px;
+    font-size: 28px;
+    padding: 6px 10px;
     z-index: 20;
 }
 
@@ -2696,6 +2696,26 @@ if (!ICONS[savedTheme]) savedTheme = "spring";
 $("themeSelect").value = savedTheme;
 $("ctrlSelect").value = controls;
 applyTheme(savedTheme);
+
+
+
+// OPERATOR PANEL TOGGLE
+
+const ENABLE_OPERATOR_PANEL = true;
+
+const operatorTrigger = document.getElementById("operatorTrigger");
+const operatorPanel = document.getElementById("operatorPanel");
+
+if (ENABLE_OPERATOR_PANEL && operatorTrigger && operatorPanel) {
+
+    operatorTrigger.addEventListener("click", () => {
+        operatorPanel.hidden = !operatorPanel.hidden;
+    });
+
+}
+
+
+
 </script>
 
 </body>
