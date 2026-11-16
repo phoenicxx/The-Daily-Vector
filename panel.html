@@ -2731,6 +2731,9 @@ const operatorPanel = document.getElementById("operatorPanel");
 if (ENABLE_OPERATOR_PANEL && operatorTrigger && operatorPanel) {
     operatorTrigger.addEventListener("click", () => {
         operatorPanel.hidden = !operatorPanel.hidden;
+        if (!operatorPanel.hidden) {
+    document.getElementById("operatorCommand").focus();
+}
     });
 }
 
