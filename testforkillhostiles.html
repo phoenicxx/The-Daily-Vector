@@ -905,7 +905,7 @@ let state = "menu";            // menu | play | over | tutdone
 const DEFAULT_SOUND_SETTINGS = {
     startTime: 0,
     duration: 1.0,
-    volume: 0.8,
+    volume: 0.7,
     playbackRate: 1.0,
     fadeOut: 0
 };
@@ -919,7 +919,7 @@ const THEME_SOUND_SETTINGS = {
 
     spring: {
         default: { startTime: 0, duration: 1.0 },
-        enemy_select: { startTime: 1.0, duration: 1.0, volume: 1.4 },
+        enemy_select: { startTime: 1.0, duration: 1.0, volume: 1},
         lose: { startTime: 2, duration: 2.0 },
         ping: {volume: 0.6, fadeOut: 0.5}
     },
@@ -933,14 +933,14 @@ const THEME_SOUND_SETTINGS = {
     autumn: {
         default: { startTime: 0, duration: 1.0 },
         ping: { startTime: 0, duration: 2},
-        point: { startTime: 0.5, duration: 1.5, volume: 1.2, playbackRate: 1.4 },
+        point: { startTime: 0.5, duration: 1.5, volume: 1, playbackRate: 1.4 },
         lose: { startTime: 14, duration: 4 }
     },
 
     winter: {
         default: { startTime: 0, duration: 1.0 },
         ping: { startTime: 0, duration: 0.5, volume: 0.9 },
-        enemy_select: { startTime: 0, duration: 3, playbackRate: 1.2, volume: 1.5 },
+        enemy_select: { startTime: 0, duration: 3, playbackRate: 1.2, volume: 1},
         lose: { startTime: 0, duration: 6.0, fadeOut: 2 }
     },
 
@@ -952,7 +952,7 @@ const THEME_SOUND_SETTINGS = {
 
     halloween: {
         default: { startTime: 0, duration: 1.0 },
-        point: { startTime: 0, duration: 1.0, volume: 1.5 },
+        point: { startTime: 0, duration: 1.0, volume: 1},
         lose: { startTime: 0, duration: 2.0, playbackRate: 0.4 }
     },
 
@@ -971,7 +971,7 @@ const THEME_SOUND_SETTINGS = {
 
 
 
-function playThemeSound(soundName, volume = 1) {
+function playThemeSound(soundName, volume = null) {
 
 const theme = document.documentElement.dataset.theme || "classic";
 
@@ -987,7 +987,10 @@ const sound = new Audio(
     `./sounds/${theme}/${soundName}.mp3`
 );
 
-const finalVolume = volume !== 1 ? volume : settings.volume;
+const finalVolume = Math.max(
+    0,
+    Math.min(1, volume ?? settings.volume)
+);
 
 sound.volume = finalVolume;
 sound.playbackRate = settings.playbackRate;
