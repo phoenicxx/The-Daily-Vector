@@ -2782,34 +2782,33 @@ if (
     // Confirm selected level and wave
     operatorConfirm.addEventListener("click", () => {
 
-        const level = Number(operatorLevel.value);
-        const wave = Number(operatorWave.value);
+const level = Number(operatorLevel.value);
+const wave = Number(operatorWave.value);
 
-        // Clear existing friendly aircraft
-        for (const f of G.friendlies) {
-            f.el.remove();
-            f.pathEl.remove();
-        }
+// Clear existing friendly aircraft
+for (const f of G.friendlies) {
+    f.el?.remove();
+    f.pathEl?.remove();
+}
 
-        // Clear existing pings
-        for (const g of G.ghosts) {
-            g.el.remove();
-        }
+// Clear existing pings
+for (const g of G.ghosts) {
+    g.el?.remove();
+}
 
-        G.friendlies = [];
-        G.ghosts = [];
-        G.selected = null;
-        G.drag = null;
+G.friendlies = [];
+G.ghosts = [];
+G.selected = null;
+G.drag = null;
 
-        // Queue the selected wave
-        queueWave({ level, wave });
+// Start the selected wave
+queueWave({ level, wave });
 
-        // Close and reset operator panel
-        operatorPanel.hidden = true;
-        operatorCommand.value = "";
-        operatorControls.hidden = true;
-    });
-
+// Close panel
+operatorPanel.hidden = true;
+operatorCommand.value = "";
+operatorControls.hidden = true;
+});
 }
 </script>
 
