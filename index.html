@@ -1761,7 +1761,7 @@ function queueWave(pos) {
     G.wave = pos.wave;
     G.inter = WAVE_PAUSE_S;
     const sp = waveSpec(pos.level, pos.wave);
-    playSharedSound("beep", 0.8, 0.7);
+    playSharedSound("beep", 0.8, 0.9);
     showBanner("LEVEL " + pos.level + " · WAVE " + pos.wave,
                pos.wave === 1 ? LEVEL_INTRO[pos.level - 1] : waveSummary(sp));
 }
