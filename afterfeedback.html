@@ -2332,40 +2332,7 @@ function endGame(reason) {
 // 9b. DEATH SCREEN
 // =====================================================
 
-const deathScreen = {
-  runId: 0,
-  async open(reason) {
-    const id = ++this.runId;
-    const overlay = $("deathOverlay");
-    const message = $("deathReason");
-    const circle = $("deathCircle");
-    // Hide breath screen if open
-    breathing.finish();
-    message.textContent = `Reason: ${reason}`;
-    circle.style.transition = "transform 1.5s ease";
-    circle.style.transform = "scale(0)";
-    overlay.classList.add("on");
-    await new Promise(r => setTimeout(r, 50));
-    if (id !== this.runId) return;
-    circle.style.transform = "scale(1)";
-    await new Promise(r => setTimeout(r, 1500));
-    if (id !== this.runId) return;
-  },
-  finish() {
-    this.runId++;
-    const overlay = $("deathOverlay");
-    const circle = $("deathCircle");
-    overlay.classList.remove("on");
-    circle.style.transition = "";
-    circle.style.transform = "scale(0)";
-  }
-};
-$("deathSkip").addEventListener("click", () => deathScreen.finish());
-// Example: trigger death on collision in your game loop or event
-function onPlayerDeath(reason) {
-  breathing.finish();
-  deathScreen.open(reason);
-}
+
 // =====================================================
 // 9c. BREATHING RESET (4-4-7)
 // =====================================================
