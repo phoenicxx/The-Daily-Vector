@@ -525,21 +525,24 @@ body {
 .theme-picker select { width: 100%; text-align: center; }
 
 /* ---------- DEATH SCREEN ---------*/
-.screen {
+/* Overlay covers entire screen but hidden initially */
+#deathOverlay {
   position: fixed;
-  top:0; left:0;
+  top: 0; left: 0;
   width: 100vw; height: 100vh;
-  background: rgba(255,0,0,0.7);
-  display: none;
+  background: rgba(255, 0, 0, 0.7);
+  display: none; /* hidden by default */
   justify-content: center;
   align-items: center;
   z-index: 1000;
+  user-select: none;
 }
 
-.screen.on {
+#deathOverlay.on {
   display: flex;
 }
 
+/* Modal box styling */
 .modal {
   background: #700000;
   padding: 30px 50px;
@@ -547,8 +550,28 @@ body {
   color: white;
   text-align: center;
   max-width: 360px;
+  box-shadow: 0 0 20px 5px rgba(255, 0, 0, 0.8);
 }
 
+.eyebrow {
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: 2px;
+  margin-bottom: 10px;
+  opacity: 0.8;
+}
+
+h2 {
+  margin: 0 0 15px;
+  font-size: 36px;
+}
+
+.sub {
+  font-size: 18px;
+  margin-bottom: 30px;
+}
+
+/* Circle container & circle */
 .circle-wrap {
   width: 120px;
   height: 120px;
@@ -567,6 +590,12 @@ body {
   transition: transform 1.5s ease;
 }
 
+/* Button styling */
+.btn-row {
+  display: flex;
+  justify-content: center;
+}
+
 .btn {
   background: red;
   color: white;
@@ -575,6 +604,7 @@ body {
   border-radius: 6px;
   cursor: pointer;
   font-weight: bold;
+  user-select: none;
 }
 
 .btn:hover {
@@ -803,21 +833,35 @@ body {
 </div>
 
 <!-- Death screen (shown after death, before breathing reset)-->
- <div class="screen" id="deathOverlay">
-  <div class="modal">
-    <div class="eyebrow">GAME OVER</div>
-    <h2>YOU DIED</h2>
-    <div class="sub" id="deathReason">Reason: Unknown</div>
-
-    <div class="circle-wrap">
-      <div class="death-circle" id="deathCircle"></div>
-    </div>
-
-    <div class="btn-row">
-      <button class="btn" id="deathSkip">CLOSE</button>
+   <canvas id="gameCanvas" width="800" height="600"></canvas>
+  <div class="screen" id="deathOverlay">
+    <div class="modal">
+      <div class="eyebrow">GAME OVER</div>
+      <h2>YOU DIED</h2>
+      <div class="sub" id="deathReason">Reason: Unknown</div>
+      <div class="circle-wrap">
+        <div class="death-circle" id="deathCircle"></div>
+      </div>
+      <div class="btn-row">
+        <button class="btn" id="deathSkip">CLOSE</button>
+      </div>
     </div>
   </div>
-</div>
+  <script src="deathScreen.js"></script>
+  <script>
+    {
+        isDead = true;
+        deathScreen.open("Hit by enemy");
+      }
+    
+    function gameLoop() {
+      drawGame();
+      if (!isDead) {
+        requestAnimationFrame(gameLoop);
+      }
+    }
+    gameLoop();
+  </script>
 
 
 <!-- Breathing reset (shown after a loss, before results) -->
@@ -1365,11 +1409,6 @@ function levelMult() {
 }
 
 function measure() {
-    // --- UI text scale ---
-    const scale = Math.max(0.85, Math.min(1.4,
-        Math.min(window.innerWidth / 430, window.innerHeight / 760)));
-    document.documentElement.style.setProperty("--ui", scale.toFixed(3));
-
     const r = field.getBoundingClientRect();
     const ow = FW, oh = FH;
     FW = r.width; FH = r.height;
@@ -2310,52 +2349,50 @@ function endGame(reason) {
 // 9b. DEATH SCREEN
 // =====================================================
 
+function $(id) { return document.getElementById(id); }
+
 const deathScreen = {
   runId: 0,
 
-  // Show death screen with reason and animate the circle
   async open(reason) {
     const id = ++this.runId;
     const overlay = $("deathOverlay");
     const message = $("deathReason");
     const circle = $("deathCircle");
 
-    // Set reason text
     message.textContent = `Reason: ${reason}`;
 
+    // Reset and prepare the circle animation
+    circle.style.transition = "transform 1.5s ease";
+    circle.style.transform = "scale(0)";
 
     // Show overlay
     overlay.classList.add("on");
 
-    // Trigger circle scale up animation after a tiny delay
+    // Small delay to allow style reflow, then start scale animation
     await new Promise(r => setTimeout(r, 50));
     if (id !== this.runId) return;
     circle.style.transform = "scale(1)";
 
-    // Optionally wait for animation to end or arbitrary time
+    // Optionally wait for animation end or allow other logic here
     await new Promise(r => setTimeout(r, 1500));
     if (id !== this.runId) return;
 
-    // Here you can add any extra animation or auto-hide timing
+    // Waiting period after showing can go here if needed
   },
 
-  // Hide the death screen immediately
   finish() {
     this.runId++;
     const overlay = $("deathOverlay");
     const circle = $("deathCircle");
 
     overlay.classList.remove("on");
-
-    // Reset circle scale for next time
     circle.style.transition = "";
     circle.style.transform = "scale(0)";
   }
 };
 
-// Attach skip button listener to close
 $("deathSkip").addEventListener("click", () => deathScreen.finish());
-
 
 // =====================================================
 // 9c. BREATHING RESET (4-4-7)
