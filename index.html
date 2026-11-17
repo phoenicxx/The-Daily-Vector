@@ -1129,6 +1129,7 @@ function playSharedSound(soundName, volume = 1, speed = 1) {
 
     sound.volume = volume;
     sound.playbackRate = speed;
+    sound.preservesPitch = false;
 
     sound.play().catch(error => {
         console.warn("Sound playback failed:", error);
