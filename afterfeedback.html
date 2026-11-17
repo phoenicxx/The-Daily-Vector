@@ -833,36 +833,19 @@ h2 {
 </div>
 
 <!-- Death screen (shown after death, before breathing reset)-->
-   <canvas id="gameCanvas" width="800" height="600"></canvas>
-  <div class="screen" id="deathOverlay">
-    <div class="modal">
-      <div class="eyebrow">GAME OVER</div>
-      <h2>YOU DIED</h2>
-      <div class="sub" id="deathReason">Reason: Unknown</div>
-      <div class="circle-wrap">
-        <div class="death-circle" id="deathCircle"></div>
-      </div>
-      <div class="btn-row">
-        <button class="btn" id="deathSkip">CLOSE</button>
-      </div>
+   <div class="screen" id="deathOverlay">
+  <div class="modal">
+    <div class="eyebrow">GAME OVER</div>
+    <h2>YOU DIED</h2>
+    <div class="sub" id="deathReason">Reason: Unknown</div>
+    <div class="circle-wrap">
+      <div class="death-circle" id="deathCircle"></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn" id="deathSkip">CLOSE</button>
     </div>
   </div>
-  <script src="deathScreen.js"></script>
-  <script>
-    {
-        isDead = true;
-        deathScreen.open("Hit by enemy");
-      }
-    
-    function gameLoop() {
-      drawGame();
-      if (!isDead) {
-        requestAnimationFrame(gameLoop);
-      }
-    }
-    gameLoop();
-  </script>
-
+</div>
 
 <!-- Breathing reset (shown after a loss, before results) -->
 <div class="screen" id="breathOverlay">
@@ -2349,51 +2332,40 @@ function endGame(reason) {
 // 9b. DEATH SCREEN
 // =====================================================
 
-function $(id) { return document.getElementById(id); }
-
 const deathScreen = {
   runId: 0,
-
   async open(reason) {
     const id = ++this.runId;
     const overlay = $("deathOverlay");
     const message = $("deathReason");
     const circle = $("deathCircle");
-
+    // Hide breath screen if open
+    breathing.finish();
     message.textContent = `Reason: ${reason}`;
-
-    // Reset and prepare the circle animation
     circle.style.transition = "transform 1.5s ease";
     circle.style.transform = "scale(0)";
-
-    // Show overlay
     overlay.classList.add("on");
-
-    // Small delay to allow style reflow, then start scale animation
     await new Promise(r => setTimeout(r, 50));
     if (id !== this.runId) return;
     circle.style.transform = "scale(1)";
-
-    // Optionally wait for animation end or allow other logic here
     await new Promise(r => setTimeout(r, 1500));
     if (id !== this.runId) return;
-
-    // Waiting period after showing can go here if needed
   },
-
   finish() {
     this.runId++;
     const overlay = $("deathOverlay");
     const circle = $("deathCircle");
-
     overlay.classList.remove("on");
     circle.style.transition = "";
     circle.style.transform = "scale(0)";
   }
 };
-
 $("deathSkip").addEventListener("click", () => deathScreen.finish());
-
+// Example: trigger death on collision in your game loop or event
+function onPlayerDeath(reason) {
+  breathing.finish();
+  deathScreen.open(reason);
+}
 // =====================================================
 // 9c. BREATHING RESET (4-4-7)
 // =====================================================
