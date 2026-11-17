@@ -2573,7 +2573,6 @@ class LeaderboardView {
         $("lbReason").textContent = G.failReason;
 
         const rows = [
-            ["Points", r.points.toLocaleString()],
             ["Endurance (target 06:00)",
                 `<span class="${endOK ? 'pass' : 'fail'}">${formatClock(t)} ${endOK ? '✔' : '✘'}</span>`],
             ["Efficiency (target 20,000)",
