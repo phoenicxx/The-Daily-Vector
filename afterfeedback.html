@@ -900,6 +900,38 @@ body, html {
 </div>
 
 <script>
+// 1. Disable right-click context menu
+document.addEventListener('contextmenu', function (event) {
+  event.preventDefault();
+});
+
+// 2. Disable F12 and common developer tool shortcuts
+document.addEventListener('keydown', function (event) {
+  // Check for F12
+  if (event.key === 'F12') {
+    event.preventDefault();
+    return false;
+  }
+
+  // Check for Ctrl+Shift+I (Inspect Elements)
+  if (event.ctrlKey && event.shiftKey && (event.key === 'I' || event.key === 'i')) {
+    event.preventDefault();
+    return false;
+  }
+
+  // Check for Ctrl+Shift+J (Console)
+  if (event.ctrlKey && event.shiftKey && (event.key === 'J' || event.key === 'j')) {
+    event.preventDefault();
+    return false;
+  }
+
+  // Check for Ctrl+U (View Source)
+  if (event.ctrlKey && (event.key === 'U' || event.key === 'u')) {
+    event.preventDefault();
+    return false;
+  }
+});
+
 "use strict";
 
 // =====================================================
@@ -2219,39 +2251,6 @@ function endGame(reason) {
 // 9b. DEATH SCREEN
 // =====================================================
 
-function $(id) { return document.getElementById(id); }
-  const deathScreen = {
-    runId: 0,
-    open(reason) {
-      const id = ++this.runId;
-      const overlay = $("deathOverlay");
-      const message = $("deathMessage");
-      // Set the death reason text
-      message.textContent = `You died!\nReason: ${reason}`;
-      // Show overlay with fade-in effect
-      overlay.classList.add("on");
-      // Optionally do some animation on message (scale pulse)
-      message.style.transform = "scale(0.7)";
-      setTimeout(() => {
-        if (id !== this.runId) return;
-        message.style.transition = "transform 1s ease";
-        message.style.transform = "scale(1)";
-      }, 100);
-      // You can add further animations or timed effects here if wanted
-    },
-    finish() {
-      this.runId++;
-      const overlay = $("deathOverlay");
-      const message = $("deathMessage");
-      
-      // Hide overlay fade out by removing class
-      overlay.classList.remove("on");
-      // Reset styles so next open works smoothly
-      message.style.transition = "";
-      message.style.transform = "";
-    }
-  };
-  $("deathSkip").addEventListener("click", () => deathScreen.finish());
 
 
 // =====================================================
