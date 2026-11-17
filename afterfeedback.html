@@ -1381,7 +1381,10 @@ function spawnFriendly() {
     const path = makePath(n);
     const life = 28 + RNG.friendly() * 12;
     const x = path.x0, y = path.y0;
-    const ang = Math.atan2(path.y1 - path.y0, path.x1 - path.x0);
+    const toDest = Math.atan2(path.y1 - path.y0, path.x1 - path.x0);
+    // Launch 40°–92° off the destination bearing, left or right, so the plane
+    // misses unless the player steers it (and wraps if left alone)
+    const ang = toDest + (RNG.friendly() < 0.5 ? -1 : 1) * (0.7 + RNG.friendly() * 0.9);
     const ICON = curIcons();
 
     const el = document.createElement("div");
@@ -2216,6 +2219,39 @@ function endGame(reason) {
 // 9b. DEATH SCREEN
 // =====================================================
 
+function $(id) { return document.getElementById(id); }
+  const deathScreen = {
+    runId: 0,
+    open(reason) {
+      const id = ++this.runId;
+      const overlay = $("deathOverlay");
+      const message = $("deathMessage");
+      // Set the death reason text
+      message.textContent = `You died!\nReason: ${reason}`;
+      // Show overlay with fade-in effect
+      overlay.classList.add("on");
+      // Optionally do some animation on message (scale pulse)
+      message.style.transform = "scale(0.7)";
+      setTimeout(() => {
+        if (id !== this.runId) return;
+        message.style.transition = "transform 1s ease";
+        message.style.transform = "scale(1)";
+      }, 100);
+      // You can add further animations or timed effects here if wanted
+    },
+    finish() {
+      this.runId++;
+      const overlay = $("deathOverlay");
+      const message = $("deathMessage");
+      
+      // Hide overlay fade out by removing class
+      overlay.classList.remove("on");
+      // Reset styles so next open works smoothly
+      message.style.transition = "";
+      message.style.transform = "";
+    }
+  };
+  $("deathSkip").addEventListener("click", () => deathScreen.finish());
 
 
 // =====================================================
@@ -2900,6 +2936,7 @@ const wave = Number(operatorWave.value);
 // Clear existing friendly aircraft
 for (const f of G.friendlies) {
     f.el?.remove();
+    f.pathEl?.remove();
     f.destEl?.remove();
 }
 
