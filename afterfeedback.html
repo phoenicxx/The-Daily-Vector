@@ -780,7 +780,7 @@ body, html {
     </div>
 </div>
 
-<!-- Dearth screen (shown after death, before breathing reset)-->
+<!-- Death screen (shown after death, before breathing reset)-->
  <div class="screen" id="deathOverlay" style="display:none;">
   <div class="modal">
     <div class="eyebrow">GAME OVER</div>
@@ -2283,6 +2283,54 @@ function endGame(reason) {
 // 9b. DEATH SCREEN
 // =====================================================
 
+const deathScreen = {
+  runId: 0,
+
+  // Show death screen with reason and animate the circle
+  async open(reason) {
+    const id = ++this.runId;
+    const overlay = $("deathOverlay");
+    const message = $("deathReason");
+    const circle = $("deathCircle");
+
+    // Set reason text
+    message.textContent = `Reason: ${reason}`;
+
+    // Reset styles before animation
+    circle.style.transition = "transform 1.5s ease";
+    circle.style.transform = "scale(0)";
+
+    // Show overlay
+    overlay.classList.add("on");
+
+    // Trigger circle scale up animation after a tiny delay
+    await new Promise(r => setTimeout(r, 50));
+    if (id !== this.runId) return;
+    circle.style.transform = "scale(1)";
+
+    // Optionally wait for animation to end or arbitrary time
+    await new Promise(r => setTimeout(r, 1500));
+    if (id !== this.runId) return;
+
+    // Here you can add any extra animation or auto-hide timing
+  },
+
+  // Hide the death screen immediately
+  finish() {
+    this.runId++;
+    const overlay = $("deathOverlay");
+    const circle = $("deathCircle");
+
+    overlay.classList.remove("on");
+
+    // Reset circle scale for next time
+    circle.style.transition = "";
+    circle.style.transform = "scale(0)";
+  }
+};
+
+// Attach skip button listener to close
+$("deathSkip").addEventListener("click", () => deathScreen.finish());
 
 
 // =====================================================
