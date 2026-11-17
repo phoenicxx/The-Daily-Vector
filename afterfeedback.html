@@ -1365,6 +1365,11 @@ function levelMult() {
 }
 
 function measure() {
+    // --- UI text scale ---
+    const scale = Math.max(0.85, Math.min(1.4,
+        Math.min(window.innerWidth / 430, window.innerHeight / 760)));
+    document.documentElement.style.setProperty("--ui", scale.toFixed(3));
+
     const r = field.getBoundingClientRect();
     const ow = FW, oh = FH;
     FW = r.width; FH = r.height;
