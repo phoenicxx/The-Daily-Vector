@@ -710,7 +710,7 @@ body {
         <div class="eyebrow">TRAINING</div>
         <h2>TUTORIAL COMPLETE</h2>
         <div class="sub">
-            You've steered a plane, identified a Ghost and struck a hostile.<br><br>
+            You've steered a firnedly, identified a Ghost and struck a hostile.<br><br>
             Head back to the menu and start a run for the daily leaderboard.
         </div>
         <div class="btn-row">
@@ -1130,7 +1130,9 @@ function playSharedSound(soundName, volume = 1, speed = 1) {
     sound.volume = volume;
     sound.playbackRate = speed;
 
-    sound.play();
+    sound.play().catch(error => {
+        console.warn("Sound playback failed:", error);
+    });
 }
 
 function playPingSound() {
@@ -1758,7 +1760,7 @@ function queueWave(pos) {
     G.wave = pos.wave;
     G.inter = WAVE_PAUSE_S;
     const sp = waveSpec(pos.level, pos.wave);
-    playSharedSound("beep", 0.8, 0.6);
+    playSharedSound("beep", 0.8, 0.3);
     showBanner("LEVEL " + pos.level + " · WAVE " + pos.wave,
                pos.wave === 1 ? LEVEL_INTRO[pos.level - 1] : waveSummary(sp));
 }
@@ -2691,13 +2693,13 @@ function updateHowTo() {
         ? `<b>1. Click a friendly</b> (${I.plane}) to select it, then steer it with <b>W A S D</b> (or arrow keys).`
         : `<b>1. Click and drag a friendly</b> (${I.plane}) to steer it.`;
     const strikeStep = kb
-        ? `<b>2. Click a hostile</b> ${I.enemy || "◆"}, then <b>hold SPACE for 2 seconds</b> to strike it for points.`
-        : `<b>2. Tap a hostile</b> ${I.enemy || "◆"}, confirm, then press and hold for 2 seconds to strike it for points.`;
+        ? `<b>2. Click an enemy</b> ${I.enemy || "◆"}, then <b>hold SPACE for 2 seconds</b> to strike it for points.`
+        : `<b>2. Tap a enemy</b> ${I.enemy || "◆"}, confirm, then press and hold for 2 seconds to strike it for points.`;
     const pingStep = `<b>3. Press and hold a ping</b> ${I.ping || "●"} <b>for 0.5 seconds</b> to identify it. Each ping expires after 3 seconds.`;
     $("howto").innerHTML =
-        planeStep + " Drag stray planes back onto their dotted flight path; the sooner, the more you score.<br><br>" +
+        planeStep + " Drag stray friendlies back onto their dotted flight path; the sooner, the more you score.<br><br>" +
         strikeStep + "<br><br>" + pingStep + "<br><br>" +
-        "Clear <b>waves</b> to climb: <b>L1</b> planes only, <b>L2</b> adds hostiles, <b>L3</b> adds pings, <b>L4</b> is endless.<br>" +
+        "Clear <b>waves</b> to climb: <b>L1</b> friendlies only, <b>L2</b> adds hostiles, <b>L3</b> adds pings, <b>L4</b> is endless.<br>" +
         "A missed ping or any collision is game over. Your daily rank is the number of <b>waves you clear</b> (points break ties).";
 }
 
