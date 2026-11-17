@@ -1914,27 +1914,24 @@ function startTutorial() {
 function finishTutorial() {
     state = "tutdone";
     strikeReset();
-    try { localStorage.setItem("ace_tutorial_done", "1"); } catch (_) {}
-    refreshTutBtn();
+    field.classList.remove("frozen");
     $("tutPanel").classList.remove("on");
     $("tutDone").classList.add("on");
 }
 
-function leaveTutorial() {
-    $("tutPanel").classList.remove("on");
-    $("tutDone").classList.remove("on");
-    strikeReset();
-    clearField();
-    G = null;
-    state = "menu";
-    $("menu").classList.add("on");
-    refreshTutBtn();
-}
+// Only logged-in players can skip (the button is hidden for guests)
+$("tutSkip").addEventListener("click", () => { if (account.loggedIn) startGame(); });
 
-$("menuTut").addEventListener("click", startTutorial);
-$("tutSkip").addEventListener("click", leaveTutorial);
+// "Next": leave the instructions and start practising
+$("tutNext").addEventListener("click", () => {
+    if (!G || !G.tutorial || G.tut.phase !== "read") return;
+    G.tut.phase = "practice";
+    last = performance.now();
+    updateTutUI();
+});
+
 $("tdReplay").addEventListener("click", startTutorial);
-$("tdMenu").addEventListener("click", leaveTutorial);
+$("tdStart").addEventListener("click", () => startGame());
 
 // =====================================================
 // 7b. WAVES
@@ -2233,7 +2230,7 @@ function frame(now) {
     const dt = Math.min(0.05, (now - last) / 1000);
     last = now;
     if (state === "play" && G) {
-        update(dt);
+        if (!(G.tutorial && G.tut.phase === "read")) update(dt);
         updateHud();
     }
     requestAnimationFrame(frame);
@@ -2923,9 +2920,8 @@ document.querySelectorAll("#viewChoice [data-view]").forEach(b =>
         applyView(b.dataset.view);
         $("viewChoice").classList.remove("on");
     }));
-$("menuPlay").addEventListener("click", () => startGame());
+$("menuPlay").addEventListener("click", () => startTutorial());
 
-refreshTutBtn();
 measure();
 requestAnimationFrame(frame);
 
