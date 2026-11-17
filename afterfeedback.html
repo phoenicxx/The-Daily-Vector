@@ -781,11 +781,21 @@ body, html {
 </div>
 
 <!-- Dearth screen (shown after death, before breathing reset)-->
- <div class="screen" id="deathOverlay">
-    <div class="modal"></div>
-        <div id="deathMessage">You died! Reason: Hit by enemy.</div>
-  </div>
+ <div class="screen" id="deathOverlay" style="display:none;">
+  <div class="modal">
+    <div class="eyebrow">GAME OVER</div>
+    <h2>YOU DIED</h2>
+    <div class="sub" id="deathReason">Reason: Unknown</div>
 
+    <div class="circle-wrap">
+      <div class="death-circle"></div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn" id="deathSkip">CLOSE</button>
+    </div>
+  </div>
+</div>
 
 
 <!-- Breathing reset (shown after a loss, before results) -->
