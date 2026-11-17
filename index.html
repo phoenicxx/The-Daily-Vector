@@ -1125,6 +1125,16 @@ sound.addEventListener("loadedmetadata", function () {
 }
 
 
+function playSharedSound(soundName, volume = 1) {
+    const sound = new Audio(`./sounds/shared/${soundName}.mp3`);
+
+    sound.volume = volume;
+    sound.playbackRate = speed;
+    sound.play();
+}
+
+
+
 function playPingSound() {
     playThemeSound("ping");
 }
@@ -1750,6 +1760,7 @@ function queueWave(pos) {
     G.wave = pos.wave;
     G.inter = WAVE_PAUSE_S;
     const sp = waveSpec(pos.level, pos.wave);
+    playSharedSound("beep", 0.8, 0.6);
     showBanner("LEVEL " + pos.level + " · WAVE " + pos.wave,
                pos.wave === 1 ? LEVEL_INTRO[pos.level - 1] : waveSummary(sp));
 }
