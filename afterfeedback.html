@@ -733,9 +733,6 @@ body {
                 <span id="brTimer"></span>
             </div>
         </div>
-        <div class="btn-row">
-            <button class="btn" id="brSkip">SKIP</button>
-        </div>
     </div>
 </div>
 
@@ -2176,7 +2173,7 @@ const breathing = {
         if (state === "over") board.openResult();
     }
 };
-$("brSkip").addEventListener("click", () => breathing.finish());
+
 
 // =====================================================
 // 10. LEADERBOARD (Supabase)
