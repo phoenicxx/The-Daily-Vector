@@ -930,6 +930,27 @@ document.addEventListener('keydown', function (event) {
     event.preventDefault();
     return false;
   }
+
+// Mac: Cmd + Option + I (Developer Tools)
+if (event.metaKey && event.altKey && event.key.toLowerCase() === 'i') {
+    event.preventDefault();
+}
+
+// Mac: Cmd + Option + J (Console)
+if (event.metaKey && event.altKey && event.key.toLowerCase() === 'j') {
+    event.preventDefault();
+}
+
+// Mac: Cmd + Option + C (Element selector)
+if (event.metaKey && event.altKey && event.key.toLowerCase() === 'c') {
+    event.preventDefault();
+}
+
+// Mac: Cmd + U (View Source)
+if (event.metaKey && event.key.toLowerCase() === 'u') {
+    event.preventDefault();
+}
+
 });
 
 "use strict";
