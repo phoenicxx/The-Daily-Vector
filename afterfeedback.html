@@ -118,7 +118,31 @@ body {
     linear-gradient(90deg, color-mix(in srgb, var(--accent) 12%, transparent) 1px, transparent 1px);
     background-size: 45px 45px;
 }
+:root { --dest: #8fdcff; }
+:root[data-theme="spring"]    { --dest: #ffc2e2; }
+:root[data-theme="summer"]    { --dest: #ffe680; }
+:root[data-theme="autumn"]    { --dest: #ffcc80; }
+:root[data-theme="winter"]    { --dest: #e6f7ff; }
+:root[data-theme="christmas"] { --dest: #ffb3bd; }
+:root[data-theme="halloween"] { --dest: #ffb866; }
+:root[data-theme="birthday"]  { --dest: #fff08a; }
+:root[data-theme="space"]     { --dest: #b8c7ff; }
 
+.dest {
+    position: absolute;
+    width: 44px; height: 44px;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--dest) 35%, transparent);
+    border: 3px solid var(--dest);
+    box-shadow: 0 0 14px color-mix(in srgb, var(--dest) 70%, transparent);
+    pointer-events: none;
+    z-index: 2;
+}
+.dest::after {
+    content: ""; position: absolute; inset: 14px;
+    border-radius: 50%; background: var(--dest);
+}
 /* ---------- HUD ---------- */
 #hud {
     position: absolute;
@@ -500,6 +524,42 @@ body {
 .theme-picker label { display: block; color: var(--muted); font-size: 10px; letter-spacing: 3px; margin-bottom: 8px; }
 .theme-picker select { width: 100%; text-align: center; }
 
+/* ---------- DEATH SCREEN ---------*/
+body, html {
+      margin: 0;
+      height: 100%;
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+    }
+    #gameCanvas {
+      display: block;
+      background: lightblue;
+    }
+    #deathOverlay {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100vw;
+      height: 100vh;
+      background-color: rgba(255, 0, 0, 0.5);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 10;
+    }
+    #deathMessage {
+      position: relative;
+      font-size: 32px;
+      font-weight: bold;
+      color: white;
+      padding: 20px 40px;
+      border: 4px solid red;
+      border-radius: 100px; /* makes circle if width=height */
+      background: rgba(255, 0, 0, 0.7);
+      text-align: center;
+      max-width: 300px;
+    }
+
+
 /* ---------- BREATHING RESET ---------- */
 #breathOverlay { z-index: 130; }
 .br-wrap { position: relative; height: 260px; display: flex; justify-content: center; align-items: center; margin: 10px 0; }
@@ -720,6 +780,13 @@ body {
     </div>
 </div>
 
+<!-- Dearth screen (shown after death, before breathing reset)-->
+ <div id="deathOverlay">
+    <div id="deathMessage">You died! Reason: Hit by enemy.</div>
+  </div>
+
+
+
 <!-- Breathing reset (shown after a loss, before results) -->
 <div class="screen" id="breathOverlay">
     <div class="modal">
@@ -732,6 +799,9 @@ body {
                 <span id="brText">Get ready</span>
                 <span id="brTimer"></span>
             </div>
+        </div>
+        <div class="btn-row">
+            <button class="btn" id="brSkip">SKIP</button>
         </div>
     </div>
 </div>
@@ -916,6 +986,32 @@ const PATH_SEP         = 80;
 const DRIFT_JITTER     = 0.5;
 const DRIFT_MAX_TURN   = 0.3;
 const SVG_NS = "http://www.w3.org/2000/svg";
+const DEST_REACH = 24;   // px from destination centre that counts as arrived
+
+// Faster arrival = more points (PATH_MIN_POINTS .. PATH_MAX_POINTS)
+function destPoints(f) {
+    const fastT = f.pathLen / FRIENDLY_MAX_SPEED;
+    const slowT = 3 * f.pathLen / FRIENDLY_BASE_SPEED;
+    const k = Math.max(0, Math.min(1, 1 - (f.age - fastT) / (slowT - fastT)));
+    return Math.round(PATH_MIN_POINTS + (PATH_MAX_POINTS - PATH_MIN_POINTS) * k);
+}
+const WRAP_M = 30;   // how far past the edge something goes before re-entering
+
+// Re-enter from the opposite side at the same position along that edge
+function wrapPos(e) {
+    const W = FW + 2 * WRAP_M, H = FH + 2 * WRAP_M;
+    if (e.x < -WRAP_M) e.x += W; else if (e.x > FW + WRAP_M) e.x -= W;
+    if (e.y < -WRAP_M) e.y += H; else if (e.y > FH + WRAP_M) e.y -= H;
+}
+
+// Shortest vector from a to b, allowing a route across the screen edges
+function wrapDelta(ax, ay, bx, by) {
+    const W = FW + 2 * WRAP_M, H = FH + 2 * WRAP_M;
+    let dx = bx - ax, dy = by - ay;
+    if (dx > W / 2) dx -= W; else if (dx < -W / 2) dx += W;
+    if (dy > H / 2) dy -= H; else if (dy < -H / 2) dy += H;
+    return { dx, dy, d: Math.hypot(dx, dy) };
+}
 
 // Tutorial
 const TUT_OFFSET_PX  = 110;
@@ -1192,6 +1288,7 @@ function measure() {
             e.x *= sx; e.y *= sy; setPos(e);
             if (e.path) {
                 e.path.x0 *= sx; e.path.x1 *= sx; e.path.y0 *= sy; e.path.y1 *= sy;
+            if (e.destEl) { e.destEl.style.left = e.path.x1 + "px"; e.destEl.style.top = e.path.y1 + "px"; }
             }
         });
     }
@@ -1255,7 +1352,11 @@ function makePath(n) {
         const y = FH * (0.15 + r[1] * 0.7);
         const ang = r[2] * Math.PI * 2;
         const end = rayToEdge(x, y, Math.cos(ang), Math.sin(ang));
-        cand = { x0: x, y0: y, x1: end.x, y1: end.y };
+        const len = Math.hypot(end.x - x, end.y - y) || 1;
+        const back = Math.min(80, len * 0.5);   // pull the end back inside the screen
+        cand = { x0: x, y0: y,
+            x1: x + (end.x - x) * (len - back) / len,
+            y1: y + (end.y - y) * (len - back) / len };
         if (strict && Math.hypot(end.x - x, end.y - y) < 250) continue;
         if (!farFromOthers(x, y, strict ? 140 : 60)) continue;
         const sep = strict ? PATH_SEP : 1;
@@ -1289,10 +1390,17 @@ function spawnFriendly() {
     const pathEl = document.createElementNS(SVG_NS, "line");
     pathEl.setAttribute("class", "fpath");
     pathLayer.appendChild(pathEl);
+    const destEl = document.createElement("div");
+    destEl.className = "dest";
+    destEl.style.left = path.x1 + "px";
+    destEl.style.top  = path.y1 + "px";
+    field.appendChild(destEl);
 
     const id = G.nextId++;
     const f = {
-        id, el, x, y, path, pathEl, px: x, py: y, rot: ICON.rot,
+        id, el, x, y, path, pathEl, destEl, age: 0,
+        pathLen: Math.hypot(path.x1 - path.x0, path.y1 - path.y0),
+        px: x, py: y, rot: ICON.rot,
         face: ICON.face || "left",                 // which way the emoji natively faces
         dir: Math.cos(ang) >= 0 ? 1 : -1,          // current horizontal facing (+1 right, -1 left)
         vx: Math.cos(ang) * FRIENDLY_BASE_SPEED,
@@ -1328,7 +1436,6 @@ function spawnFriendly() {
 
     setPos(f);
     rotateFriendly(f);
-    if (!G.selected) selectFriendly(f);
 }
 
 function rotateFriendly(f) {
@@ -1579,10 +1686,10 @@ function tutStepInfo(s) {
     const kb = isKB();
     if (s === 0) return {
         title: kb ? "STEER THE FRIENDLY" : "DRAG THE FRIENDLY",
-        text: "This FRIENDLY has strayed from its <b>dotted grey flight path</b>. " +
+        text: "This FRIENDLY must reach its <b>destination circle</b> at the end of the <b>dotted grey flight path</b>, but it has strayed off course. " +
               (kb ? "<b>Click the friendly (" + I.plane + ")</b> to select it, then steer it back onto the path with <b>W A S D</b> (or arrow keys). "
-                  : "<b>Click and drag the friendly (" + I.plane + ")</b> back onto the path to score. ") +
-              "The sooner you catch a stray, the more you score."
+                  : "<b>Click and drag the friendly (" + I.plane + ")</b> to the destination circle to score. ") +
+              "The faster it arrives, the more you score."
     };
     if (s === 1) return {
         title: "IDENTIFY THE PING",
@@ -1901,43 +2008,26 @@ function update(dt) {
 
         f.x += f.vx * dt;
         f.y += f.vy * dt;
-        f.life -= dt;
+        f.age += dt;
 
-        const MARGIN = 30;
-        const offscreen = f.x < -MARGIN || f.x > FW + MARGIN ||
-                          f.y < -MARGIN || f.y > FH + MARGIN;
+        wrapPos(f);   // velocity is untouched, so angle and speed carry over
 
-        if (offscreen || f.life <= 0) {
-            G.friendlies.splice(G.friendlies.indexOf(f), 1);
-            if (G.selected === f) G.selected = null;
-            if (G.drag && G.drag.friendly === f) G.drag = null;
-            f.el.remove();
-            f.pathEl.remove();
-            continue;
+        if (Math.hypot(f.x - f.path.x1, f.y - f.path.y1) < DEST_REACH) {
+        award(destPoints(f), f.path.x1, f.path.y1);
+        if (G.tutorial && G.tut.step === 0) tutComplete(0);
+        G.friendlies.splice(G.friendlies.indexOf(f), 1);
+        if (G.selected === f) G.selected = null;
+        if (G.drag && G.drag.friendly === f) G.drag = null;
+        f.el.remove(); f.pathEl.remove(); f.destEl.remove();
+        continue;
         }
 
-        const pr = nearestOnSeg(f.x, f.y, f.path);
-        f.dev = pr.d;
-        f.px = pr.x; f.py = pr.y;
-        f.pathEl.setAttribute("x1", pr.x);
-        f.pathEl.setAttribute("y1", pr.y);
+        // flight path: one end on the destination, the other follows the icon
+        f.px = f.x; f.py = f.y;
+        f.pathEl.setAttribute("x1", f.x);
+        f.pathEl.setAttribute("y1", f.y);
         f.pathEl.setAttribute("x2", f.path.x1);
         f.pathEl.setAttribute("y2", f.path.y1);
-
-        if (!f.off) {
-            if (f.dev > PATH_OFF_DIST) { f.off = true; f.maxDev = f.dev; }
-        } else {
-            f.maxDev = Math.max(f.maxDev, f.dev);
-            if (f.dev < PATH_ON_DIST) {
-                if (G.t - f.lastDrag < 0.4) {
-                    const k = Math.max(0, 1 - f.maxDev / PATH_FAR_DIST);
-                    award(Math.round(PATH_MIN_POINTS + (PATH_MAX_POINTS - PATH_MIN_POINTS) * k), f.x, f.y);
-                    if (G.tutorial && G.tut.step === 0) tutComplete(0);
-                }
-                f.off = false;
-                f.maxDev = 0;
-            }
-        }
 
         setPos(f);
         rotateFriendly(f);
@@ -1946,22 +2036,21 @@ function update(dt) {
     // Tutorial keeps one plane in the air; real runs spawn planes per wave only
     if (G.tutorial) while (G.friendlies.length < 1) spawnFriendly();
 
-    if (!G.selected && G.friendlies.length) selectFriendly(G.friendlies[0]);
-
     // --- Enemies hunt the nearest friendly ---
     for (const e of G.enemies) {
         if (!G.friendlies.length) break;
-        let target = null, best = Infinity;
+        let target = null, best = Infinity, tv = null;
         for (const f of G.friendlies) {
-            const d = Math.hypot(f.x - e.x, f.y - e.y);
-            if (d < best) { best = d; target = f; }
+            const v = wrapDelta(e.x, e.y, f.x, f.y);
+            if (v.d < best) { best = v.d; target = f; tv = v; }
         }
         if (target && best > 0) {
-            e.x += (target.x - e.x) / best * G.enemySpeed * dt;
-            e.y += (target.y - e.y) / best * G.enemySpeed * dt;
+            e.x += tv.dx / best * G.enemySpeed * dt;
+            e.y += tv.dy / best * G.enemySpeed * dt;
+            wrapPos(e);
             setPos(e);
         }
-        if (target && Math.hypot(target.x - e.x, target.y - e.y) < R_ENEMY_FRIENDLY) {
+        if (target && wrapDelta(e.x, e.y, target.x, target.y).d < R_ENEMY_FRIENDLY) {
             if (G.tutorial) {
                 if (strike.enemy === e) strikeReset();
                 G.enemies.splice(G.enemies.indexOf(e), 1);
@@ -2124,7 +2213,13 @@ function endGame(reason) {
 }
 
 // =====================================================
-// 9b. BREATHING RESET (4-4-7)
+// 9b. DEATH SCREEN
+// =====================================================
+
+
+
+// =====================================================
+// 9c. BREATHING RESET (4-4-7)
 // =====================================================
 
 const breathing = {
@@ -2173,7 +2268,7 @@ const breathing = {
         if (state === "over") board.openResult();
     }
 };
-
+$("brSkip").addEventListener("click", () => breathing.finish());
 
 // =====================================================
 // 10. LEADERBOARD (Supabase)
@@ -2695,7 +2790,7 @@ function updateHowTo() {
         : `<b>2. Tap a enemy</b> ${I.enemy || "◆"}, confirm, then press and hold for 2 seconds to strike it for points.`;
     const pingStep = `<b>3. Press and hold a ping</b> ${I.ping || "●"} <b>for 0.5 seconds</b> to identify it. Each ping expires after 3 seconds.`;
     $("howto").innerHTML =
-        planeStep + " Drag stray friendlies back onto their dotted flight path; the sooner, the more you score.<br><br>" +
+        planeStep + " Guide each friendly to its destination circle along the dotted flight path; the faster it arrives, the more you score.<br><br>" +
         strikeStep + "<br><br>" + pingStep + "<br><br>" +
         "Clear <b>waves</b> to climb: <b>L1</b> friendlies only, <b>L2</b> adds hostiles, <b>L3</b> adds pings, <b>L4</b> is endless.<br>" +
         "A missed ping or any collision is game over. Your daily rank is the number of <b>waves you clear</b> (points break ties).";
@@ -2805,7 +2900,7 @@ const wave = Number(operatorWave.value);
 // Clear existing friendly aircraft
 for (const f of G.friendlies) {
     f.el?.remove();
-    f.pathEl?.remove();
+    f.destEl?.remove();
 }
 
 // Clear existing pings
