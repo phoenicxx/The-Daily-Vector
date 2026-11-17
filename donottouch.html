@@ -665,9 +665,9 @@ body, html {
 
 <div id="operatorPanel" hidden>
     <input id="operatorCommand"
-        type="text"
-        placeholder="Enter command..."
-        autocomplete="off">
+    type="password"
+    placeholder="Enter operator password..."
+    autocomplete="off">
     <div id="operatorControls" hidden>
         <label>Level
             <select id="operatorLevel">
@@ -2985,11 +2985,55 @@ if (
         }
     });
 
-    // Show level and wave selectors only for /skipto
-    operatorCommand.addEventListener("input", () => {
-        operatorControls.hidden =
-            operatorCommand.value.trim() !== "/skipto";
-    });
+    
+// Verify operator password through Supabase
+operatorCommand.addEventListener("keydown", async (event) => {
+    if (event.key !== "Enter") return;
+
+    event.preventDefault();
+
+    const password = operatorCommand.value;
+
+    if (!password) return;
+
+    operatorCommand.disabled = true;
+
+    try {
+        const response = await fetch(
+            `${SUPABASE_URL}/functions/v1/operator-auth`,
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "apikey": SUPABASE_KEY
+                },
+                body: JSON.stringify({
+                    command: password
+                })
+            }
+        );
+
+        const result = await response.json();
+
+        if (!response.ok || result.authorised !== true) {
+            alert("Incorrect operator password.");
+            operatorCommand.value = "";
+            operatorCommand.focus();
+            return;
+        }
+
+        // Password accepted
+        operatorCommand.value = "";
+        operatorControls.hidden = false;
+
+    } catch (error) {
+        alert("Could not connect to Supabase.");
+        console.error(error);
+    } finally {
+        operatorCommand.disabled = false;
+    }
+});
+
 
     // Populate wave selector based on chosen level
     function updateOperatorWaves() {
