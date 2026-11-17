@@ -747,6 +747,13 @@ body, html {
             </select>
         </div>
         <div class="theme-picker">
+            <label for="viewSelect">VIEW</label>
+            <select id="viewSelect" class="btn">
+                <option value="vertical">VERTICAL</option>
+                <option value="horizontal">HORIZONTAL</option>
+            </select>
+        </div>
+        <div class="theme-picker">
             <label for="themeSelect">SELECT THEME</label>
             <select id="themeSelect" class="btn">
                 <option value="classic">CLASSIC</option>
@@ -2895,7 +2902,18 @@ function applyControls(mode) {
     updateHowTo();
 }
 $("ctrlSelect").addEventListener("change", () => applyControls($("ctrlSelect").value));
-
+function applyView(v) {
+    document.documentElement.dataset.view = v;
+    try { localStorage.setItem("ace_view", v); } catch (_) {}
+    $("viewSelect").value = v;
+    measure();   // field size changes with the layout
+}
+$("viewSelect").addEventListener("change", () => applyView($("viewSelect").value));
+document.querySelectorAll("#viewChoice [data-view]").forEach(b =>
+    b.addEventListener("click", () => {
+        applyView(b.dataset.view);
+        $("viewChoice").classList.remove("on");
+    }));
 $("menuPlay").addEventListener("click", () => startGame());
 
 refreshTutBtn();
@@ -2907,8 +2925,19 @@ try { savedTheme = localStorage.getItem("gameTheme") || "spring"; } catch (_) {}
 if (!ICONS[savedTheme]) savedTheme = "spring";
 $("themeSelect").value = savedTheme;
 $("ctrlSelect").value = controls;
-applyTheme(savedTheme);
 
+let savedView = null;
+try { savedView = localStorage.getItem("ace_view"); } catch (_) {}
+if (savedView === "vertical" || savedView === "horizontal") {
+    applyView(savedView);
+} else {
+    // First visit: guess a layout for the background, then ask
+    const guess = window.innerWidth >= 700 ? "horizontal" : "vertical";
+    document.documentElement.dataset.view = guess;
+    $("viewSelect").value = guess;
+    $("viewChoice").classList.add("on");
+}
+applyTheme(savedTheme);
 
 // =====================================================
 // OPERATOR PANEL

@@ -525,39 +525,61 @@ body {
 .theme-picker select { width: 100%; text-align: center; }
 
 /* ---------- DEATH SCREEN ---------*/
-body, html {
-      margin: 0;
-      height: 100%;
-      overflow: hidden;
-      font-family: Arial, sans-serif;
-    }
-    #gameCanvas {
-      display: block;
-      background: lightblue;
-    }
-    #deathOverlay {
-      position: absolute;
-      top: 0; left: 0;
-      width: 100vw;
-      height: 100vh;
-      background-color: rgba(255, 0, 0, 0.5);
-      display: none;
-      justify-content: center;
-      align-items: center;
-      z-index: 10;
-    }
-    #deathMessage {
-      position: relative;
-      font-size: 32px;
-      font-weight: bold;
-      color: white;
-      padding: 20px 40px;
-      border: 4px solid red;
-      border-radius: 100px; /* makes circle if width=height */
-      background: rgba(255, 0, 0, 0.7);
-      text-align: center;
-      max-width: 300px;
-    }
+.screen {
+  position: fixed;
+  top:0; left:0;
+  width: 100vw; height: 100vh;
+  background: rgba(255,0,0,0.7);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.screen.on {
+  display: flex;
+}
+
+.modal {
+  background: #700000;
+  padding: 30px 50px;
+  border-radius: 12px;
+  color: white;
+  text-align: center;
+  max-width: 360px;
+}
+
+.circle-wrap {
+  width: 120px;
+  height: 120px;
+  margin: 20px auto 30px;
+  border-radius: 50%;
+  border: 5px solid red;
+  overflow: visible;
+}
+
+.death-circle {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background-color: rgba(255, 0, 0, 0.8);
+  transform: scale(0);
+  transition: transform 1.5s ease;
+}
+
+.btn {
+  background: red;
+  color: white;
+  padding: 12px 30px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.btn:hover {
+  background: #cc0000;
+}
 
 
 /* ---------- BREATHING RESET ---------- */
@@ -781,14 +803,14 @@ body, html {
 </div>
 
 <!-- Death screen (shown after death, before breathing reset)-->
- <div class="screen" id="deathOverlay" style="display:none;">
+ <div class="screen" id="deathOverlay">
   <div class="modal">
     <div class="eyebrow">GAME OVER</div>
     <h2>YOU DIED</h2>
     <div class="sub" id="deathReason">Reason: Unknown</div>
 
     <div class="circle-wrap">
-      <div class="death-circle"></div>
+      <div class="death-circle" id="deathCircle"></div>
     </div>
 
     <div class="btn-row">
@@ -2296,9 +2318,6 @@ const deathScreen = {
     // Set reason text
     message.textContent = `Reason: ${reason}`;
 
-    // Reset styles before animation
-    circle.style.transition = "transform 1.5s ease";
-    circle.style.transform = "scale(0)";
 
     // Show overlay
     overlay.classList.add("on");
