@@ -91,15 +91,24 @@ body {
 #game {
     position: fixed;
     top: 0;
-    bottom: 0;
     left: 50%;
     transform: translateX(-50%);
-    width: min(430px, 100vw); /* vertical phone-sized layout */
+    width: min(430px, 100vw);
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
 }
+
 
 /* Desktop / wide screens: use the whole window. Phones keep the portrait layout above. */
 /* Horizontal view = full-window layout. Vertical view = the phone-sized column above. */
-:root[data-view="horizontal"] #game { left: 0; width: 100%; transform: none; }
+:root[data-view="horizontal"] #game {
+    left: 0;
+    width: 100%;
+    height: 100vh;
+    height: 100dvh;
+    transform: none;
+}
 :root[data-view="horizontal"] #hud { padding: 14px 28px; }
 :root[data-view="horizontal"] #hud h1 { font-size: 22px; letter-spacing: 5px; }
 :root[data-view="horizontal"] .stats { gap: 24px; }
