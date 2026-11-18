@@ -1324,6 +1324,7 @@ const THEME_SOUND_SETTINGS = {
 
 
 function playThemeSound(soundName, volume = null) {
+if (!soundOn) return;
 
 const theme = document.documentElement.dataset.theme || "classic";
 
@@ -1387,6 +1388,7 @@ sound.addEventListener("loadedmetadata", function () {
 }
 
 function playSharedSound(soundName, volume = 1, speed = 1) {
+    if (!soundOn) return;
     const sound = new Audio(`./sounds/shared/${soundName}.mp3`);
 
     sound.volume = volume;
