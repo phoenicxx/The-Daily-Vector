@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Threat Management – Ace Challenge</title>
 
 <style>
@@ -106,8 +106,27 @@ body {
 }
 
 body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: Arial, sans-serif;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+#game {
     position: fixed;
-    inset: 0;
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(430px, 100vw);
+    overflow: hidden;
+}
+
+:root[data-view="horizontal"] #game {
+    left: 0;
+    width: 100%;
+    transform: none;
 }
 
 /* Desktop / wide screens: use the whole window. Phones keep the portrait layout above. */
