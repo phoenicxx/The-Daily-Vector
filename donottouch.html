@@ -584,6 +584,15 @@ body {
 .theme-picker { margin: 14px 0; text-align: left; }
 .theme-picker label { display: block; color: var(--muted); font-size: 10px; letter-spacing: 3px; margin-bottom: 8px; }
 .theme-picker select { width: 100%; text-align: center; }
+#menuSettings {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4px 12px;
+    margin: 10px 0 14px;
+}
+#menuSettings .theme-picker { min-width: 0; margin: 4px 0; }
+#menuSettings .theme-picker label { letter-spacing: 2px; margin-bottom: 5px; }
+#menuSettings .theme-picker select { min-width: 0; padding: 0 8px; letter-spacing: 1px; }
 
 /* ---------- DEATH SCREEN ---------- */
 #deathOverlay {
@@ -604,34 +613,6 @@ body {
     box-shadow: 0 0 20px 5px rgba(255, 0, 0, 0.8);
 }
 
-/* ---------- SOUND TOGGLE ---------- */
-#soundToggle {
-    position: fixed;
-    top: 90px;
-    right: 10px;
-    width: 38px;
-    height: 38px;
-    z-index: 25;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0;
-    font-size: 18px;
-    background: var(--panel);
-    color: var(--text);
-    border: 1px solid var(--accent);
-    border-radius: 50%;
-    cursor: pointer;
-    opacity: 0.85;
-}
-#soundToggle:hover { opacity: 1; }
-#deathOverlay .eyebrow { color: #ffb3b3; font-weight: 600; letter-spacing: 2px; opacity: 0.9; }
-#deathOverlay h2 { font-size: 30px; margin: 6px 0 8px; }
-#deathOverlay .sub { font-size: 14px; color: #ffd6d6; margin: 0 0 14px; }
-#deathOverlay .btn { background: #b00000; border: none; color: #fff; font-weight: bold; }
-#deathOverlay .btn:hover { background: #cc0000; }
-#deathOverlay .btn-row { margin-top: 0; }
-
 /* Ring that marks the failure point (positioned from JS; 120px = 60px radius) */
 #deathMarker {
     position: fixed;
@@ -645,6 +626,47 @@ body {
     transition: transform 0.6s ease-out;
 }
 #deathMarker.on { transform: scale(1); }
+
+/* ---------- SOUND TOGGLE (in the HUD, beside TIME) ---------- */
+.snd-btn {
+    pointer-events: auto;
+    align-self: flex-end;
+    flex: 0 0 auto;
+    width: 34px;
+    height: 34px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    color: var(--accent);
+    background: color-mix(in srgb, var(--panel) 65%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent);
+    border-radius: 50%;
+    box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 28%, transparent);
+    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: blur(4px);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: transform .15s ease, box-shadow .2s ease, color .2s ease,
+                border-color .2s ease, background .2s ease;
+}
+.snd-btn svg { width: 18px; height: 18px; display: block; }
+.snd-btn:hover  { transform: scale(1.08); box-shadow: 0 0 16px color-mix(in srgb, var(--accent) 45%, transparent); }
+.snd-btn:active { transform: scale(0.94); }
+.snd-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.snd-x { display: none; }
+.snd-btn.muted {
+    color: var(--muted);
+    background: color-mix(in srgb, var(--panel) 45%, transparent);
+    border-color: color-mix(in srgb, var(--muted) 45%, transparent);
+    box-shadow: none;
+}
+.snd-btn.muted .snd-wave { display: none; }
+.snd-btn.muted .snd-x    { display: block; }
+
+:root[data-view="horizontal"] .snd-btn { width: 40px; height: 40px; }
+:root[data-view="horizontal"] .snd-btn svg { width: 22px; height: 22px; }
 
 /* ---------- BREATHING RESET ---------- */
 #breathOverlay { z-index: 130; }
@@ -728,7 +750,7 @@ body {
 
 <div id="game">
 
-<button id="soundToggle" type="button" aria-label="Toggle sound" title="Toggle sound">🔊</button>    <div id="hud">
+   <div id="hud">
         <div>
             <div class="eyebrow">THE DAILY VECTOR</div>
         </div>
@@ -765,6 +787,21 @@ body {
 
         <div class="stats">
             <div class="stat"><div class="lab">TIME</div><div class="val" id="hTime">00:00</div></div>
+            <div class="stats">
+    <div class="stat"><div class="lab">TIME</div><div class="val" id="hTime">00:00</div></div>
+
+    <button id="soundToggle" class="snd-btn" type="button"
+            aria-label="Mute sound" aria-pressed="false" title="Sound on – click to mute">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M11 5 6 9H3v6h3l5 4V5z" fill="currentColor" stroke="none"/>
+            <path class="snd-wave" d="M15.5 8.5a5 5 0 0 1 0 7"/>
+            <path class="snd-wave" d="M18.5 5.5a9 9 0 0 1 0 13"/>
+            <path class="snd-x" d="M16 9l5 6M21 9l-5 6"/>
+        </svg>
+    </button>
+
+    <div class="stat"><div class="lab">POINTS</div><div class="val" id="hPts">0</div></div>
             <div class="stat"><div class="lab">POINTS</div><div class="val" id="hPts">0</div></div>
             <div class="stat"><div class="lab">CLEARED</div><div class="val" id="hWaves">0</div></div>
             <div class="stat"><div class="lab">LVL · WAVE</div><div class="val" id="hLvl">1·1/3</div></div>
@@ -821,6 +858,7 @@ body {
         <div class="sub" id="howto"></div>
         <button class="btn primary" id="menuPlay">▶ START GAME</button>
 
+        <div id="menuSettings">
         <div class="theme-picker">
             <label for="ctrlSelect">CONTROLS</label>
             <select id="ctrlSelect" class="btn">
@@ -856,6 +894,7 @@ body {
         <option value="off">OFF (MUTED)</option>
     </select>
 </div>
+        </div>
         <div class="acct-line" id="acctLine"></div>
         <div class="menu-row">
             <button class="btn" id="menuAcct">LOG IN / SIGN UP</button>
@@ -1245,12 +1284,15 @@ try { soundOn = localStorage.getItem("ace_sound") !== "off"; } catch (_) {}
 function applySound(on) {
     soundOn = on;
     try { localStorage.setItem("ace_sound", on ? "on" : "off"); } catch (_) {}
-    $("soundToggle").textContent = on ? "🔊" : "🔇";
     $("soundSelect").value = on ? "on" : "off";
+    $("soundToggle").classList.toggle("muted", !on);
+    $("soundToggle").setAttribute("aria-pressed", String(!on));
+    $("soundToggle").setAttribute("aria-label", on ? "Mute sound" : "Unmute sound");
+    $("soundToggle").title = on ? "Sound on – click to mute" : "Sound muted – click to unmute";
 }
 $("soundToggle").addEventListener("click", e => {
     applySound(!soundOn);
-    e.currentTarget.blur();   // stops the SPACE key from re-triggering the button
+    e.currentTarget.blur();
 });
 $("soundSelect").addEventListener("change", () => applySound($("soundSelect").value === "on"));
 applySound(soundOn);
