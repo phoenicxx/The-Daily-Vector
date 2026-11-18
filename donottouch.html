@@ -376,7 +376,7 @@ body {
     position: fixed;
     bottom: 18px; left: 50%;
     transform: translateX(-50%);
-    width: min(420px, 94vw);
+    width: min(480px, 94vw);
     z-index: 25;
     display: none;
     padding: 12px 16px;
@@ -388,7 +388,7 @@ body {
 }
 #tutPanel.on { display: block; }
 #tutPanel.up { bottom: 182px; }
-#tutTitle { font-size: 16px; letter-spacing: 3px; margin: 5px 0 5px; }
+#tutTitle { font-size: 20px; letter-spacing: 3px; margin: 5px 0 6px; }
 #tutText  { color: var(--muted); font-size: 11px; line-height: 1.5; margin-bottom: 8px; }
 #tutText b { color: var(--text); font-weight: normal; }
 .tut-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
@@ -397,17 +397,18 @@ body {
     display: inline-block;
     margin-right: 10px;
     color: var(--muted);
-    font-size: 9px;
+    font-size: 11px;
     letter-spacing: 2px;
 }
 #tutChecks span.cur  { color: var(--accent); }
 #tutChecks span.done { color: var(--success); }
 #tutSkip, #tutNext {
     pointer-events: auto;
-    min-height: 34px;
-    padding: 0 14px;
-    font-size: 10px;
+    min-height: 40px;
+    padding: 0 16px;
+    font-size: 12px;
 }
+#tutPanel .eyebrow { font-size: 12px; }
 .tut-foot { flex-wrap: wrap; }
 .tut-btns { display: flex; gap: 8px; }
 
@@ -448,7 +449,7 @@ body {
 }
 .sub b { color: var(--text); font-weight: normal; }
 #howto   { font-size: 16px; line-height: 1.8; }   /* menu instructions (was 12px) */
-#tutText { font-size: 14px; }                      /* tutorial instructions (was 11px) */
+#tutText { font-size: 17px; line-height: 1.55; }                      /* tutorial instructions (was 11px) */
 .btn {
     min-height: 46px;
     padding: 0 18px;
@@ -572,6 +573,45 @@ body, html {
       max-width: 300px;
     }
 
+
+/* ---------- DEATH SCREEN ---------- */
+#deathOverlay {
+    z-index: 125;
+    background: rgba(120, 0, 0, 0.25);      /* light tint so the frozen field stays visible */
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    align-items: flex-end;                  /* text panel at the bottom, circle stays clear */
+    padding-bottom: 24px;
+}
+#deathOverlay .modal {
+    background: #700000;
+    border: 1px solid #ff4d4d;
+    border-radius: 12px;
+    color: #fff;
+    width: min(360px, 94vw);
+    padding: 18px 24px;
+    box-shadow: 0 0 20px 5px rgba(255, 0, 0, 0.8);
+}
+#deathOverlay .eyebrow { color: #ffb3b3; font-weight: 600; letter-spacing: 2px; opacity: 0.9; }
+#deathOverlay h2 { font-size: 30px; margin: 6px 0 8px; }
+#deathOverlay .sub { font-size: 14px; color: #ffd6d6; margin: 0 0 14px; }
+#deathOverlay .btn { background: #b00000; border: none; color: #fff; font-weight: bold; }
+#deathOverlay .btn:hover { background: #cc0000; }
+#deathOverlay .btn-row { margin-top: 0; }
+
+/* Ring that marks the failure point (positioned from JS; 120px = 60px radius) */
+#deathMarker {
+    position: fixed;
+    width: 120px; height: 120px;
+    border-radius: 50%;
+    border: 4px solid #ff2d2d;
+    background: rgba(255, 0, 0, 0.22);
+    box-shadow: 0 0 24px 6px rgba(255, 0, 0, 0.85);
+    pointer-events: none;
+    transform: scale(0);
+    transition: transform 0.6s ease-out;
+}
+#deathMarker.on { transform: scale(1); }
 
 /* ---------- BREATHING RESET ---------- */
 #breathOverlay { z-index: 130; }
@@ -815,22 +855,17 @@ body, html {
 </div>
 
 <!-- Death screen (shown after death, before breathing reset)-->
- <div class="screen" id="deathOverlay" style="display:none;">
+   <div class="screen" id="deathOverlay">
+  <div id="deathMarker"></div>
   <div class="modal">
     <div class="eyebrow">GAME OVER</div>
     <h2>YOU DIED</h2>
     <div class="sub" id="deathReason">Reason: Unknown</div>
-
-    <div class="circle-wrap">
-      <div class="death-circle"></div>
-    </div>
-
     <div class="btn-row">
       <button class="btn" id="deathSkip">CLOSE</button>
     </div>
   </div>
 </div>
-
 
 <!-- Breathing reset (shown after a loss, before results) -->
 <div class="screen" id="breathOverlay">
@@ -1002,41 +1037,46 @@ const GHOST_WINDOW_S = 3.0;
 const MIN_TIME_MS = 3000;           // shortest run the server accepts
 
 // ---- Levels & waves --------------------------------------------------
-// L1: planes only (3 waves)        L2: planes + hostiles (5 waves)
-// L3: + pings, 2 planes / 2 hostiles per wave (11 waves, ping gap 6.0s -> 1.0s)
-// L4: endless, scales until very hard
-const LEVEL_WAVES = [3, 5, 11, Infinity];
-const LEVEL_INTRO = [
-    "PLANES ONLY - KEEP THEM ON COURSE",
+// Levels 1-9 have 3 waves each. Level 10 is endless.
+//   Wave 1: friendlies only
+//   Wave 2: friendlies + hostiles
+//   Wave 3: friendlies + hostiles + pings
+// Level 10 waves 4+ keep the L10 setup, with hostiles +1 per wave (max 10).
+const LEVEL_WAVES = [3, 3, 3, 3, 3, 3, 3, 3, 3, Infinity];
+const WAVE_INTRO = [
+    "FRIENDLIES ONLY - KEEP THEM ON COURSE",
     "HOSTILES INCOMING - STRIKE THEM",
-    "PINGS ACTIVE - IDENTIFY THEM FAST",
-    "ENDLESS - HOW LONG CAN YOU LAST?"
+    "PINGS ACTIVE - IDENTIFY THEM FAST"
 ];
-const L1_PLANES = [1, 3, 5];
-const L2_WAVES  = [[1, 1], [2, 1], [2, 2], [3, 2], [3, 3]];   // [planes, hostiles]
 const ENEMY_STAGGER_S = 1.5;        // gap between hostiles spawning inside a wave
 const ENEMY_SPAWN_CLEARANCE = 170;  // min px between a new hostile and any friendly
-const MIN_PING_GAP_S = 1.0;         // fastest allowed time between pings
+const MIN_PING_GAP_S = 1.5;         // fastest allowed time between pings
+const MAX_FRIENDLIES = 6;
+const MAX_HOSTILES   = 10;
 const WAVE_PAUSE_S = 1.8;           // breather between waves (clock paused)
 
 function waveSpec(level, wave) {
-    if (level === 1) return { planes: L1_PLANES[wave - 1], enemies: 0, ping: 0, speed: 0, maxGhosts: 0, ghostR: 28, drift: 1 };
-    if (level === 2) {
-        const w = L2_WAVES[wave - 1];
-        return { planes: w[0], enemies: w[1], ping: 0, speed: 35, maxGhosts: 0, ghostR: 28, drift: 1 };
-    }
-    if (level === 3) {
-        return { planes: 2, enemies: 2, ping: Math.max(MIN_PING_GAP_S, 6.5 - 0.5 * wave), speed: 40, maxGhosts: 4, ghostR: 28, drift: 1 };
-    }
-    const k = wave;   // level 4: endless scaling
+    const extra = Math.max(0, wave - 3);   // only non-zero on L10 after wave 3
+
+    // L1:1  L2:2  L3:2  L4:3  L5:3 ... L10:6
+    const planes = Math.min(MAX_FRIENDLIES, Math.floor(level / 2) + 1);
+
+    // L1:1  L2:1  L3:2  L4:2  L5:3 ... L10:5, then +1 per extra wave up to 10
+    const enemies = wave >= 2
+        ? Math.min(MAX_HOSTILES, Math.ceil(level / 2) + extra)
+        : 0;
+
+    // L1:6.0  L2:5.5  L3:5.0 ... L10:1.5 (never faster than 1.5)
+    const ping = wave >= 3
+        ? Math.max(MIN_PING_GAP_S, 6.5 - 0.5 * level)
+        : 0;
+
     return {
-        planes:  Math.min(6, 3 + Math.floor((k - 1) / 3)),
-        enemies: Math.min(10, 3 + Math.floor((k - 1) / 2)),
-        ping:    Math.max(MIN_PING_GAP_S, 1.0 * Math.pow(0.95, k - 1)),
-        speed:   Math.min(120, 45 + 4 * k),
-        maxGhosts: 6,
-        ghostR:  Math.max(20, 28 - 0.4 * k),
-        drift:   Math.min(2, 1 + 0.05 * k)
+        planes, enemies, ping,
+        speed:     wave >= 2 ? Math.min(120, 35 + 5 * (level - 1) + 3 * extra) : 0,
+        maxGhosts: wave >= 3 ? Math.min(6, 3 + Math.ceil(level / 2)) : 0,
+        ghostR:    Math.max(20, 28 - 0.6 * (level - 1) - 0.4 * extra),
+        drift:     Math.min(2, 1 + 0.05 * (level - 1) + 0.05 * extra)
     };
 }
 function waveSummary(sp) {
@@ -1978,7 +2018,7 @@ function queueWave(pos) {
     const sp = waveSpec(pos.level, pos.wave);
     playSharedSound("beep", 0.8, 0.9);
     showBanner("LEVEL " + pos.level + " · WAVE " + pos.wave,
-               pos.wave === 1 ? LEVEL_INTRO[pos.level - 1] : waveSummary(sp));
+                (pos.level === 1 && pos.wave <= 3) ? WAVE_INTRO[pos.wave - 1] : waveSummary(sp));
 }
 
 function startWave() {
@@ -2000,8 +2040,9 @@ function startWave() {
 function hostilesCleared() {
     return G.enemyQueue === 0 && G.enemies.length === 0;
 }
-function canAdvanceFromWave(level) {
-    if (level === 2) return hostilesCleared();
+function canAdvanceFromWave(level, wave) {
+    // Wave 2 introduces hostiles: all must be struck before moving on
+    if (wave === 2) return hostilesCleared();
     return true;
 }
 
@@ -2014,7 +2055,7 @@ function waveTick(dt) {
     // Wave is cleared once every plane has landed / left the screen,
     // and (on Level 2) every hostile has been killed
     if (G.friendlies.length === 0) {
-        if (canAdvanceFromWave(G.level)) {
+        if (canAdvanceFromWave(G.level, G.wave)) {
             G.cleared++;
             queueWave(nextWavePos(G.level, G.wave));
             return;
@@ -2232,7 +2273,7 @@ function updateHud() {
     $("hPts").textContent = G.points.toLocaleString();
     $("hWaves").textContent = G.cleared;
     $("hLvl").textContent = G.tutorial ? "-" :
-        G.level + "·" + (G.level < 4 ? G.wave + "/" + LEVEL_WAVES[G.level - 1] : G.wave);
+        G.level + "·" + (G.level < 10 ? G.wave + "/" + LEVEL_WAVES[G.level - 1] : G.wave);
     $("hHost").textContent = G.enemies.length;
     $("hTime").classList.toggle("ok", G.t >= TARGET_ENDURANCE_S);
     $("hPts").classList.toggle("ok", G.points >= TARGET_EFFICIENCY);
@@ -2327,6 +2368,35 @@ function endGame(reason) {
 // 9b. DEATH SCREEN
 // =====================================================
 
+const deathScreen = {
+    runId: 0,
+    R: 60,                                       // marker radius (must match CSS)
+    async open(reason) {
+        const id = ++this.runId;
+        const marker = $("deathMarker");
+
+        // Failure point is stored in field coordinates; convert to screen coordinates
+        const p = (G && G.failPos) || { x: FW / 2, y: FH / 2 };
+        const rect = field.getBoundingClientRect();
+        marker.style.left = (rect.left + p.x - this.R) + "px";
+        marker.style.top  = (rect.top  + p.y - this.R) + "px";
+        marker.classList.remove("on");
+        void marker.offsetWidth;
+
+        $("deathReason").textContent = "Reason: " + reason;
+        $("deathOverlay").classList.add("on");
+        await new Promise(r => setTimeout(r, 50));
+        if (id !== this.runId) return;
+        marker.classList.add("on");
+    },
+    finish(goToBreathing) {
+        this.runId++;
+        $("deathOverlay").classList.remove("on");
+        $("deathMarker").classList.remove("on");
+        if (goToBreathing && state === "over") breathing.open();
+    }
+};
+$("deathSkip").addEventListener("click", () => deathScreen.finish(true));
 
 
 // =====================================================
@@ -2903,7 +2973,7 @@ function updateHowTo() {
     $("howto").innerHTML =
         planeStep + " Guide each friendly to its destination circle along the dotted flight path; the faster it arrives, the more you score.<br><br>" +
         strikeStep + "<br><br>" + pingStep + "<br><br>" +
-        "Clear <b>waves</b> to climb: <b>L1</b> friendlies only, <b>L2</b> adds hostiles, <b>L3</b> adds pings, <b>L4</b> is endless.<br>" +
+        "Clear <b>waves</b> to climb. In every level, <b>wave 1</b> is friendlies only, <b>wave 2</b> adds hostiles and <b>wave 3</b> adds pings. Each level adds more friendlies, hostiles and faster pings. <b>L10</b> is endless.<br>" +
         "A missed ping or any collision is game over. Your daily rank is the number of <b>waves you clear</b> (points break ties).";
 }
 
@@ -2977,7 +3047,12 @@ const operatorControls = document.getElementById("operatorControls");
 const operatorLevel = document.getElementById("operatorLevel");
 const operatorWave = document.getElementById("operatorWave");
 const operatorConfirm = document.getElementById("operatorConfirm");
-
+operatorLevel.innerHTML = "";
+for (let l = 1; l <= 10; l++) {
+    const o = document.createElement("option");
+    o.value = l; o.textContent = "Level " + l;
+    operatorLevel.appendChild(o);
+}
 if (
     ENABLE_OPERATOR_PANEL &&
     operatorTrigger &&
@@ -3050,7 +3125,7 @@ operatorCommand.addEventListener("keydown", async (event) => {
 
     // Populate wave selector based on chosen level
     function updateOperatorWaves() {
-        const waveCounts = [3, 5, 11, 100];
+        const waveCounts = [3, 3, 3, 3, 3, 3, 3, 3, 3, 100];
         const count = waveCounts[Number(operatorLevel.value) - 1];
 
         operatorWave.innerHTML = "";
