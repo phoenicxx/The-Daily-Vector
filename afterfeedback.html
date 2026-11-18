@@ -2311,10 +2311,6 @@ const deathScreen = {
         await new Promise(r => setTimeout(r, 50));
         if (id !== this.runId) return;
         marker.classList.add("on");
-
-        await new Promise(r => setTimeout(r, 3000));
-        if (id !== this.runId) return;
-        this.finish(true);
     },
     finish(goToBreathing) {
         this.runId++;
