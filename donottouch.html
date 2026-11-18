@@ -538,42 +538,6 @@ body {
 .theme-picker label { display: block; color: var(--muted); font-size: 10px; letter-spacing: 3px; margin-bottom: 8px; }
 .theme-picker select { width: 100%; text-align: center; }
 
-/* ---------- DEATH SCREEN ---------*/
-body, html {
-      margin: 0;
-      height: 100%;
-      overflow: hidden;
-      font-family: Arial, sans-serif;
-    }
-    #gameCanvas {
-      display: block;
-      background: lightblue;
-    }
-    #deathOverlay {
-      position: absolute;
-      top: 0; left: 0;
-      width: 100vw;
-      height: 100vh;
-      background-color: rgba(255, 0, 0, 0.5);
-      display: none;
-      justify-content: center;
-      align-items: center;
-      z-index: 10;
-    }
-    #deathMessage {
-      position: relative;
-      font-size: 32px;
-      font-weight: bold;
-      color: white;
-      padding: 20px 40px;
-      border: 4px solid red;
-      border-radius: 100px; /* makes circle if width=height */
-      background: rgba(255, 0, 0, 0.7);
-      text-align: center;
-      max-width: 300px;
-    }
-
-
 /* ---------- DEATH SCREEN ---------- */
 #deathOverlay {
     z-index: 125;
