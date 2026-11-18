@@ -945,60 +945,39 @@ body, html {
 </div>
 
 <script>
+
+"use strict";
+
 // 1. Disable right-click context menu
 document.addEventListener('contextmenu', function (event) {
   event.preventDefault();
 });
 
-// 2. Disable F12 and common developer tool shortcuts
+// 2. Disable developer tool shortcuts
 document.addEventListener('keydown', function (event) {
-  // Check for F12
-  if (event.key === 'F12') {
+  const devKeys = ['KeyI', 'KeyJ', 'KeyC'];
+  let block = false;
+
+  // F12
+  if (event.key === 'F12') block = true;
+
+  // Windows/Linux: Ctrl+Shift+I / J / C
+  if (event.ctrlKey && event.shiftKey && devKeys.includes(event.code)) block = true;
+
+  // Windows/Linux: Ctrl+U (view source)
+  if (event.ctrlKey && event.code === 'KeyU') block = true;
+
+  // Mac: Cmd+Option+I / J / C
+  if (event.metaKey && event.altKey && devKeys.includes(event.code)) block = true;
+
+  // Mac: Cmd+U (view source)
+  if (event.metaKey && event.code === 'KeyU') block = true;
+
+  if (block) {
     event.preventDefault();
     return false;
   }
-
-  // Check for Ctrl+Shift+I (Inspect Elements)
-  if (event.ctrlKey && event.shiftKey && (event.key === 'I' || event.key === 'i')) {
-    event.preventDefault();
-    return false;
-  }
-
-  // Check for Ctrl+Shift+J (Console)
-  if (event.ctrlKey && event.shiftKey && (event.key === 'J' || event.key === 'j')) {
-    event.preventDefault();
-    return false;
-  }
-
-  // Check for Ctrl+U (View Source)
-  if (event.ctrlKey && (event.key === 'U' || event.key === 'u')) {
-    event.preventDefault();
-    return false;
-  }
-
-// Mac: Cmd + Option + I (Developer Tools)
-if (event.metaKey && event.altKey && event.key.toLowerCase() === 'i') {
-    event.preventDefault();
-}
-
-// Mac: Cmd + Option + J (Console)
-if (event.metaKey && event.altKey && event.key.toLowerCase() === 'j') {
-    event.preventDefault();
-}
-
-// Mac: Cmd + Option + C (Element selector)
-if (event.metaKey && event.altKey && event.key.toLowerCase() === 'c') {
-    event.preventDefault();
-}
-
-// Mac: Cmd + U (View Source)
-if (event.metaKey && event.key.toLowerCase() === 'u') {
-    event.preventDefault();
-}
-
-});
-
-"use strict";
+}, true);
 
 // =====================================================
 // 1. CONFIG
@@ -1371,12 +1350,6 @@ function formatClock(sec) {
     return String(Math.floor(s / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0");
 }
 
-// Scoring multiplier grows with level; in the endless level it keeps growing per wave
-function levelMult() {
-    const sl = G.level < 4 ? G.level : 4 + (G.wave - 1) * 0.25;
-    return 1 + 0.1 * (sl - 1);
-}
-
 function measure() {
     const r = field.getBoundingClientRect();
     const ow = FW, oh = FH;
@@ -1683,7 +1656,7 @@ function spawnGhost() {
 // =====================================================
 
 function award(base, x, y) {
-    const pts = Math.round(base * levelMult());
+    const pts = Math.round(base);
     G.points += pts;
     playPointSound();
 
@@ -2232,7 +2205,7 @@ function update(dt) {
                 continue;
             }
             g.el.style.outline = "3px solid #ff3d3d";
-            return endGame("GHOST NOT IDENTIFIED WITHIN 3.0 SECONDS");
+            return endGame("PING NOT IDENTIFIED WITHIN 3.0 SECONDS");
         }
         g.el.style.setProperty("--rem", (1 - g.age / GHOST_WINDOW_S) * 360 + "deg");
         g.el.style.setProperty("--hold", Math.min(1, g.holdT / HOLD_GHOST_S) * 360 + "deg");
