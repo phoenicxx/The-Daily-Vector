@@ -146,7 +146,7 @@ body {
 :root[data-view="horizontal"] .stat .val { font-size: 26px; }
 
 /* Wider menu box in horizontal view */
-:root[data-view="horizontal"] #menu .modal { width: min(860px, 94vw); padding: 36px 48px; }
+:root[data-view="horizontal"] #menu .modal { width: min(600px, 92vw); padding: 24px 30px; }
 
 #viewChoice { z-index: 140; }
 #viewChoice .btn-row .btn { min-height: 74px; line-height: 1.6; }
@@ -493,7 +493,9 @@ body {
     margin: 10px 0 18px;
 }
 .sub b { color: var(--text); font-weight: normal; }
-#howto   { font-size: 16px; line-height: 1.8; }   /* menu instructions (was 12px) */
+#menu .modal { width: min(420px, 92vw); padding: 22px; }
+#menu .modal h2 { font-size: 20px; letter-spacing: 3px; margin: 10px 0 4px; }
+#howto   { font-size: 13px; line-height: 1.55; }   /* menu instructions (was 12px) */
 #tutText { font-size: 17px; line-height: 1.55; }                      /* tutorial instructions (was 11px) */
 .btn {
     min-height: 46px;
@@ -595,6 +597,12 @@ body {
 #deathOverlay .modal {
     background: #700000;
     border: 1px solid #ff4d4d;
+    border-radius: 12px;
+    color: #fff;
+    width: min(360px, 94vw);
+    padding: 18px 24px;
+    box-shadow: 0 0 20px 5px rgba(255, 0, 0, 0.8);
+}
 
 /* ---------- SOUND TOGGLE ---------- */
 #soundToggle {
@@ -617,12 +625,6 @@ body {
     opacity: 0.85;
 }
 #soundToggle:hover { opacity: 1; }
-    border-radius: 12px;
-    color: #fff;
-    width: min(360px, 94vw);
-    padding: 18px 24px;
-    box-shadow: 0 0 20px 5px rgba(255, 0, 0, 0.8);
-}
 #deathOverlay .eyebrow { color: #ffb3b3; font-weight: 600; letter-spacing: 2px; opacity: 0.9; }
 #deathOverlay h2 { font-size: 30px; margin: 6px 0 8px; }
 #deathOverlay .sub { font-size: 14px; color: #ffd6d6; margin: 0 0 14px; }
