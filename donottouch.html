@@ -1485,8 +1485,34 @@ function formatClock(sec) {
 
 function measure() {
     const r = field.getBoundingClientRect();
+    const oldW = FW, oldH = FH;
     FW = r.width;
     FH = r.height;
+
+    // Browser zoom and view changes resize the field. Keep active objects and
+    // their destination points in the same relative positions after reflow.
+    if (!G || !oldW || !oldH || !FW || !FH || (oldW === FW && oldH === FH)) return;
+    const sx = FW / oldW, sy = FH / oldH;
+    const scalePoint = p => { p.x *= sx; p.y *= sy; };
+
+    for (const f of G.friendlies) {
+        scalePoint(f);
+        f.path.x0 *= sx; f.path.x1 *= sx;
+        f.path.y0 *= sy; f.path.y1 *= sy;
+        f.px *= sx; f.py *= sy;
+        f.pathLen = Math.hypot(f.path.x1 - f.path.x0, f.path.y1 - f.path.y0);
+        f.destEl.style.left = f.path.x1 + "px";
+        f.destEl.style.top = f.path.y1 + "px";
+        f.pathEl.setAttribute("x1", f.x);
+        f.pathEl.setAttribute("y1", f.y);
+        f.pathEl.setAttribute("x2", f.path.x1);
+        f.pathEl.setAttribute("y2", f.path.y1);
+        setPos(f);
+        rotateFriendly(f);
+    }
+    for (const e of G.enemies) { scalePoint(e); setPos(e); }
+    for (const g of G.ghosts) { scalePoint(g); setPos(g); }
+    if (G.drag) { G.drag.x *= sx; G.drag.y *= sy; }
 }
 
 window.addEventListener("resize", measure);
