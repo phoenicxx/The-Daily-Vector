@@ -584,15 +584,21 @@ body {
 .theme-picker { margin: 14px 0; text-align: left; }
 .theme-picker label { display: block; color: var(--muted); font-size: 10px; letter-spacing: 3px; margin-bottom: 8px; }
 .theme-picker select { width: 100%; text-align: center; }
-#menuSettings {
+#menu #menuSettings {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 4px 12px;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas: "controls view" "theme sound";
+    align-items: start;
+    gap: 8px 12px;
     margin: 10px 0 14px;
 }
-#menuSettings .theme-picker { min-width: 0; margin: 4px 0; }
-#menuSettings .theme-picker label { letter-spacing: 2px; margin-bottom: 5px; }
-#menuSettings .theme-picker select { min-width: 0; padding: 0 8px; letter-spacing: 1px; }
+#menu #menuSettings .theme-picker { min-width: 0; margin: 4px 0; }
+#menu #menuSettings .theme-picker:nth-child(1) { grid-area: controls; }
+#menu #menuSettings .theme-picker:nth-child(2) { grid-area: view; }
+#menu #menuSettings .theme-picker:nth-child(3) { grid-area: theme; }
+#menu #menuSettings .theme-picker:nth-child(4) { grid-area: sound; }
+#menu #menuSettings .theme-picker label { letter-spacing: 2px; margin-bottom: 5px; }
+#menu #menuSettings .theme-picker select { min-width: 0; padding: 0 8px; letter-spacing: 1px; }
 
 /* ---------- DEATH SCREEN ---------- */
 #deathOverlay {
@@ -630,7 +636,6 @@ body {
 /* ---------- SOUND TOGGLE (in the HUD, beside TIME) ---------- */
 .snd-btn {
     pointer-events: auto;
-    align-self: flex-end;
     flex: 0 0 auto;
     width: 34px;
     height: 34px;
@@ -667,7 +672,14 @@ body {
 
 :root[data-view="horizontal"] .snd-btn { width: 40px; height: 40px; }
 :root[data-view="horizontal"] .snd-btn svg { width: 22px; height: 22px; }
-
+/* Keeps the sound button and TIME together, button on the left */
+.time-group {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 8px;
+}
+:root[data-view="horizontal"] .time-group { gap: 12px; }
 /* ---------- BREATHING RESET ---------- */
 #breathOverlay { z-index: 130; }
 .br-wrap { position: relative; height: 260px; display: flex; justify-content: center; align-items: center; margin: 10px 0; }
