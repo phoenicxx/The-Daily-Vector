@@ -844,9 +844,7 @@ body {
                 <span id="brTimer"></span>
             </div>
         </div>
-        <div class="btn-row">
-            <button class="btn" id="brSkip">SKIP</button>
-        </div>
+        
     </div>
 </div>
 
@@ -1902,6 +1900,11 @@ function tutTick(dt) {
 }
 
 function startTutorial() {
+
+    deathScreen.finish(false);
+    breathing.runId++;
+    $("breathOverlay").classList.remove("on");
+
     gameToken++;
     RNG = makeStreams("tutorial");
 
@@ -1987,6 +1990,7 @@ function queueWave(pos) {
 
 function startWave() {
     G.gateNotified = false;
+    G.wavePings = 0;
     const sp = waveSpec(G.level, G.wave);
     G.enemySpeed = sp.speed;
     G.drift = sp.drift;
@@ -2005,8 +2009,10 @@ function hostilesCleared() {
     return G.enemyQueue === 0 && G.enemies.length === 0;
 }
 function canAdvanceFromWave(level, wave) {
-    // Wave 2 introduces hostiles: all must be struck before moving on
+    // Wave 2: every hostile must be struck
     if (wave === 2) return hostilesCleared();
+    // Wave 3 (and Level 10's endless waves, which also have pings): identify at least 1 ping
+    if (wave >= 3) return G.wavePings >= 1;
     return true;
 }
 
@@ -2026,7 +2032,8 @@ function waveTick(dt) {
         }
         if (!G.gateNotified) {
             G.gateNotified = true;
-            showBanner("HOSTILES REMAIN", "STRIKE ALL HOSTILES TO ADVANCE");
+            if (G.wave === 2) showBanner("HOSTILES REMAIN", "STRIKE ALL HOSTILES TO ADVANCE");
+            else showBanner("NO PING IDENTIFIED", "IDENTIFY AT LEAST 1 PING TO ADVANCE");
         }
         // fall through so queued hostiles keep spawning and can be struck
     }
@@ -2174,7 +2181,8 @@ function update(dt) {
                 G.tut.cool = TUT_RESPAWN_S;
                 break;
             }
-            return endGame("FRIENDLY HIT BY HOSTILE");
+            const hv = wrapDelta(e.x, e.y, target.x, target.y);
+            return endGame("FRIENDLY HIT BY HOSTILE", { x: e.x + hv.dx / 2, y: e.y + hv.dy / 2 });
         }
     }
 
@@ -2183,7 +2191,7 @@ function update(dt) {
         for (let j = i + 1; j < G.friendlies.length; j++) {
             const a = G.friendlies[i], b = G.friendlies[j];
             if (Math.hypot(a.x - b.x, a.y - b.y) < R_FRIENDLY_FRIENDLY) {
-                return endGame("FRIENDLY COLLISION");
+                return endGame("FRIENDLY COLLISION", { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
             }
         }
     }
@@ -2197,6 +2205,7 @@ function update(dt) {
                 G.ghosts.splice(G.ghosts.indexOf(g), 1);
                 g.el.remove();
                 G.ghostIds++;
+                G.wavePings++;
                 award(GHOST_POINTS, g.x, g.y);
                 if (G.tutorial) tutComplete(1);
                 continue;
@@ -2210,7 +2219,7 @@ function update(dt) {
                 continue;
             }
             g.el.style.outline = "3px solid #ff3d3d";
-            return endGame("PING NOT IDENTIFIED WITHIN 3.0 SECONDS");
+            return endGame("PING NOT IDENTIFIED WITHIN 3.0 SECONDS", { x: g.x, y: g.y });
         }
         g.el.style.setProperty("--rem", (1 - g.age / GHOST_WINDOW_S) * 360 + "deg");
         g.el.style.setProperty("--hold", Math.min(1, g.holdT / HOLD_GHOST_S) * 360 + "deg");
@@ -2266,7 +2275,7 @@ function newState(extra) {
         friendlies: [], enemies: [], ghosts: [],
         selected: null, drag: null, nextId: 1, enemyCounter: 1,
         friendlyCounter: 0,
-        inter: 0, enemyQueue: 0, enemyTimer: 0, gateNotified: false,
+        inter: 0, enemyQueue: 0, enemyTimer: 0, gateNotified: false, wavePings: 0,
         ghostTimer: Infinity, pingGap: 0, maxGhosts: 0,
         enemySpeed: 40, ghostR: 28, drift: 1,
         failReason: "", result: null,
@@ -2275,6 +2284,9 @@ function newState(extra) {
 }
 
 function startGame() {
+    deathScreen.finish(false);
+    breathing.runId++;
+    $("breathOverlay").classList.remove("on");
     gameToken++;
 
     // Same date = same sequence for everyone
@@ -2304,7 +2316,7 @@ function startGame() {
     updateHud();
 }
 
-function endGame(reason) {
+function endGame(reason, pos) {                 
     if (state !== "play") return;
     state = "over";
     playloseSound();
@@ -2312,6 +2324,8 @@ function endGame(reason) {
     keys.clear();
     $("banner").classList.remove("on");
     G.failReason = reason;
+    G.failPos = pos || null;                    
+
 
     const seconds = G.t;
     G.result = {
@@ -2324,7 +2338,7 @@ function endGame(reason) {
 
     const token = gameToken;
     setTimeout(() => {
-        if (token === gameToken && state === "over") breathing.open();
+        if (token === gameToken && state === "over") deathScreen.open(reason);   // was breathing.open()
     }, 900);
 }
 
@@ -2413,7 +2427,7 @@ const breathing = {
         if (state === "over") board.openResult();
     }
 };
-$("brSkip").addEventListener("click", () => breathing.finish());
+;
 
 // =====================================================
 // 10. LEADERBOARD (Supabase)
@@ -3090,6 +3104,14 @@ operatorCommand.addEventListener("keydown", async (event) => {
     // Populate wave selector based on chosen level
     function updateOperatorWaves() {
         const waveCounts = [3, 3, 3, 3, 3, 3, 3, 3, 3, 100];
+        operatorCommand.disabled = false;
+    }
+}
+
+
+    // Populate wave selector based on chosen level
+    function updateOperatorWaves() {
+        const waveCounts = [3, 3, 3, 3, 3, 3, 3, 3, 3, 100];
         const count = waveCounts[Number(operatorLevel.value) - 1];
 
         operatorWave.innerHTML = "";
@@ -3137,7 +3159,6 @@ operatorPanel.hidden = true;
 operatorCommand.value = "";
 operatorControls.hidden = true;
 });
-}
 </script>
 
 </body>
