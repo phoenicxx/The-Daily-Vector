@@ -1351,21 +1351,13 @@ function formatClock(sec) {
     return String(Math.floor(s / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0");
 }
 
+
 function measure() {
     const r = field.getBoundingClientRect();
-    const ow = FW, oh = FH;
-    FW = r.width; FH = r.height;
-    if (G && ow && oh) {
-        const sx = FW / ow, sy = FH / oh;
-        [...G.friendlies, ...G.enemies, ...G.ghosts].forEach(e => {
-            e.x *= sx; e.y *= sy; setPos(e);
-            if (e.path) {
-                e.path.x0 *= sx; e.path.x1 *= sx; e.path.y0 *= sy; e.path.y1 *= sy;
-            if (e.destEl) { e.destEl.style.left = e.path.x1 + "px"; e.destEl.style.top = e.path.y1 + "px"; }
-            }
-        });
-    }
+    FW = r.width;
+    FH = r.height;
 }
+
 window.addEventListener("resize", measure);
 
 function setPos(e) {
