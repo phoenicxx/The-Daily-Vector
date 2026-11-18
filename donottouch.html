@@ -1360,6 +1360,16 @@ function measure() {
 
 window.addEventListener("resize", measure);
 
+// Convert screen pointer coordinates into game-field coordinates.
+function fieldPoint(ev) {
+    const rect = field.getBoundingClientRect();
+
+    return {
+        x: (ev.clientX - rect.left) * (FW / rect.width),
+        y: (ev.clientY - rect.top) * (FH / rect.height)
+    };
+}
+
 function setPos(e) {
     e.el.style.left = e.x + "px";
     e.el.style.top = e.y + "px";
@@ -1489,13 +1499,15 @@ function spawnFriendly() {
         // Touch mode: drag to steer. Keyboard mode: click only selects, WASD steers.
         if (isKB()) return;
 
-        const rect = field.getBoundingClientRect();
-        G.drag = {
-            friendly: f,
-            pointerId: ev.pointerId,
-            x: ev.clientX - rect.left,
-            y: ev.clientY - rect.top
-        };
+        const point = fieldPoint(ev);
+
+G.drag = {
+    friendly: f,
+    pointerId: ev.pointerId,
+    x: point.x,
+    y: point.y
+};
+
         try { el.setPointerCapture(ev.pointerId); } catch (_) {}
     });
     field.appendChild(el);
@@ -1540,10 +1552,13 @@ function selectFriendly(f) {
 field.addEventListener("pointermove", ev => {
     if (state !== "play" || !G || !G.drag) return;
     if (ev.pointerId !== G.drag.pointerId) return;
-    const rect = field.getBoundingClientRect();
-    G.drag.x = Math.max(12, Math.min(FW - 12, ev.clientX - rect.left));
-    G.drag.y = Math.max(12, Math.min(FH - 12, ev.clientY - rect.top));
+
+    const point = fieldPoint(ev);
+
+    G.drag.x = Math.max(12, Math.min(FW - 12, point.x));
+    G.drag.y = Math.max(12, Math.min(FH - 12, point.y));
 });
+
 function endFriendlyDrag(ev) {
     if (!G || !G.drag) return;
     if (ev.pointerId !== G.drag.pointerId) return;
