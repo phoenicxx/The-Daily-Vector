@@ -1284,11 +1284,12 @@ try { soundOn = localStorage.getItem("ace_sound") !== "off"; } catch (_) {}
 function applySound(on) {
     soundOn = on;
     try { localStorage.setItem("ace_sound", on ? "on" : "off"); } catch (_) {}
+    const btn = $("soundToggle");
+    btn.classList.toggle("muted", !on);
+    btn.setAttribute("aria-pressed", String(!on));
+    btn.setAttribute("aria-label", on ? "Mute sound" : "Unmute sound");
+    btn.title = on ? "Sound on – click to mute" : "Sound off – click to unmute";
     $("soundSelect").value = on ? "on" : "off";
-    $("soundToggle").classList.toggle("muted", !on);
-    $("soundToggle").setAttribute("aria-pressed", String(!on));
-    $("soundToggle").setAttribute("aria-label", on ? "Mute sound" : "Unmute sound");
-    $("soundToggle").title = on ? "Sound on – click to mute" : "Sound muted – click to unmute";
 }
 $("soundToggle").addEventListener("click", e => {
     applySound(!soundOn);
