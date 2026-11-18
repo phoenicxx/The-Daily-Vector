@@ -200,6 +200,27 @@ body {
     pointer-events: none;
     gap: 10px;
 }
+#runInputDiagnostic {
+    position: fixed;
+    z-index: 1000;
+    left: max(10px, calc((100vw - 430px) / 2 + 10px));
+    bottom: 10px;
+    width: 280px;
+    max-width: calc(100vw - 20px);
+    max-height: 30vh;
+    overflow: auto;
+    padding: 8px 10px;
+    border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent);
+    background: rgba(3, 11, 19, 0.92);
+    color: var(--text);
+    font: 10px/1.35 monospace;
+    pointer-events: none;
+}
+#runInputDiagnostic[hidden] { display: none; }
+#runInputDiagnosticTitle { color: var(--accent); margin-bottom: 5px; letter-spacing: 1px; }
+#runInputDiagnosticEvents { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; }
+#runInputDiagnosticOverflow { margin-top: 5px; color: var(--gold); }
+:root[data-view="horizontal"] #runInputDiagnostic { left: 10px; }
 .eyebrow { color: var(--accent); font-size: 10px; letter-spacing: 4px; }
 #menu .eyebrow { font-size: 13px; letter-spacing: 3px; }
 #hud h1 { font-size: 16px; font-weight: 300; letter-spacing: 4px; margin: 6px 0 0; }
@@ -808,6 +829,12 @@ body {
     <div id="banner"><div id="bnTitle"></div><div id="bnSub"></div></div>
 
 </div>
+
+<aside id="runInputDiagnostic" aria-live="polite" hidden>
+    <div id="runInputDiagnosticTitle">INPUT LOG DIAGNOSTIC</div>
+    <div id="runInputDiagnosticEvents"></div>
+    <div id="runInputDiagnosticOverflow"></div>
+</aside>
 
 <!-- Tutorial instructions (clicks pass through, except the exit button) -->
 <div id="tutPanel">
@@ -1938,6 +1965,271 @@ window.addEventListener("keyup", ev => {
     if (k) keys.delete(k);
 });
 
+
+// =====================================================
+// RUN INPUT RECORDER — STEP 1
+// Records inputs and frame timing without controlling gameplay.
+// =====================================================
+
+const runInputRecorder = (() => {
+    const MAX_EVENTS = 100000;
+
+    let active = false;
+    let startedAt = 0;
+    let sequence = 0;
+    let events = [];
+    let activePointers = new Map();
+    let overflow = false;
+    let metadata = null;
+
+    function record(type, ...values) {
+        if (!active) return;
+
+        if (events.length >= MAX_EVENTS) {
+            overflow = true;
+            return;
+        }
+
+        events.push([
+            Math.round((performance.now() - startedAt) * 10) / 10,
+            sequence++,
+            type,
+            ...values
+        ]);
+    }
+
+    function start(info) {
+        active = true;
+        startedAt = performance.now();
+        sequence = 0;
+        events = [];
+        activePointers.clear();
+        overflow = false;
+
+        metadata = {
+            version: 1,
+            day: info.day,
+            seed: info.seed,
+            width: info.width,
+            height: info.height,
+            controls: info.controls,
+            sessionId: info.sessionId
+        };
+
+        record("START");
+    }
+
+    function recordFrame(dt) {
+        record("FRAME", Math.round(dt * 1000000));
+    }
+
+    function pointerDown(ev) {
+        if (!active || state !== "play" || !G) return;
+
+        const target = ev.target instanceof Element
+            ? ev.target
+            : null;
+
+        if (!target) return;
+
+        const point = fieldPoint(ev);
+
+        const friendlyEl = target.closest(".friendly");
+        if (friendlyEl) {
+            const f = G.friendlies.find(item => item.el === friendlyEl);
+
+            if (f) {
+                record("FRIENDLY_DOWN", f.id, point.x, point.y, ev.pointerId);
+                activePointers.set(ev.pointerId, {
+                    type: "FRIENDLY",
+                    id: f.id
+                });
+            }
+            return;
+        }
+
+        const enemyEl = target.closest(".enemy");
+        if (enemyEl) {
+            const e = G.enemies.find(item => item.el === enemyEl);
+
+            if (e) {
+                record("ENEMY_DOWN", e.id, point.x, point.y, ev.pointerId);
+            }
+            return;
+        }
+
+        const ghostEl = target.closest(".ghost");
+        if (ghostEl) {
+            const g = G.ghosts.find(item => item.el === ghostEl);
+
+            if (g && g.holder === null) {
+                record("PING_DOWN", g.id, point.x, point.y, ev.pointerId);
+                activePointers.set(ev.pointerId, {
+                    type: "PING",
+                    id: g.id
+                });
+            }
+            return;
+        }
+
+        if (target.closest("#spHold")) {
+            record("STRIKE_HOLD_DOWN", ev.pointerId);
+            activePointers.set(ev.pointerId, {
+                type: "STRIKE"
+            });
+        }
+    }
+
+    function pointerMove(ev) {
+        if (!active) return;
+
+        const pointer = activePointers.get(ev.pointerId);
+
+        if (!pointer || pointer.type !== "FRIENDLY") return;
+
+        const point = fieldPoint(ev);
+
+        record(
+            "FRIENDLY_MOVE",
+            pointer.id,
+            point.x,
+            point.y,
+            ev.pointerId
+        );
+    }
+
+    function pointerEnd(ev) {
+        if (!active) return;
+
+        const pointer = activePointers.get(ev.pointerId);
+        if (!pointer) return;
+
+        record(
+            "POINTER_END",
+            pointer.type,
+            pointer.id ?? null,
+            ev.pointerId,
+            ev.type
+        );
+
+        activePointers.delete(ev.pointerId);
+    }
+
+    function pointerClick(ev) {
+        if (!active || state !== "play" || !G) return;
+
+        const target = ev.target instanceof Element
+            ? ev.target
+            : null;
+
+        if (!target) return;
+
+        if (target.closest("#spOk")) {
+            record("STRIKE_CONFIRM");
+        } else if (target.closest("#spCancel")) {
+            record("STRIKE_CANCEL");
+        }
+    }
+
+    function keyDown(ev) {
+        if (!active || state !== "play" || !G) return;
+        if (typingInField(ev) || ev.repeat) return;
+
+        if (
+            ev.code === "Escape" ||
+            ev.code === "Space" ||
+            KEYMAP[ev.code]
+        ) {
+            record("KEY_DOWN", ev.code);
+        }
+    }
+
+    function keyUp(ev) {
+        if (!active) return;
+
+        if (
+            ev.code === "Space" ||
+            KEYMAP[ev.code]
+        ) {
+            record("KEY_UP", ev.code);
+        }
+    }
+
+    function resize() {
+        if (!active) return;
+
+        record("RESIZE", FW, FH);
+    }
+
+    function blur() {
+        record("BLUR");
+        activePointers.clear();
+    }
+
+    document.addEventListener("pointerdown", pointerDown, true);
+    document.addEventListener("pointermove", pointerMove, true);
+    document.addEventListener("pointerup", pointerEnd, true);
+    document.addEventListener("pointercancel", pointerEnd, true);
+    document.addEventListener("lostpointercapture", pointerEnd, true);
+    document.addEventListener("click", pointerClick, true);
+
+    window.addEventListener("keydown", keyDown, true);
+    window.addEventListener("keyup", keyUp, true);
+    window.addEventListener("resize", resize);
+    window.addEventListener("blur", blur);
+
+    function stop(reason) {
+        if (!active) return null;
+
+        record("END", reason || "UNKNOWN");
+
+        active = false;
+
+        return {
+            metadata,
+            events,
+            overflow
+        };
+    }
+
+    return {
+        start,
+        recordFrame,
+        stop
+    };
+})();
+
+function showRunInputDiagnostic(recordedRun) {
+    if (!recordedRun || !Array.isArray(recordedRun.events)) return;
+
+    const counts = new Map();
+    for (const event of recordedRun.events) {
+        const type = Array.isArray(event) && typeof event[2] === "string"
+            ? event[2]
+            : "UNKNOWN";
+        counts.set(type, (counts.get(type) || 0) + 1);
+    }
+
+    const list = $("runInputDiagnosticEvents");
+    list.replaceChildren();
+    for (const [type, count] of counts) {
+        const label = document.createElement("span");
+        label.textContent = type;
+        const value = document.createElement("span");
+        value.textContent = String(count);
+        list.append(label, value);
+    }
+
+    $("runInputDiagnosticOverflow").textContent =
+        "Overflow: " + (recordedRun.overflow ? "YES" : "NO");
+    $("runInputDiagnostic").hidden = false;
+}
+
+function hideRunInputDiagnostic() {
+    $("runInputDiagnostic").hidden = true;
+}
+
+
 function strikeComplete() {
     const e = strike.enemy;
     strikeReset();
@@ -2426,9 +2718,11 @@ function frame(now) {
     const dt = Math.min(0.05, (now - last) / 1000);
     last = now;
     if (state === "play" && G) {
-        if (!(G.tutorial && G.tut.phase === "read")) update(dt);
-        updateHud();
-    }
+    runInputRecorder.recordFrame(dt);
+
+    if (!(G.tutorial && G.tut.phase === "read")) update(dt);
+    updateHud();
+}
     requestAnimationFrame(frame);
 }
 
@@ -2468,6 +2762,7 @@ async function startGame() {
         }
     }
 
+    hideRunInputDiagnostic();
     deathScreen.finish(false);
     breathing.runId++;
     $("breathOverlay").classList.remove("on");
@@ -2496,14 +2791,29 @@ async function startGame() {
     $("tutDone").classList.remove("on");
     board.close(true);
     state = "play";
-    last = performance.now();
-    updateHud();
+last = performance.now();
+
+runInputRecorder.start({
+    day: lbSystem.day,
+    seed: RNG.base,
+    width: FW,
+    height: FH,
+    controls,
+    sessionId: activeGameSession?.id || null
+});
+
+updateHud();
 }
 
 
 function endGame(reason, pos) {                 
     if (state !== "play") return;
     state = "over";
+    const recordedRun = runInputRecorder.stop(reason);
+
+if (activeGameSession && recordedRun) {
+    activeGameSession.inputLog = recordedRun;
+}
     playloseSound();
     strikeReset();
     keys.clear();
@@ -2520,6 +2830,7 @@ function endGame(reason, pos) {
         difficulty: LEGACY_DIFFICULTY
     };
     updateHud();
+    showRunInputDiagnostic(recordedRun);
 
     const token = gameToken;
     setTimeout(() => {
