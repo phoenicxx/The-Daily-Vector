@@ -2687,20 +2687,64 @@ class LeaderboardSystem {
     }
 
     async submitAccount(result) {
-        try {
-            const r = await rpc('ace_submit_score_v2', {
-                p_name: account.name, p_pin: account.pin, p_day: this.day,
-                p_points: result.points, p_time_ms: result.timeMs, p_waves: result.waves
-            });
-            if (!r.ok) return { saved: false, authError: r.error === 'BAD_LOGIN', error: r.error };
-            await this.load();
-            const index = this.entries.findIndex(e => e.id === String(r.id));
-            return { saved: true, id: String(r.id), rank: index === -1 ? null : index + 1 };
-        } catch (err) {
-            console.error('Account submit error:', err);
-            return { saved: false, error: String(err.message || err) };
+    try {
+        if (!activeGameSession) {
+            return {
+                saved: false,
+                error: "NO_VALID_SESSION"
+            };
         }
+
+        if (Date.now() >= Date.parse(activeGameSession.expiresAt)) {
+            activeGameSession = null;
+            return {
+                saved: false,
+                error: "SESSION_EXPIRED"
+            };
+        }
+
+        const r = await rpc('ace_submit_score_v2', {
+            p_name: account.name,
+            p_pin: account.pin,
+            p_day: this.day,
+            p_points: result.points,
+            p_time_ms: result.timeMs,
+            p_waves: result.waves,
+            p_session_id: activeGameSession.id,
+            p_token: activeGameSession.token
+        });
+
+        if (!r.ok) {
+            return {
+                saved: false,
+                authError: r.error === 'BAD_LOGIN',
+                error: r.error
+            };
+        }
+
+        activeGameSession = null;
+
+        await this.load();
+
+        const index = this.entries.findIndex(
+            e => e.id === String(r.id)
+        );
+
+        return {
+            saved: true,
+            id: String(r.id),
+            rank: index === -1 ? null : index + 1
+        };
+
+    } catch (err) {
+        console.error('Account submit error:', err);
+
+        return {
+            saved: false,
+            error: String(err.message || err)
+        };
     }
+}
 }
 
 class LeaderboardView {
