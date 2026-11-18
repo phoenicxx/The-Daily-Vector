@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Threat Management – Ace Challenge</title>
 
 <style>
@@ -216,6 +216,12 @@ body {
     top: 84px; left: 0; right: 0; bottom: 0;
     touch-action: none;
     overflow: hidden;
+}
+
+#gameWorld {
+    position: absolute;
+    inset: 0;
+    transform-origin: 0 0;
 }
 
 .friendly {
@@ -589,6 +595,28 @@ body {
 #deathOverlay .modal {
     background: #700000;
     border: 1px solid #ff4d4d;
+
+/* ---------- SOUND TOGGLE ---------- */
+#soundToggle {
+    position: fixed;
+    top: 90px;
+    right: 10px;
+    width: 38px;
+    height: 38px;
+    z-index: 25;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    font-size: 18px;
+    background: var(--panel);
+    color: var(--text);
+    border: 1px solid var(--accent);
+    border-radius: 50%;
+    cursor: pointer;
+    opacity: 0.85;
+}
+#soundToggle:hover { opacity: 1; }
     border-radius: 12px;
     color: #fff;
     width: min(360px, 94vw);
@@ -698,7 +726,7 @@ body {
 
 <div id="game">
 
-    <div id="hud">
+<button id="soundToggle" type="button" aria-label="Toggle sound" title="Toggle sound">🔊</button>    <div id="hud">
         <div>
             <div class="eyebrow">THE DAILY VECTOR</div>
         </div>
@@ -819,7 +847,13 @@ body {
                 <option value="space">SPACE</option>
             </select>
         </div>
-
+<div class="theme-picker">
+    <label for="soundSelect">SOUND</label>
+    <select id="soundSelect" class="btn">
+        <option value="on">ON</option>
+        <option value="off">OFF (MUTED)</option>
+    </select>
+</div>
         <div class="acct-line" id="acctLine"></div>
         <div class="menu-row">
             <button class="btn" id="menuAcct">LOG IN / SIGN UP</button>
@@ -1202,6 +1236,23 @@ let state = "menu";            // menu | play | over | tutdone
 
 // SOUNDS ==================================
 
+// SOUND ON/OFF
+let soundOn = true;
+try { soundOn = localStorage.getItem("ace_sound") !== "off"; } catch (_) {}
+
+function applySound(on) {
+    soundOn = on;
+    try { localStorage.setItem("ace_sound", on ? "on" : "off"); } catch (_) {}
+    $("soundToggle").textContent = on ? "🔊" : "🔇";
+    $("soundSelect").value = on ? "on" : "off";
+}
+$("soundToggle").addEventListener("click", e => {
+    applySound(!soundOn);
+    e.currentTarget.blur();   // stops the SPACE key from re-triggering the button
+});
+$("soundSelect").addEventListener("change", () => applySound($("soundSelect").value === "on"));
+applySound(soundOn);
+
 // Default settings for every theme and sound
 const DEFAULT_SOUND_SETTINGS = {
     startTime: 0,
@@ -1419,10 +1470,16 @@ function setPos(e) {
 // =====================================================
 
 let pathLayer = null;
+let worldLayer = null;
+
 function makePathLayer() {
+    worldLayer = document.createElement("div");
+    worldLayer.id = "gameWorld";
+    field.appendChild(worldLayer);
+
     pathLayer = document.createElementNS(SVG_NS, "svg");
     pathLayer.id = "pathLayer";
-    field.appendChild(pathLayer);
+    worldLayer.appendChild(pathLayer);
 }
 function nearestOnSeg(px, py, s) {
     const dx = s.x1 - s.x0, dy = s.y1 - s.y0;
@@ -1512,7 +1569,7 @@ function spawnFriendly() {
     destEl.className = "dest";
     destEl.style.left = path.x1 + "px";
     destEl.style.top  = path.y1 + "px";
-    field.appendChild(destEl);
+    worldLayer.appendChild(destEl);
 
     const id = G.nextId++;
     const f = {
@@ -1549,7 +1606,7 @@ G.drag = {
 
         try { el.setPointerCapture(ev.pointerId); } catch (_) {}
     });
-    field.appendChild(el);
+    worldLayer.appendChild(el);
     G.friendlies.push(f);
 
     if (G.tutorial && G.tut.step === 0 && !G.tut.done[0]) tutOffsetFriendly(f);
@@ -1652,7 +1709,7 @@ function spawnEnemy() {
         ev.stopPropagation();
         strikeSelect(e);
     });
-    field.appendChild(el);
+    worldLayer.appendChild(el);
     G.enemies.push(e);
     setPos(e);
 }
@@ -1692,7 +1749,7 @@ function spawnGhost() {
     el.addEventListener("pointercancel", release);
     el.addEventListener("lostpointercapture", release);
 
-    field.appendChild(el);
+    worldLayer.appendChild(el);
     G.ghosts.push(g);
     playPingSound();
     setPos(g);
@@ -1712,7 +1769,7 @@ function award(base, x, y) {
     fx.textContent = "+" + pts;
     fx.style.left = x + "px";
     fx.style.top = y + "px";
-    field.appendChild(fx);
+    worldLayer.appendChild(fx);
     setTimeout(() => fx.remove(), 900);
 }
 
