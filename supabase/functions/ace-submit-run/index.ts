@@ -165,9 +165,11 @@ export function createHandler(deps: Dependencies) {
       typeof input.token !== "string" || input.token.length < 32 ||
       input.token.length > 512 ||
       typeof input.account_name !== "string" || input.account_name.length < 1 ||
-      input.account_name.length > 50 ||
-      !Object.hasOwn(input, "input_log")
+      input.account_name.length > 50
     ) return response(400, { ok: false, error: "MISSING_FIELDS" });
+    if (!Object.hasOwn(input, "input_log") || input.input_log == null) {
+      return response(400, { ok: false, error: "MISSING_INPUT_LOG" });
+    }
     try {
       const session = await deps.getSession(input.session_id);
       if (!session) {

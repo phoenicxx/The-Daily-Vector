@@ -119,6 +119,15 @@ Deno.test("malformed input log is rejected", async () => {
   if (response.status < 400) throw new Error("overflowed tape was accepted");
 });
 
+Deno.test("missing replay log returns a specific error", async () => {
+  const { handler } = setup();
+  const response = await request(handler, { input_log: undefined });
+  const body = await response.json();
+  if (response.status !== 400 || body.error !== "MISSING_INPUT_LOG") {
+    throw new Error("missing replay log was not reported precisely");
+  }
+});
+
 Deno.test("forged session ID and modified input log are rejected", async () => {
   const { handler, session } = setup();
   session.token_hash = await sha256(TOKEN);

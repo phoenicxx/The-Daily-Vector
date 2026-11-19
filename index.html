@@ -2779,11 +2779,14 @@ function endGame(reason, pos) {
     if (state !== "play") return;
     state = "over";
     const recordedRun = runInputRecorder.stop(reason);
-    console.log(JSON.stringify(recordedRun));   // temporary, remove after capturing the fixture
-
-if (activeGameSession && recordedRun) {
-    activeGameSession.inputLog = recordedRun;
-}
+    if (activeGameSession) {
+        if (recordedRun) {
+            activeGameSession.inputLog = recordedRun;
+        } else {
+            // A run without a captured replay cannot be submitted as a score.
+            activeGameSession.rankedInvalidated = true;
+        }
+    }
     playloseSound();
     strikeReset();
     keys.clear();
@@ -2978,6 +2981,14 @@ class LeaderboardSystem {
             return {
                 saved: false,
                 error: "SESSION_EXPIRED"
+            };
+        }
+
+        if (!activeGameSession.inputLog) {
+            activeGameSession.rankedInvalidated = true;
+            return {
+                saved: false,
+                error: "MISSING_INPUT_LOG"
             };
         }
 
@@ -3185,6 +3196,8 @@ class LeaderboardView {
                 $("lbMessage").textContent = "UNRANKED RUN - START A NEW RUN TO SUBMIT A SCORE";
             } else if (res.error === "LOCKED") {
                 $("lbMessage").textContent = "TOO MANY FAILED ATTEMPTS - TRY LATER";
+            } else if (res.error === "MISSING_INPUT_LOG") {
+                $("lbMessage").textContent = "RUN COULD NOT BE VERIFIED - START A NEW RUN";
             } else {
                 $("lbMessage").textContent = "COULD NOT SAVE: " + String(res.error || "SEE CONSOLE (F12)").slice(0, 90);
             }
