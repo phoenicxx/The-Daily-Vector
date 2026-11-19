@@ -10,12 +10,14 @@ const UUID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 type RunSession = Record<string, unknown>;
+type Account = { id: string; name: string };
 type Dependencies = {
   getSession(id: string): Promise<RunSession | null>;
+  getAccount(id: string): Promise<Account | null>;
   complete(
     id: string,
     tokenHash: string,
-    name: string,
+    accountId: string,
     day: number,
     score: {
       points: number;
@@ -41,6 +43,31 @@ function response(status: number, body: Record<string, unknown>): Response {
 
 function invalid(message: string): never {
   throw new Error(message);
+}
+
+function isPuzzleDay(value: unknown): boolean {
+  const text = String(value ?? "");
+  if (!/^\d{8}$/.test(text)) return false;
+  const year = Number(text.slice(0, 4));
+  const month = Number(text.slice(4, 6));
+  const date = Number(text.slice(6, 8));
+  const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const monthLengths = [
+    31,
+    leap ? 29 : 28,
+    31,
+    30,
+    31,
+    30,
+    31,
+    31,
+    30,
+    31,
+    30,
+    31,
+  ];
+  return month >= 1 && month <= 12 && date >= 1 &&
+    date <= monthLengths[month - 1];
 }
 
 async function sha256Hex(value: string): Promise<string> {
@@ -139,32 +166,34 @@ export function createHandler(deps: Dependencies) {
       }
       const expiry = Date.parse(String(session.expires_at ?? ""));
       const storedHash = String(session.token_hash ?? "").toLowerCase();
-      const accountName = String(session.account_name ?? session.name ?? "");
-      const day = Number(session.puzzle_day ?? session.day);
-      const seed = String(session.seed ?? "");
+      const accountId = String(session.account_id ?? "");
+      const day = Number(session.puzzle_day);
       if (
-        !accountName || !/^\d{8}$/.test(String(day)) || !Number.isFinite(expiry)
+        !/^[1-9]\d*$/.test(accountId) ||
+        !isPuzzleDay(session.puzzle_day) ||
+        !Number.isSafeInteger(day) || !Number.isFinite(expiry)
       ) return response(403, { ok: false, error: "INVALID_SESSION" });
-      if (seed !== `${day}|daily`) {
-        return response(403, { ok: false, error: "INVALID_SESSION" });
-      }
       if (expiry <= deps.now()) {
         return response(403, { ok: false, error: "SESSION_EXPIRED" });
       }
-      if (input.account_name !== accountName) {
-        return response(403, { ok: false, error: "WRONG_ACCOUNT" });
-      }
-      if (
-        session.completed_at || session.used_at || session.completed === true ||
-        session.used === true
-      ) {
+      if (session.status === "completed") {
         return response(409, { ok: false, error: "SESSION_USED" });
+      }
+      if (session.status !== "active") {
+        return response(403, { ok: false, error: "INVALID_SESSION" });
       }
       if (!storedHash || await sha256Hex(input.token) !== storedHash) {
         return response(403, { ok: false, error: "INVALID_SESSION" });
       }
+      const account = await deps.getAccount(accountId);
+      if (!account || account.id !== accountId) {
+        return response(403, { ok: false, error: "INVALID_SESSION" });
+      }
+      if (input.account_name !== account.name) {
+        return response(403, { ok: false, error: "WRONG_ACCOUNT" });
+      }
       validateLogShape(input.input_log, input.session_id, day);
-      if (input.input_log.metadata.seed !== seed) {
+      if (input.input_log.metadata.seed !== `${day}|daily`) {
         return response(422, { ok: false, error: "SESSION_MISMATCH" });
       }
       const outcome = replayInputLog(input.input_log);
@@ -190,7 +219,7 @@ export function createHandler(deps: Dependencies) {
       const scoreId = await deps.complete(
         input.session_id,
         storedHash,
-        accountName,
+        accountId,
         day,
         {
           points: result.points,
@@ -238,21 +267,35 @@ if (import.meta.main) {
   const handler = createHandler({
     async getSession(id) {
       const res = await fetch(
-        `${base}/rest/v1/ace_game_runs?id=eq.${id}&select=*`,
+        `${base}/rest/v1/ace_game_runs?id=eq.${id}&select=id,account_id,puzzle_day,token_hash,expires_at,status`,
         { headers },
       );
       if (!res.ok) throw new Error(`session lookup ${res.status}`);
       const rows = await res.json();
       return rows[0] ?? null;
     },
-    async complete(id, tokenHash, name, day, score) {
+    async getAccount(id) {
+      const res = await fetch(
+        `${base}/rest/v1/ace_accounts?id=eq.${
+          encodeURIComponent(id)
+        }&select=id,name`,
+        { headers },
+      );
+      if (!res.ok) throw new Error(`account lookup ${res.status}`);
+      const rows = await res.json();
+      const account = rows[0];
+      return account
+        ? { id: String(account.id), name: String(account.name) }
+        : null;
+    },
+    async complete(id, tokenHash, accountId, day, score) {
       const res = await fetch(`${base}/rest/v1/rpc/ace_complete_verified_run`, {
         method: "POST",
         headers,
         body: JSON.stringify({
           p_session_id: id,
           p_token_hash: tokenHash,
-          p_name: name,
+          p_account_id: accountId,
           p_day: day,
           p_points: score.points,
           p_time_ms: score.time_ms,

@@ -3293,7 +3293,8 @@ async function createGameSession(day) {
     if (!response.ok || !data.ok) {
         throw new Error(data.error || "SESSION_CREATION_FAILED");
     }
-    if (data.seed !== `${day}|daily`) {
+    const seed = `${day}|daily`;
+    if (data.seed != null && data.seed !== seed) {
         throw new Error("SESSION_SEED_MISMATCH");
     }
 
@@ -3301,7 +3302,7 @@ async function createGameSession(day) {
         id: data.session_id,
         token: data.token,
         expiresAt: data.expires_at,
-        seed: data.seed,
+        seed,
         rankedInvalidated: false
     };
 

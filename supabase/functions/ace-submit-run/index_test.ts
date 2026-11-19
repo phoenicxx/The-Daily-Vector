@@ -25,26 +25,30 @@ function setup(overrides: Record<string, unknown> = {}) {
   const writes: unknown[] = [];
   const session = {
     id: SESSION_ID,
+    account_id: "42",
     token_hash: "",
-    name: "VECTOR PLAYER",
     puzzle_day: DAY,
-    seed: `${DAY}|daily`,
     expires_at: new Date(NOW + 60_000).toISOString(),
-    completed_at: null,
+    status: "active",
     ...overrides,
   };
   const handler = createHandler({
     async getSession(id) {
       return id === SESSION_ID ? session : null;
     },
-    async complete(id, tokenHash, name, day, score) {
+    async getAccount(id) {
+      return id === "42" ? { id: "42", name: "VECTOR PLAYER" } : null;
+    },
+    async complete(id, tokenHash, accountId, day, score) {
       if (
         completed || id !== session.id || tokenHash !== session.token_hash ||
-        name !== session.name ||
+        accountId !== session.account_id ||
         day !== session.puzzle_day ||
+        session.status !== "active" ||
         Date.parse(String(session.expires_at)) <= NOW
       ) throw new Error("SESSION_USED");
       completed = true;
+      session.status = "completed";
       writes.push(score);
       return "score-verified";
     },
@@ -77,8 +81,15 @@ Deno.test("genuine captured run passes strict replay and completes its session",
   session.token_hash = await sha256(TOKEN);
   const response = await request(handler);
   if (response.status !== 200 || writes.length !== 1) {
-    throw new Error("genuine captured tape did not complete after strict replay");
+    throw new Error(
+      "genuine captured tape did not complete after strict replay",
+    );
   }
+  const score = writes[0] as Record<string, unknown>;
+  if (
+    score.points !== 1558 || score.time_ms !== 36316 || score.waves !== 2 ||
+    score.ending_reason !== "FRIENDLY HIT BY HOSTILE"
+  ) throw new Error("score was not derived from the genuine captured replay");
 });
 
 Deno.test("forged client score fields are ignored", async () => {
@@ -90,8 +101,12 @@ Deno.test("forged client score fields are ignored", async () => {
     waves: 999,
     ending_reason: "WIN",
   });
-  if (response.status !== 200 || writes.length !== 1 || writes[0] === 999999999) {
-    throw new Error("forged score fields were not ignored in favor of replay result");
+  if (
+    response.status !== 200 || writes.length !== 1 || writes[0] === 999999999
+  ) {
+    throw new Error(
+      "forged score fields were not ignored in favor of replay result",
+    );
   }
 });
 
@@ -146,11 +161,62 @@ Deno.test("expired session is rejected", async () => {
 
 Deno.test("completed session cannot be reused", async () => {
   const { handler, session } = setup({
-    completed_at: new Date(NOW - 100).toISOString(),
+    status: "completed",
   });
   session.token_hash = await sha256(TOKEN);
   const response = await request(handler);
   if (response.status !== 409) throw new Error("reused session accepted");
+});
+
+Deno.test("unknown run status is rejected", async () => {
+  const { handler, session } = setup({ status: "revoked" });
+  session.token_hash = await sha256(TOKEN);
+  const response = await request(handler);
+  if (response.status !== 403) {
+    throw new Error("non-active session was accepted");
+  }
+});
+
+Deno.test("successful session is single-use", async () => {
+  const { handler, session, writes } = setup();
+  session.token_hash = await sha256(TOKEN);
+  const first = await request(handler);
+  const second = await request(handler);
+  if (first.status !== 200 || second.status !== 409 || writes.length !== 1) {
+    throw new Error("session did not complete exactly once");
+  }
+});
+
+Deno.test("wrong token and mismatched daily seed are rejected", async () => {
+  const { handler, session } = setup();
+  session.token_hash = await sha256(TOKEN);
+  const wrongToken = await request(handler, {
+    token: "another-token-with-more-than-32-characters",
+  });
+  if (wrongToken.status !== 403) throw new Error("wrong token was accepted");
+
+  const log = structuredClone(capturedLog);
+  log.metadata.seed = `${DAY - 1}|daily`;
+  const wrongSeed = await request(handler, { input_log: log });
+  if (wrongSeed.status !== 422) {
+    throw new Error("wrong daily seed was accepted");
+  }
+});
+
+Deno.test("missing account linkage and invalid puzzle day are rejected", async () => {
+  const { handler, session } = setup({ account_id: undefined });
+  session.token_hash = await sha256(TOKEN);
+  const noAccount = await request(handler);
+  if (noAccount.status !== 403) {
+    throw new Error("run without account_id was accepted");
+  }
+
+  const invalidDay = setup({ puzzle_day: "20260230" });
+  invalidDay.session.token_hash = await sha256(TOKEN);
+  const response = await request(invalidDay.handler);
+  if (response.status !== 403) {
+    throw new Error("invalid puzzle day was accepted");
+  }
 });
 
 Deno.test("wrong account assertion is rejected", async () => {

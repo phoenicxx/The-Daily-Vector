@@ -1,25 +1,22 @@
--- Ranked scores may only be written by ace-submit-run after deterministic replay.
--- This assumes ace_game_runs uses id, token_hash, name, puzzle_day, expires_at,
--- and completed_at, matching the ace-start-run contract consumed by the client.
-alter table public.ace_scores
-  add column if not exists ending_reason text;
-
+-- Ranked scores are written only after ace-submit-run replays the captured run.
+-- Keep this RPC aligned with the existing account_id/status run schema.
 create or replace function public.ace_complete_verified_run(
   p_session_id uuid,
   p_token_hash text,
-  p_name text,
+  p_account_id bigint,
   p_day integer,
-  p_points integer,
+  p_points bigint,
   p_time_ms integer,
   p_waves integer,
   p_ending_reason text
-) returns uuid
+) returns bigint
 language plpgsql
 security definer
 set search_path = public, pg_temp
 as $$
 declare
-  v_score_id uuid;
+  v_score_id bigint;
+  v_name text;
 begin
   if p_points < 0 or p_time_ms < 0 or p_waves < 0 or
      p_ending_reason not in (
@@ -29,33 +26,44 @@ begin
     raise exception 'INVALID_VERIFIED_RESULT' using errcode = '22023';
   end if;
 
+  select name into v_name
+    from public.ace_accounts
+   where id = p_account_id;
+
+  if not found then
+    raise exception 'INVALID_SESSION' using errcode = '22023';
+  end if;
+
   update public.ace_game_runs
-     set completed_at = now()
+     set status = 'completed'
    where id = p_session_id
+     and account_id = p_account_id
      and token_hash = p_token_hash
-     and name = p_name
      and puzzle_day = p_day
-     and expires_at > now()
-     and completed_at is null;
+     and status = 'active'
+     and expires_at > now();
 
   if not found then
     raise exception 'SESSION_USED' using errcode = '23505';
   end if;
 
-  insert into public.ace_scores (name, puzzle_day, points, time_ms, waves, ending_reason)
-  values (p_name, p_day, p_points, p_time_ms, p_waves, p_ending_reason)
+  insert into public.ace_scores (
+    account_id, name, puzzle_day, points, time_ms, waves, difficulty
+  ) values (
+    p_account_id, v_name, p_day, p_points, p_time_ms, p_waves, 'easy'
+  )
   returning id into v_score_id;
 
   return v_score_id;
 end;
 $$;
 
-revoke all on function public.ace_complete_verified_run(uuid, text, text, integer, integer, integer, integer, text)
+revoke all on function public.ace_complete_verified_run(uuid, text, bigint, integer, bigint, integer, integer, text)
   from public, anon, authenticated;
-grant execute on function public.ace_complete_verified_run(uuid, text, text, integer, integer, integer, integer, text)
+grant execute on function public.ace_complete_verified_run(uuid, text, bigint, integer, bigint, integer, integer, text)
   to service_role;
 
--- Remove the old client credential based path and any direct score insertion grants.
+-- Prevent the legacy client-credential submission route from bypassing replay.
 do $$
 declare r record;
 begin
