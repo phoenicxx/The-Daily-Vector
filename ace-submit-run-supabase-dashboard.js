@@ -929,28 +929,28 @@ async function sha256Hex(value) {
 }
 function validateLogShape(log, sessionId, day) {
   if (!log || typeof log !== "object" || Array.isArray(log)) {
-    invalid("INVALID_INPUT_LOG");
+    invalid("Replay input invalid: input_log must be an object");
   }
   const value = log;
-  if (!value.metadata || !Array.isArray(value.events) || typeof value.overflow !== "boolean") invalid("INVALID_INPUT_LOG");
+  if (!value.metadata || !Array.isArray(value.events) || typeof value.overflow !== "boolean") invalid("Replay input invalid: metadata, events, or overflow is missing");
   if (value.events.length < 2 || value.events.length > MAX_EVENTS) {
-    invalid("INVALID_INPUT_LOG");
+    invalid(`Replay input invalid: event count ${value.events.length} is outside 2..${MAX_EVENTS}`);
   }
   if (value.metadata.sessionId !== sessionId || value.metadata.day !== day) {
     invalid("SESSION_MISMATCH");
   }
   if (!Number.isFinite(value.metadata.width) || !Number.isFinite(value.metadata.height) || value.metadata.width < 1 || value.metadata.height < 1 || value.metadata.width > 1e4 || value.metadata.height > 1e4) {
-    invalid("INVALID_INPUT_LOG");
+    invalid("Replay input invalid: recorded field dimensions are invalid");
   }
   let prior = -1;
   for (const event of value.events) {
-    if (!Array.isArray(event) || event.length < 3 || !Number.isFinite(event[0]) || !Number.isSafeInteger(event[1]) || typeof event[2] !== "string") invalid("INVALID_INPUT_LOG");
+    if (!Array.isArray(event) || event.length < 3 || !Number.isFinite(event[0]) || !Number.isSafeInteger(event[1]) || typeof event[2] !== "string") invalid(`Replay input invalid: malformed event at index ${value.events.indexOf(event)}`);
     if (event[0] < prior || event[0] > MAX_EVENT_TIME_MS) {
-      invalid("INVALID_INPUT_LOG");
+      invalid(`Replay input invalid: event time is invalid at sequence ${event[1]}`);
     }
     prior = event[0];
     if (event.some((field) => typeof field === "number" && (!Number.isFinite(field) || Math.abs(field) > 1e7))) {
-      invalid("INVALID_INPUT_LOG");
+      invalid(`Replay input invalid: numeric value is invalid at sequence ${event[1]}`);
     }
   }
   if (JSON.stringify(log).length > MAX_BODY_BYTES) {
