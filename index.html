@@ -2966,9 +2966,9 @@ class LeaderboardSystem {
         return waves > this.entries[this.entries.length - 1].waves;
     }
 
-    async submitAccount(result) {
+    async submitAccount() {
     try {
-        if (!activeGameSession) {
+        if (!activeGameSession || activeGameSession.rankedInvalidated) {
             return {
                 saved: false,
                 error: "NO_VALID_SESSION"
@@ -2993,6 +2993,7 @@ class LeaderboardSystem {
             body: JSON.stringify({
                 session_id: activeGameSession.id,
                 token: activeGameSession.token,
+                account_name: account.name,
                 input_log: activeGameSession.inputLog
             })
         });
@@ -3011,7 +3012,7 @@ class LeaderboardSystem {
         await this.load();
 
         const index = this.entries.findIndex(
-            e => e.id === String(r.id)
+            e => e.id === String(r.score_id)
         );
 
         return {
@@ -3172,7 +3173,7 @@ class LeaderboardView {
         $("lbSubmitButton").disabled = true;
         $("lbMessage").textContent = "SAVING...";
 
-        const res = await this.lb.submitAccount(G.result);
+        const res = await this.lb.submitAccount();
 
         $("lbSubmitButton").disabled = false;
         if (token !== gameToken) return;
@@ -3292,11 +3293,16 @@ async function createGameSession(day) {
     if (!response.ok || !data.ok) {
         throw new Error(data.error || "SESSION_CREATION_FAILED");
     }
+    if (data.seed !== `${day}|daily`) {
+        throw new Error("SESSION_SEED_MISMATCH");
+    }
 
     activeGameSession = {
         id: data.session_id,
         token: data.token,
-        expiresAt: data.expires_at
+        expiresAt: data.expires_at,
+        seed: data.seed,
+        rankedInvalidated: false
     };
 
     return activeGameSession;
@@ -3569,7 +3575,9 @@ applyTheme(savedTheme);
 // =====================================================// =====================================================
 
 
-const ENABLE_OPERATOR_PANEL = true;
+// Retained for development, but disabled for production ranked games.
+const ENABLE_OPERATOR_PANEL = false;
+let operatorAuthorized = false;
 
 const operatorTrigger = document.getElementById("operatorTrigger");
 const operatorPanel = document.getElementById("operatorPanel");
@@ -3578,6 +3586,10 @@ const operatorControls = document.getElementById("operatorControls");
 const operatorLevel = document.getElementById("operatorLevel");
 const operatorWave = document.getElementById("operatorWave");
 const operatorConfirm = document.getElementById("operatorConfirm");
+if (!ENABLE_OPERATOR_PANEL) {
+    operatorTrigger.hidden = true;
+    operatorPanel.hidden = true;
+}
 operatorLevel.innerHTML = "";
 for (let l = 1; l <= 10; l++) {
     const o = document.createElement("option");
@@ -3634,7 +3646,7 @@ operatorCommand.addEventListener("keydown", async (event) => {
 
         const result = await response.json();
 
-        if (!response.ok || result.authorised !== true) {
+        if (!ENABLE_OPERATOR_PANEL || !response.ok || result.authorised !== true) {
             alert("Incorrect operator password.");
             operatorCommand.value = "";
             operatorCommand.focus();
@@ -3642,6 +3654,7 @@ operatorCommand.addEventListener("keydown", async (event) => {
         }
 
         // Password accepted
+        operatorAuthorized = true;
         operatorCommand.value = "";
         operatorControls.hidden = false;
 
@@ -3683,6 +3696,8 @@ operatorCommand.addEventListener("keydown", async (event) => {
 
     // Confirm selected level and wave
     operatorConfirm.addEventListener("click", () => {
+if (!ENABLE_OPERATOR_PANEL || !operatorAuthorized) return;
+if (activeGameSession) activeGameSession.rankedInvalidated = true;
 
 const level = Number(operatorLevel.value);
 const wave = Number(operatorWave.value);
@@ -3712,6 +3727,7 @@ queueWave({ level, wave });
 operatorPanel.hidden = true;
 operatorCommand.value = "";
 operatorControls.hidden = true;
+operatorAuthorized = false;
 });
 </script>
 

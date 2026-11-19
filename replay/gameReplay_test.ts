@@ -7,6 +7,7 @@ import {
   type RecordedEvent,
   type RunInputLog,
 } from "./gameReplay.ts";
+import genuineLog from "../supabase/functions/ace-submit-run/fixtures/genuine-run.json" with { type: "json" };
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
@@ -129,4 +130,15 @@ Deno.test("client END claims are rejected unless simulation reaches game over", 
   const lastTime = log.events.at(-1)![0] + 1;
   log.events.push([lastTime, log.events.length, "END", "PING NOT IDENTIFIED WITHIN 3.0 SECONDS"]);
   assertThrows(() => replayInputLog(log), "END arrived before a simulated game-over condition");
+});
+
+Deno.test("genuine captured run replays through threshold-length holds to its recorded terminal state", () => {
+  const outcome = replayInputLog(genuineLog as RunInputLog);
+  assertEqual(outcome.terminal, true, "captured run did not reach terminal state");
+  assertEqual(outcome.result, {
+    points: 1558,
+    timeMs: 36316,
+    waves: 2,
+    reason: "FRIENDLY HIT BY HOSTILE",
+  }, "captured terminal result differs");
 });

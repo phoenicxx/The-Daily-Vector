@@ -71,6 +71,7 @@ interface Ping extends Point {
   id: number;
   age: number;
   holdT: number;
+  holdMicros: number;
   holder: number | null;
 }
 interface Drag { friendlyId: number; pointerId: number; x: number; y: number }
@@ -110,7 +111,11 @@ interface StrikeState {
   enemyId: number | null;
   holding: boolean;
   holdT: number;
+  holdMicros: number;
 }
+
+const HOLD_GHOST_MICROS = HOLD_GHOST_S * 1_000_000;
+const HOLD_STRIKE_MICROS = HOLD_STRIKE_S * 1_000_000;
 
 function fail(message: string): never {
   throw new Error(`Replay input invalid: ${message}`);
@@ -126,7 +131,7 @@ class Replay {
   private readonly ghostRng: () => number;
   private readonly pointers = new Map<number, PointerState>();
   private readonly keys = new Set<string>();
-  private readonly strike: StrikeState = { state: "idle", enemyId: null, holding: false, holdT: 0 };
+  private readonly strike: StrikeState = { state: "idle", enemyId: null, holding: false, holdT: 0, holdMicros: 0 };
   private state: State;
   private endedReason: string | null = null;
   private frameCount = 0;
@@ -206,7 +211,7 @@ class Replay {
         if (!Number.isInteger(micros) || (micros as number) < 0 || (micros as number) > 50_000) {
           fail("FRAME delta must be an integer from 0 to 50000 microseconds");
         }
-        this.frame((micros as number) / 1_000_000);
+        this.frame(micros as number);
         return;
       }
       case "FRIENDLY_DOWN": {
@@ -268,6 +273,7 @@ class Replay {
         }
         ping.holder = pointerId;
         ping.holdT = 0;
+        ping.holdMicros = 0;
         this.pointers.set(pointerId, { type: "PING", id });
         return;
       }
@@ -277,6 +283,7 @@ class Replay {
         if (this.strike.state === "hold" && !this.strike.holding) {
           this.strike.holding = true;
           this.strike.holdT = 0;
+          this.strike.holdMicros = 0;
         }
         this.pointers.set(pointerId, { type: "STRIKE" });
         return;
@@ -289,7 +296,7 @@ class Replay {
         if (tracked.type === "FRIENDLY" && this.state.drag?.pointerId === pointerId) this.state.drag = null;
         if (tracked.type === "PING") {
           const ping = this.state.ghosts.find((item) => item.id === tracked.id);
-          if (ping?.holder === pointerId) { ping.holder = null; ping.holdT = 0; }
+          if (ping?.holder === pointerId) { ping.holder = null; ping.holdT = 0; ping.holdMicros = 0; }
         }
         if (tracked.type === "STRIKE") this.endStrikeHold();
         this.pointers.delete(pointerId);
@@ -309,6 +316,7 @@ class Replay {
           if (this.strike.state === "hold" && !this.strike.holding) {
             this.strike.holding = true;
             this.strike.holdT = 0;
+            this.strike.holdMicros = 0;
           }
         } else if (KEYMAP[code]) this.keys.add(KEYMAP[code]);
         return;
@@ -361,13 +369,13 @@ class Replay {
     this.fh = height;
   }
 
-  private frame(dt: number): void {
+  private frame(micros: number): void {
     if (this.endedReason) fail("FRAME follows simulated game over");
     this.frameCount++;
-    this.update(dt);
+    this.update(micros / 1_000_000, micros);
   }
 
-  private update(dt: number): void {
+  private update(dt: number, frameMicros: number): void {
     const g = this.state;
     if (!(g.inter > 0)) g.t += dt;
 
@@ -470,7 +478,8 @@ class Replay {
       ping.age += dt;
       if (ping.holder !== null) {
         ping.holdT += dt;
-        if (ping.holdT >= HOLD_GHOST_S) {
+        ping.holdMicros += frameMicros;
+        if (ping.holdMicros >= HOLD_GHOST_MICROS) {
           g.ghosts.splice(g.ghosts.indexOf(ping), 1);
           g.ghostIds++;
           g.wavePings++;
@@ -486,7 +495,8 @@ class Replay {
 
     if (this.strike.holding) {
       this.strike.holdT += dt;
-      if (this.strike.holdT / HOLD_STRIKE_S >= 1) this.completeStrike();
+      this.strike.holdMicros += frameMicros;
+      if (this.strike.holdMicros >= HOLD_STRIKE_MICROS) this.completeStrike();
     }
     this.waveTick(dt);
   }
@@ -678,7 +688,7 @@ class Replay {
     const radius = g.ghostR;
     const x = radius + 20 + this.ghostRng() * Math.max(10, this.fw - 2 * radius - 40);
     const y = radius + 20 + this.ghostRng() * Math.max(10, this.fh - 2 * radius - 40 - STRIKE_PANEL_CLEARANCE);
-    g.ghosts.push({ id: g.nextId++, x, y, age: 0, holdT: 0, holder: null });
+    g.ghosts.push({ id: g.nextId++, x, y, age: 0, holdT: 0, holdMicros: 0, holder: null });
   }
 
   private selectStrike(id: number): void {
@@ -692,12 +702,14 @@ class Replay {
     this.strike.enemyId = null;
     this.strike.holding = false;
     this.strike.holdT = 0;
+    this.strike.holdMicros = 0;
   }
 
   private endStrikeHold(): void {
     if (!this.strike.holding) return;
     this.strike.holding = false;
     this.strike.holdT = 0;
+    this.strike.holdMicros = 0;
   }
 
   private completeStrike(): void {
