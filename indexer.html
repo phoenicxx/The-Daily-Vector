@@ -291,7 +291,7 @@ body {
     white-space: nowrap; pointer-events: none;
 }
 
-.ghost {
+.ping {
     position: absolute;
     transform: translate(-50%, -50%);
     border-radius: 50%;
@@ -299,25 +299,25 @@ body {
     cursor: pointer;
     touch-action: none;
 }
-.ghost .core {
+.ping .core {
     position: absolute; inset: 22%;
     border-radius: 50%;
     background: rgba(255,61,61,0.6);
     animation: pulse 0.7s ease-in-out infinite alternate;
 }
-.ghost .gico {
+.ping .gico {
     position: absolute; inset: 0;
     display: flex; align-items: center; justify-content: center;
     line-height: 1; pointer-events: none;
 }
-.ghost .arc, .ghost .hold {
+.ping .arc, .ping .hold {
     position: absolute; inset: 0;
     border-radius: 50%;
     -webkit-mask: radial-gradient(circle, transparent 62%, #000 64%);
             mask: radial-gradient(circle, transparent 62%, #000 64%);
 }
-.ghost .arc  { background: conic-gradient(#ff3d3d var(--rem, 360deg), transparent 0); }
-.ghost .hold { inset: 12%; background: conic-gradient(#5ee6a8 var(--hold, 0deg), transparent 0); }
+.ping .arc  { background: conic-gradient(#ff3d3d var(--rem, 360deg), transparent 0); }
+.ping .hold { inset: 12%; background: conic-gradient(#5ee6a8 var(--hold, 0deg), transparent 0); }
 @keyframes pulse { from { transform: scale(0.7); opacity: 0.5; } to { transform: scale(1.15); opacity: 1; } }
 
 .fx {
@@ -817,7 +817,7 @@ body {
     <div class="tut-foot">
         <div id="tutChecks">
             <span id="tc0">○ DRAG PLANE</span>
-            <span id="tc1">○ IDENTIFY GHOST</span>
+            <span id="tc1">○ IDENTIFY PING</span>
             <span id="tc2">○ STRIKE HOSTILE</span>
         </div>
         <div class="tut-btns">
@@ -1098,10 +1098,10 @@ const LEGACY_DIFFICULTY = "easy";
 const TARGET_ENDURANCE_S = 360;     // 06:00
 const TARGET_EFFICIENCY  = 20000;   // points
 const STRIKE_POINTS = 500;
-const GHOST_POINTS  = 250;
+const PING_POINTS  = 250;
 const HOLD_STRIKE_S = 2.0;          // seconds to confirm strike
-const HOLD_GHOST_S  = 0.5;
-const GHOST_WINDOW_S = 3.0;
+const HOLD_PING_S  = 0.5;
+const PING_WINDOW_S = 3.0;
 const MIN_TIME_MS = 3000;           // shortest run the server accepts
 
 // ---- Levels & waves --------------------------------------------------
@@ -1144,8 +1144,8 @@ function waveSpec(level, wave) {
     return {
         planes, hostiles, ping,
         speed:     wave >= 2 ? Math.min(120, 35 + 5 * (level - 1) + 3 * extra) : 0,
-        maxGhosts: wave >= 3 ? Math.min(6, 3 + Math.ceil(level / 2)) : 0,
-        ghostR:    Math.max(20, 28 - 0.6 * (level - 1) - 0.4 * extra),
+        maxPings: wave >= 3 ? Math.min(6, 3 + Math.ceil(level / 2)) : 0,
+        pingR:    Math.max(20, 28 - 0.6 * (level - 1) - 0.4 * extra),
         drift:     Math.min(2, 1 + 0.05 * (level - 1) + 0.05 * extra)
     };
 }
@@ -1162,7 +1162,7 @@ const FRIENDLY_MAX_SPEED  = 90;
 const STEER_ACCEL = 170;            // px/s^2
 const R_FRIENDLY_FRIENDLY = 32;
 const R_HOSTILE_FRIENDLY    = 28;
-const STRIKE_PANEL_CLEARANCE = 170; // keep Ghosts out of the strike panel area
+const STRIKE_PANEL_CLEARANCE = 170; // keep Pings out of the strike panel area
 
 // Flight paths
 const PATH_ON_DIST     = 12;
@@ -1254,7 +1254,7 @@ function makeStreams(key) {
         base,
         friendly: mulberry32(hashStr(base + "|friendly")),
         hostile:    mulberry32(hashStr(base + "|hostile")),
-        ghost:    mulberry32(hashStr(base + "|ping"))
+        ping:    mulberry32(hashStr(base + "|ping"))
     };
 }
 
@@ -1512,7 +1512,7 @@ function measure() {
         rotateFriendly(f);
     }
     for (const e of G.hostiles) { scalePoint(e); setPos(e); }
-    for (const g of G.ghosts) { scalePoint(g); setPos(g); }
+    for (const g of G.pings) { scalePoint(g); setPos(g); }
     if (G.drag) { G.drag.x *= sx; G.drag.y *= sy; }
 }
 
@@ -1788,14 +1788,14 @@ function spawnHostile() {
     setPos(e);
 }
 
-function spawnGhost() {
-    const R = G.ghostR;
+function spawnPing() {
+    const R = G.pingR;
     const ICON = curIcons();
     const pick = rnd => ({
         x: R + 20 + rnd() * Math.max(10, FW - 2 * R - 40),
         y: R + 20 + rnd() * Math.max(10, FH - 2 * R - 40 - STRIKE_PANEL_CLEARANCE)
     });
-    let pos = pick(() => RNG.ghost());
+    let pos = pick(() => RNG.ping());
     for (let i = 0; i < 50 && tutBlocked(pos.x, pos.y, R); i++) pos = pick(Math.random);
     const x = pos.x, y = pos.y;
 
@@ -1824,7 +1824,7 @@ function spawnGhost() {
     el.addEventListener("lostpointercapture", release);
 
     worldLayer.appendChild(el);
-    G.ghosts.push(g);
+    G.pings.push(g);
     playPingSound();
     setPos(g);
 }
@@ -2038,9 +2038,9 @@ const runInputRecorder = (() => {
             return;
         }
 
-        const ghostEl = target.closest(".ghost");
-        if (ghostEl) {
-            const g = G.ghosts.find(item => item.el === ghostEl);
+        const pingEl = target.closest(".ping");
+        if (pingEl) {
+            const g = G.pings.find(item => item.el === pingEl);
 
             if (g && g.holder === null) {
                 record("PING_DOWN", g.id, point.x, point.y, ev.pointerId);
@@ -2297,7 +2297,7 @@ function enterTutStep(s) {
     if (s >= 3) { finishTutorial(); return; }
     G.tut.phase = "read";                              // instructions first, everything frozen
     updateTutUI();
-    if (s === 1 && !G.ghosts.length)  spawnGhost();    // so there is something to look at
+    if (s === 1 && !G.pings.length)  spawnPing();    // so there is something to look at
     if (s === 2 && !G.hostiles.length) spawnHostile();
     updateTutUI();
 }
@@ -2310,7 +2310,7 @@ function tutTick(dt) {
         return;
     }
     if (T.cool > 0) { T.cool -= dt; return; }
-    if (T.step === 1 && !T.done[1] && G.ghosts.length === 0) spawnGhost();
+    if (T.step === 1 && !T.done[1] && G.pings.length === 0) spawnPing();
     if (T.step === 2 && !T.done[2] && G.hostiles.length === 0) spawnHostile();
 }
 
@@ -2392,7 +2392,7 @@ function queueWave(pos) {
     for (const e of G.hostiles) e.el.remove();
     G.hostiles = [];
     G.hostileQueue = 0;
-    G.ghostTimer = Infinity;
+    G.pingTimer = Infinity;
     G.pingGap = 0;
     G.level = pos.level;
     G.wave = pos.wave;
@@ -2410,12 +2410,12 @@ function startWave() {
     const sp = waveSpec(G.level, G.wave);
     G.hostileSpeed = sp.speed;
     G.drift = sp.drift;
-    G.ghostR = sp.ghostR;
-    G.maxGhosts = sp.maxGhosts;
+    G.pingR = sp.pingR;
+    G.maxPings = sp.maxPings;
     G.pingGap = sp.ping;
     G.hostileQueue = sp.hostiles;
     G.hostileTimer = 1.0;
-    G.ghostTimer = sp.ping > 0 ? sp.ping : Infinity;
+    G.pingTimer = sp.ping > 0 ? sp.ping : Infinity;
     for (let i = 0; i < sp.planes; i++) spawnFriendly();
 }
 
@@ -2433,9 +2433,9 @@ function canAdvanceFromWave(level, wave) {
 }
 function clearWaveEntities() {
     for (const f of G.friendlies) { f.el.remove(); f.pathEl.remove(); f.destEl.remove(); }
-    for (const g of G.ghosts) g.el.remove();
+    for (const g of G.pings) g.el.remove();
     G.friendlies = [];
-    G.ghosts = [];
+    G.pings = [];
     G.selected = null;
     G.drag = null;
 }
@@ -2479,13 +2479,13 @@ function waveTick(dt) {
     }
     // Pings at this wave's pace (a skipped spawn draws nothing from the daily stream)
     if (G.pingGap > 0) {
-        G.ghostTimer -= dt;
-        if (G.ghostTimer <= 0) {
-            if (G.ghosts.length < G.maxGhosts) {
-                spawnGhost();
-                G.ghostTimer = G.pingGap * (0.9 + RNG.ghost() * 0.2);
+        G.pingTimer -= dt;
+        if (G.pingTimer <= 0) {
+            if (G.pings.length < G.maxPings) {
+                spawnPing();
+                G.pingTimer = G.pingGap * (0.9 + RNG.ping() * 0.2);
             } else {
-                G.ghostTimer = 0.3;
+                G.pingTimer = 0.3;
             }
         }
     }
@@ -2628,23 +2628,23 @@ function update(dt) {
     }
 
     // --- Pings ---
-    for (const g of [...G.ghosts]) {
+    for (const g of [...G.pings]) {
         g.age += dt;
         if (g.holder !== null) {
             g.holdT += dt;
-            if (g.holdT >= HOLD_GHOST_S) {
-                G.ghosts.splice(G.ghosts.indexOf(g), 1);
+            if (g.holdT >= HOLD_PING_S) {
+                G.pings.splice(G.pings.indexOf(g), 1);
                 g.el.remove();
-                G.ghostIds++;
+                G.pingIds++;
                 G.wavePings++;
-                award(GHOST_POINTS, g.x, g.y);
+                award(PING_POINTS, g.x, g.y);
                 if (G.tutorial) tutComplete(1);
                 continue;
             }
         }
-        if (g.age >= GHOST_WINDOW_S) {
+        if (g.age >= PING_WINDOW_S) {
             if (G.tutorial) {
-                G.ghosts.splice(G.ghosts.indexOf(g), 1);
+                G.pings.splice(G.pings.indexOf(g), 1);
                 g.el.remove();
                 G.tut.cool = TUT_RESPAWN_S;
                 continue;
@@ -2652,8 +2652,8 @@ function update(dt) {
             g.el.style.outline = "3px solid #ff3d3d";
             return endGame("PING NOT IDENTIFIED WITHIN 3.0 SECONDS", { x: g.x, y: g.y });
         }
-        g.el.style.setProperty("--rem", (1 - g.age / GHOST_WINDOW_S) * 360 + "deg");
-        g.el.style.setProperty("--hold", Math.min(1, g.holdT / HOLD_GHOST_S) * 360 + "deg");
+        g.el.style.setProperty("--rem", (1 - g.age / PING_WINDOW_S) * 360 + "deg");
+        g.el.style.setProperty("--hold", Math.min(1, g.holdT / HOLD_PING_S) * 360 + "deg");
     }
 
     // --- Strike hold ---
@@ -2705,13 +2705,13 @@ function clearField() { field.innerHTML = ""; field.classList.remove("frozen"); 
 
 function newState(extra) {
     return Object.assign({
-        t: 0, level: 1, wave: 1, cleared: 0, points: 0, kills: 0, ghostIds: 0,
-        friendlies: [], hostiles: [], ghosts: [],
+        t: 0, level: 1, wave: 1, cleared: 0, points: 0, kills: 0, pingIds: 0,
+        friendlies: [], hostiles: [], pings: [],
         selected: null, drag: null, nextId: 1, hostileCounter: 1,
         friendlyCounter: 0,
         inter: 0, waveT: 0, hostileQueue: 0, hostileTimer: 0, gateNotified: false, wavePings: 0,
-        ghostTimer: Infinity, pingGap: 0, maxGhosts: 0,
-        hostileSpeed: 40, ghostR: 28, drift: 1,
+        pingTimer: Infinity, pingGap: 0, maxPings: 0,
+        hostileSpeed: 40, pingR: 28, drift: 1,
         failReason: "", result: null,
         tutorial: false, tut: null
     }, extra || {});
@@ -3125,7 +3125,7 @@ class LeaderboardView {
             ["Reached", `Level ${G.level} · Wave ${G.wave}`],
             ["Waves cleared", G.cleared],
             ["Hostiles eliminated", G.kills],
-            ["Ghosts identified", G.ghostIds]
+            ["Pings identified", G.pingIds]
         ];
         $("metrics").innerHTML = rows.map(x => `<tr><td>${x[0]}</td><td>${x[1]}</td></tr>`).join("");
         $("metrics").style.display = "table";
@@ -3524,10 +3524,10 @@ function updateHowTo() {
     $("howto").innerHTML =
         planeStep + " Guide each friendly to its destination circle along the dotted flight path; the faster it arrives, the more you score.<br><br>" +
         strikeStep + "<br><br>" + pingStep + "<br><br>" +
-        "Clear <b>waves</b> to climb. In every level, <b>wave 1</b> is friendlies only, <b>wave 2</b> adds hostiles and <b>wave 3</b> adds pings. Each level adds more friendlies, hostiles and faster pings. <b>L10</b> is endless.<br>" +
-        "A missed ping or any collision is game over. Your daily rank is the number of <b>waves you clear</b> (points break ties). <br><br>" +
         "This is a game meant to assess and train your cognitive ability to multitask and prioritise threats. <br><br>" +
-        "It simulates the experience of an operator in the RSAF. Thus, you must direct friendlies to their destinations, eliminate hostiles, and identify pings.";
+        'It simulates the experience of an operator in the RSAF. Thus, you must direct friendlies (${I.plane}) to their destinations, eliminate hostiles (${I.hostile || "◆"}), and identify pings (${I.ping || "●"}). <br><br>' +
+        "A missed ping or any collision is game over. Your daily rank is the number of <b>waves you clear</b> (points break ties). <br><br>" +
+        "Clear <b>waves</b> to climb. In every level, <b>wave 1</b> is friendlies only, <b>wave 2</b> adds hostiles and <b>wave 3</b> adds pings. Each level adds more friendlies, hostiles and faster pings. <b>L10</b> is endless.";
         
 }
 
@@ -3728,12 +3728,12 @@ for (const f of G.friendlies) {
 }
 
 // Clear existing pings
-for (const g of G.ghosts) {
+for (const g of G.pings) {
     g.el?.remove();
 }
 
 G.friendlies = [];
-G.ghosts = [];
+G.pings = [];
 G.selected = null;
 G.drag = null;
 
