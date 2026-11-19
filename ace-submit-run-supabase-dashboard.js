@@ -376,7 +376,18 @@ var Replay = class {
         return;
       }
       case "BLUR":
-        if (this.pointers.size > 0) fail("BLUR during an active pointer hold cannot be replayed reliably");
+        for (const [pointerId, pointer] of this.pointers) {
+          if (pointer.type === "FRIENDLY" && this.state.drag?.pointerId === pointerId) this.state.drag = null;
+          if (pointer.type === "PING") {
+            const ping = this.state.ghosts.find((item) => item.id === pointer.id);
+            if (ping?.holder === pointerId) {
+              ping.holder = null;
+              ping.holdT = 0;
+              ping.holdMicros = 0;
+            }
+          }
+        }
+        this.pointers.clear();
         this.keys.clear();
         this.endStrikeHold();
         return;
