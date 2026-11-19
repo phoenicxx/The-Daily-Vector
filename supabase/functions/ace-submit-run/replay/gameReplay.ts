@@ -48,9 +48,10 @@ import {
   KEYMAP, PATH_SEP, R_ENEMY_FRIENDLY, R_FRIENDLY_FRIENDLY,
   STEER_ACCEL, STRIKE_PANEL_CLEARANCE, STRIKE_POINTS, WAVE_PAUSE_S, WRAP_M,
   dailyStreamSeed, destinationPoints, entityStreamSeed, mulberry32, nextWave, waveSpec,
+  waveTimeLimit,
 } from "../_shared/gameRules.ts";
 
-export { destinationPoints, hashStr, mulberry32, waveSpec } from "../_shared/gameRules.ts";
+export { destinationPoints, hashStr, mulberry32, waveSpec, waveTimeLimit } from "../_shared/gameRules.ts";
 
 interface Point { x: number; y: number }
 interface Path { x0: number; y0: number; x1: number; y1: number }
@@ -95,6 +96,7 @@ interface State {
   enemyCounter: number;
   friendlyCounter: number;
   inter: number;
+  waveT: number;
   enemyQueue: number;
   enemyTimer: number;
   gateNotified: boolean;
@@ -146,7 +148,7 @@ class Replay {
     this.state = {
       t: 0, level: 1, wave: 1, cleared: 0, points: 0, kills: 0, ghostIds: 0,
       wavePings: 0, friendlies: [], enemies: [], ghosts: [], selected: null,
-      drag: null, nextId: 1, enemyCounter: 1, friendlyCounter: 0, inter: 0,
+      drag: null, nextId: 1, enemyCounter: 1, friendlyCounter: 0, inter: 0, waveT: 0,
       enemyQueue: 0, enemyTimer: 0, gateNotified: false, ghostTimer: Infinity,
       pingGap: 0, maxGhosts: 0, enemySpeed: 40, ghostR: 28, drift: 1,
     };
@@ -508,6 +510,7 @@ class Replay {
       if (g.inter <= 0) { g.inter = 0; this.startWave(); }
       return;
     }
+    g.waveT += dt;
     if (g.friendlies.length === 0) {
       const allowed = g.wave === 2
         ? g.enemyQueue === 0 && g.enemies.length === 0
@@ -518,6 +521,14 @@ class Replay {
         return;
       }
       g.gateNotified = true;
+    }
+    if (g.waveT >= waveTimeLimit(g.level)) {
+      g.friendlies = [];
+      g.ghosts = [];
+      g.selected = null;
+      g.drag = null;
+      this.queueWave(nextWave(g.level, g.wave));
+      return;
     }
     if (g.enemyQueue > 0) {
       g.enemyTimer -= dt;
@@ -551,6 +562,7 @@ class Replay {
 
   private startWave(): void {
     const g = this.state;
+    g.waveT = 0;
     g.gateNotified = false;
     g.wavePings = 0;
     const spec = waveSpec(g.level, g.wave);

@@ -24,6 +24,13 @@ export const DRIFT_JITTER = 0.5;
 export const DRIFT_MAX_TURN = 0.3;
 export const DEST_REACH = 24;
 export const WRAP_M = 30;
+export const WAVE_TIME_LIMIT_S = 30;
+export const WAVE_TIME_LIMIT_MAX_LEVEL = 3;
+
+/** Seconds allowed for a wave before it is force-advanced (Infinity = no limit). */
+export function waveTimeLimit(level: number): number {
+  return level <= WAVE_TIME_LIMIT_MAX_LEVEL ? WAVE_TIME_LIMIT_S : Infinity;
+}
 
 export const KEYMAP: Record<string, string> = {
   KeyW: "U", ArrowUp: "U", KeyA: "L", ArrowLeft: "L",

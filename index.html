@@ -2435,6 +2435,7 @@ function waveTick(dt) {
         if (G.inter <= 0) { G.inter = 0; startWave(); }
         return;
     }
+    G.waveT += dt;
     // Wave is cleared once every plane has landed / left the screen,
     // and (on Level 2) every hostile has been killed
     if (G.friendlies.length === 0) {
@@ -2449,6 +2450,13 @@ function waveTick(dt) {
             else showBanner("NO PING IDENTIFIED", "IDENTIFY AT LEAST 1 PING TO ADVANCE");
         }
         // fall through so queued hostiles keep spawning and can be struck
+    }
+    // Time limit (levels 1-3 only): force the next wave, no points for unarrived friendlies
+    const limit = G.level <= WAVE_TIME_LIMIT_MAX_LEVEL ? WAVE_TIME_LIMIT_S : Infinity;
+    if (G.waveT >= limit) {
+        clearWaveEntities();
+        queueWave(nextWavePos(G.level, G.wave));
+        return;
     }
     // Hostiles arrive one at a time
     if (G.enemyQueue > 0) {
@@ -2973,12 +2981,9 @@ class LeaderboardSystem {
                 session_id: activeGameSession.id,
                 token: activeGameSession.token,
                 account_name: account.name,
+                device_id: activeGameSession.deviceId,
                 pin: account.pin,
-                result: {
-                    points: G.result.points,
-                    timeMs: G.result.timeMs,
-                    waves: G.result.waves
-                }
+                input_log: activeGameSession.inputLog
             })
         });
         const r = await response.json();
@@ -3253,8 +3258,19 @@ async function rpc(fn, args) {
 // =====================================================
 
 let activeGameSession = null;
+const DEVICE_ID_STORAGE_KEY = "daily_vector_device_id";
+function getDeviceId() {
+    let id = null;
+    try { id = localStorage.getItem(DEVICE_ID_STORAGE_KEY); } catch (_) {}
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id || "")) {
+        id = crypto.randomUUID();
+        try { localStorage.setItem(DEVICE_ID_STORAGE_KEY, id); } catch (_) {}
+    }
+    return id;
+}
 
 async function createGameSession(day) {
+    const deviceId = getDeviceId();
     const response = await fetch(
         `${SUPABASE_URL}/functions/v1/ace-start-run`,
         {
@@ -3267,7 +3283,8 @@ async function createGameSession(day) {
             body: JSON.stringify({
                 name: account.name,
                 pin: account.pin,
-                day
+                day,
+                device_id: deviceId
             })
         }
     );
@@ -3286,12 +3303,28 @@ async function createGameSession(day) {
         id: data.session_id,
         token: data.token,
         expiresAt: data.expires_at,
+        deviceId,
         seed,
         rankedInvalidated: false
     };
 
     return activeGameSession;
 }
+
+
+const DEVICE_ID_KEY = "ace_device_id";
+
+function getDeviceId() {
+    let id = localStorage.getItem(DEVICE_ID_KEY);
+
+    if (!id) {
+        id = crypto.randomUUID();
+        localStorage.setItem(DEVICE_ID_KEY, id);
+    }
+
+    return id;
+}
+
 
 
 const account = {

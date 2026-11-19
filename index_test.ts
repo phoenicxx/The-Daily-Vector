@@ -8,6 +8,7 @@ import {
 const capturedLog = genuineLog as RunInputLog;
 const SESSION_ID = capturedLog.metadata.sessionId!;
 const TOKEN = "test-token-with-more-than-thirty-two-characters";
+const DEVICE_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const DAY = capturedLog.metadata.day;
 const NOW = Date.now();
 
@@ -33,8 +34,11 @@ function setup(overrides: Record<string, unknown> = {}) {
     ...overrides,
   };
   const handler = createHandler({
+    async isDeviceBanned(hash) { return overrides.bannedHash === hash; },
     async getSession(id) {
-      return id === SESSION_ID ? session : null;
+      return id === SESSION_ID
+        ? { ...session, device_hash: session.device_hash || await sha256(DEVICE_ID) }
+        : null;
     },
     async getAccount(id) {
       return id === "42" ? { id: "42", name: "VECTOR PLAYER" } : null;
@@ -69,6 +73,7 @@ async function request(
         session_id: SESSION_ID,
         token: TOKEN,
         account_name: "VECTOR PLAYER",
+        device_id: DEVICE_ID,
         input_log: structuredClone(capturedLog),
         ...extra,
       }),
@@ -90,6 +95,31 @@ Deno.test("genuine captured run passes strict replay and completes its session",
     score.points !== 1558 || score.time_ms !== 36316 || score.waves !== 2 ||
     score.ending_reason !== "FRIENDLY HIT BY HOSTILE"
   ) throw new Error("score was not derived from the genuine captured replay");
+});
+
+Deno.test("banned device submission is rejected before completion", async () => {
+  const { handler, session, writes } = setup({ bannedHash: await sha256(DEVICE_ID) });
+  session.token_hash = await sha256(TOKEN);
+  const response = await request(handler);
+  if (response.status !== 403 || (await response.json()).error !== "DEVICE_BANNED" || writes.length) {
+    throw new Error("banned device submission was accepted");
+  }
+});
+
+Deno.test("changed device identifier is rejected", async () => {
+  const { handler, session, writes } = setup();
+  session.token_hash = await sha256(TOKEN);
+  const response = await request(handler, { device_id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb" });
+  if (response.status !== 403 || (await response.json()).error !== "DEVICE_MISMATCH" || writes.length) {
+    throw new Error("changed device identifier was accepted");
+  }
+});
+
+Deno.test("normal unbanned submission completes its run", async () => {
+  const { handler, session, writes } = setup();
+  session.token_hash = await sha256(TOKEN);
+  const response = await request(handler);
+  if (response.status !== 200 || writes.length !== 1) throw new Error("valid submission failed");
 });
 
 Deno.test("forged client score fields are ignored", async () => {
