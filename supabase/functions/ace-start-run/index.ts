@@ -96,7 +96,13 @@ if (import.meta.main) {
   const headers = { apikey: key, authorization: `Bearer ${key}`, "content-type": "application/json" };
   const handler = createHandler({
     async isDeviceBanned(hash) {
-      const res = await fetch(`${base}/rest/v1/ace_device_bans?device_hash=eq.${encodeURIComponent(hash)}&select=device_hash&limit=1`, { headers });
+      const params = new URLSearchParams({
+        device_hash: `eq.${hash}`,
+        select: "device_hash",
+        limit: "1",
+        or: `(expires_at.is.null,expires_at.gt.${new Date().toISOString()})`,
+      });
+      const res = await fetch(`${base}/rest/v1/ace_device_bans?${params}`, { headers });
       if (!res.ok) throw new Error(`device ban lookup ${res.status}`);
       return (await res.json()).length > 0;
     },

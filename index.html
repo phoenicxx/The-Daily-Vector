@@ -1122,6 +1122,8 @@ const MIN_PING_GAP_S = 1.5;         // fastest allowed time between pings
 const MAX_FRIENDLIES = 6;
 const MAX_HOSTILES   = 10;
 const WAVE_PAUSE_S = 1.8;           // breather between waves (clock paused)
+const WAVE_TIME_LIMIT_S = 30;
+const WAVE_TIME_LIMIT_MAX_LEVEL = 3;
 
 function waveSpec(level, wave) {
     const extra = Math.max(0, wave - 3);   // only non-zero on L10 after wave 3
@@ -2402,6 +2404,7 @@ function queueWave(pos) {
 }
 
 function startWave() {
+    G.waveT = 0;
     G.gateNotified = false;
     G.wavePings = 0;
     const sp = waveSpec(G.level, G.wave);
@@ -2428,7 +2431,14 @@ function canAdvanceFromWave(level, wave) {
     if (wave >= 3) return G.wavePings >= 1;
     return true;
 }
-
+function clearWaveEntities() {
+    for (const f of G.friendlies) { f.el.remove(); f.pathEl.remove(); f.destEl.remove(); }
+    for (const g of G.ghosts) g.el.remove();
+    G.friendlies = [];
+    G.ghosts = [];
+    G.selected = null;
+    G.drag = null;
+}
 function waveTick(dt) {
     if (G.inter > 0) {
         G.inter -= dt;
@@ -2698,7 +2708,7 @@ function newState(extra) {
         friendlies: [], enemies: [], ghosts: [],
         selected: null, drag: null, nextId: 1, enemyCounter: 1,
         friendlyCounter: 0,
-        inter: 0, enemyQueue: 0, enemyTimer: 0, gateNotified: false, wavePings: 0,
+        inter: 0, waveT: 0, enemyQueue: 0, enemyTimer: 0, gateNotified: false, wavePings: 0,
         ghostTimer: Infinity, pingGap: 0, maxGhosts: 0,
         enemySpeed: 40, ghostR: 28, drift: 1,
         failReason: "", result: null,
@@ -2982,7 +2992,6 @@ class LeaderboardSystem {
                 token: activeGameSession.token,
                 account_name: account.name,
                 device_id: activeGameSession.deviceId,
-                pin: account.pin,
                 input_log: activeGameSession.inputLog
             })
         });
@@ -3310,22 +3319,6 @@ async function createGameSession(day) {
 
     return activeGameSession;
 }
-
-
-const DEVICE_ID_KEY = "ace_device_id";
-
-function getDeviceId() {
-    let id = localStorage.getItem(DEVICE_ID_KEY);
-
-    if (!id) {
-        id = crypto.randomUUID();
-        localStorage.setItem(DEVICE_ID_KEY, id);
-    }
-
-    return id;
-}
-
-
 
 const account = {
     name: null, pin: null,
@@ -3748,7 +3741,6 @@ operatorControls.hidden = true;
 operatorAuthorized = false;
 });
 
-console.log(JSON.stringify(recordedRun));
 </script>
 
 </body>

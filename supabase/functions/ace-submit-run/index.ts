@@ -295,10 +295,13 @@ if (import.meta.main) {
       return rows[0] ?? null;
     },
     async isDeviceBanned(deviceHash) {
-      const res = await fetch(
-        `${base}/rest/v1/ace_device_bans?device_hash=eq.${encodeURIComponent(deviceHash)}&select=device_hash&limit=1`,
-        { headers },
-      );
+      const params = new URLSearchParams({
+        device_hash: `eq.${deviceHash}`,
+        select: "device_hash",
+        limit: "1",
+        or: `(expires_at.is.null,expires_at.gt.${new Date().toISOString()})`,
+      });
+      const res = await fetch(`${base}/rest/v1/ace_device_bans?${params}`, { headers });
       if (!res.ok) throw new Error(`device ban lookup ${res.status}`);
       const rows = await res.json();
       return rows.length > 0;

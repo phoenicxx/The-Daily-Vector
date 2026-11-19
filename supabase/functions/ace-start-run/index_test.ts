@@ -15,7 +15,7 @@ function setup(banned = false) {
     async isDeviceBanned(hash) { return banned && hash === await sha256(DEVICE_ID); },
     async login(name, pin) {
       loginCalls++;
-      return name === "PLAYER" && pin === "1234" ? { id: "42", name } : null;
+      return name && pin === "1234" ? { id: name === "NEW PLAYER" ? "43" : "42", name } : null;
     },
     async createRun(run) { runs.push(run); },
     now: () => Date.UTC(2026, 10, 19),
@@ -23,17 +23,21 @@ function setup(banned = false) {
   return { handler, runs, get loginCalls() { return loginCalls; } };
 }
 
-async function request(handler: (request: Request) => Promise<Response>, deviceId = DEVICE_ID) {
+async function request(
+  handler: (request: Request) => Promise<Response>,
+  deviceId = DEVICE_ID,
+  name = "PLAYER",
+) {
   return await handler(new Request("https://example.test", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ name: "PLAYER", pin: "1234", day: DAY, device_id: deviceId }),
+    body: JSON.stringify({ name, pin: "1234", day: DAY, device_id: deviceId }),
   }));
 }
 
 Deno.test("banned device cannot start a run even for a newly registered account", async () => {
   const test = setup(true);
-  const result = await request(test.handler);
+  const result = await request(test.handler, DEVICE_ID, "NEW PLAYER");
   if (result.status !== 403 || (await result.json()).error !== "DEVICE_BANNED" || test.runs.length || test.loginCalls) {
     throw new Error("banned device reached account authentication or run creation");
   }
