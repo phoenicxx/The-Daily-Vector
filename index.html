@@ -1854,6 +1854,10 @@ function holdLabel() {
 
 function strikeSelect(enemy) {
     if (strike.holding) return;
+
+    // Touch: tapping the already-selected hostile again cancels the strike
+    if (!isKB() && strike.enemy === enemy) { strikeReset(); return; }
+
     if (strike.enemy) strike.enemy.el.classList.remove("sel");
     strike.enemy = enemy;
     enemy.el.classList.add("sel");
@@ -1861,18 +1865,14 @@ function strikeSelect(enemy) {
     $("spTarget").textContent = enemy.name;
     $("spProg").style.width = "0%";
     $("spHoldText").textContent = holdLabel();
-    if (isKB()) {
-        // Keyboard: click the hostile, then hold SPACE
-        strike.state = "hold";
-        $("spConfirm").style.display = "none";
-        $("spHoldWrap").style.display = "block";
-        $("spHint").textContent = "ESC TO CANCEL";
-    } else {
-        strike.state = "confirm";
-        $("spConfirm").style.display = "flex";
-        $("spHoldWrap").style.display = "none";
-        $("spHint").textContent = "";
-    }
+
+    // Both keyboard and touch go straight to the hold phase
+    strike.state = "hold";
+    $("spConfirm").style.display = "none";
+    $("spHoldWrap").style.display = "block";
+    $("spHint").textContent = isKB()
+        ? "ESC TO CANCEL"
+        : "TAP THE HOSTILE AGAIN TO CANCEL";
     $("strikePanel").style.display = "block";
 }
 
@@ -3486,7 +3486,7 @@ function updateHowTo() {
         : `<b>1. Click and drag a friendly</b> (${I.plane}) to steer it.`;
     const strikeStep = kb
         ? `<b>2. Click an enemy</b> ${I.enemy || "◆"}, then <b>hold SPACE for 2 seconds</b> to strike it for points.`
-        : `<b>2. Tap a enemy</b> ${I.enemy || "◆"}, confirm, then press and hold for 2 seconds to strike it for points.`;
+        : `<b>2. Tap a enemy</b> ${I.enemy || "◆"}, then press and hold for 2 seconds to strike it for points.`;
     const pingStep = `<b>3. Press and hold a ping</b> ${I.ping || "●"} <b>for 0.5 seconds</b> to identify it. Each ping expires after 3 seconds.`;
     $("howto").innerHTML =
         planeStep + " Guide each friendly to its destination circle along the dotted flight path; the faster it arrives, the more you score.<br><br>" +
