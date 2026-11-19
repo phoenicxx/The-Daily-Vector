@@ -85,7 +85,7 @@ async function request(
 Deno.test("genuine captured run passes strict replay and completes its session", async () => {
   const { handler, session, writes } = setup();
   session.token_hash = await sha256(TOKEN);
-  const response = await request(handler);
+  const response = await request(handler, { device_id: DEVICE_ID.toUpperCase() });
   if (response.status !== 200 || writes.length !== 1) {
     throw new Error(
       "genuine captured tape did not complete after strict replay",

@@ -2779,6 +2779,7 @@ function endGame(reason, pos) {
     if (state !== "play") return;
     state = "over";
     const recordedRun = runInputRecorder.stop(reason);
+    console.log(JSON.stringify(recordedRun));   // temporary, remove after capturing the fixture
 
 if (activeGameSession && recordedRun) {
     activeGameSession.inputLog = recordedRun;
@@ -3275,6 +3276,7 @@ function getDeviceId() {
     try { id = localStorage.getItem(DEVICE_ID_STORAGE_KEY); } catch (_) {}
     if (/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id || "")) {
         id = id.toLowerCase();
+        try { localStorage.setItem(DEVICE_ID_STORAGE_KEY, id); } catch (_) {}
     } else {
         id = crypto.randomUUID();
         try { localStorage.setItem(DEVICE_ID_STORAGE_KEY, id); } catch (_) {}

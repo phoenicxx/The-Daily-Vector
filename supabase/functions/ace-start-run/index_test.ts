@@ -45,7 +45,7 @@ Deno.test("banned device cannot start a run even for a newly registered account"
 
 Deno.test("unbanned device starts a run with its server hash stored", async () => {
   const test = setup();
-  const result = await request(test.handler);
+  const result = await request(test.handler, DEVICE_ID.toUpperCase());
   const body = await result.json();
   if (result.status !== 200 || test.runs.length !== 1 || test.runs[0].device_hash !== await sha256(DEVICE_ID) || !body.session_id || !body.token) {
     throw new Error("valid unbanned device did not start a bound run");
