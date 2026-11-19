@@ -934,8 +934,6 @@ body {
     <h2>YOU DIED</h2>
     <div class="sub" id="deathReason">Reason: Unknown</div>
     <div class="btn-row">
-      <!-- TEMP: download the genuine recorder output for server replay validation. -->
-      <button class="btn" id="downloadInputLog" type="button" hidden>DOWNLOAD INPUT LOG JSON</button>
       <button class="btn" id="deathSkip">CLOSE</button>
     </div>
   </div>
@@ -2767,8 +2765,6 @@ function endGame(reason, pos) {
 if (activeGameSession && recordedRun) {
     activeGameSession.inputLog = recordedRun;
 }
-$("downloadInputLog").hidden = !activeGameSession?.inputLog ||
-    activeGameSession.inputLog.events.at(-1)?.[2] !== "END";
     playloseSound();
     strikeReset();
     keys.clear();
@@ -2824,23 +2820,6 @@ const deathScreen = {
     }
 };
 $("deathSkip").addEventListener("click", () => deathScreen.finish(true));
-
-// TEMP: Export the exact runInputRecorder log saved on the active session.
-$("downloadInputLog").addEventListener("click", () => {
-    const inputLog = activeGameSession?.inputLog;
-    if (!inputLog || inputLog.events.at(-1)?.[2] !== "END") return;
-
-    const blobUrl = URL.createObjectURL(new Blob(
-        [JSON.stringify(inputLog, null, 2)],
-        { type: "application/json" },
-    ));
-    const link = document.createElement("a");
-    link.href = blobUrl;
-    link.download = `daily-run-${inputLog.metadata.day}-input-log.json`;
-    link.click();
-    setTimeout(() => URL.revokeObjectURL(blobUrl), 0);
-});
-
 
 // =====================================================
 // 9c. BREATHING RESET (4-4-7)
