@@ -67,7 +67,7 @@ interface Friendly extends Point {
   turn: number;
   drng: () => number;
 }
-interface hostile extends Point { id: number; name: string }
+interface Hostile extends Point { id: number; name: string }
 interface Ping extends Point {
   id: number;
   age: number;
@@ -88,7 +88,7 @@ interface State {
   ghostIds: number;
   wavePings: number;
   friendlies: Friendly[];
-  hostiles: hostile[];
+  hostiles: Hostile[];
   ghosts: Ping[];
   selected: Friendly | null;
   drag: Drag | null;
@@ -104,7 +104,6 @@ interface State {
   pingGap: number;
   maxGhosts: number;
   hostileSpeed: number;
-  Speed: number;
   ghostR: number;
   drift: number;
 }
@@ -143,15 +142,20 @@ class Replay {
     this.fw = log.metadata.width;
     this.fh = log.metadata.height;
     this.rngBase = log.metadata.seed;
+    const legacyRules = log.metadata.version === 1;
     this.friendlyRng = mulberry32(dailyStreamSeed(this.rngBase, "friendly"));
-    this.hostileRng = mulberry32(dailyStreamSeed(this.rngBase, "hostile"));
-    this.ghostRng = mulberry32(dailyStreamSeed(this.rngBase, "ping"));
+    this.hostileRng = mulberry32(
+      dailyStreamSeed(this.rngBase, legacyRules ? "enemy" : "hostile"),
+    );
+    this.ghostRng = mulberry32(
+      dailyStreamSeed(this.rngBase, legacyRules ? "ghost" : "ping"),
+    );
     this.state = {
       t: 0, level: 1, wave: 1, cleared: 0, points: 0, kills: 0, ghostIds: 0,
       wavePings: 0, friendlies: [], hostiles: [], ghosts: [], selected: null,
       drag: null, nextId: 1, hostileCounter: 1, friendlyCounter: 0, inter: 0, waveT: 0,
       hostileQueue: 0, hostileTimer: 0, gateNotified: false, ghostTimer: Infinity,
-      pingGap: 0, maxGhosts: 0, hostileSpeed: 40, ghostR: 28, drift: 1, Speed: 40
+      pingGap: 0, maxGhosts: 0, hostileSpeed: 40, ghostR: 28, drift: 1
     };
     this.queueWave({ level: 1, wave: 1 });
   }
@@ -184,7 +188,7 @@ class Replay {
   private validateLog(): void {
     const { metadata, events } = this.log;
     if (this.log.overflow) fail("recorder overflowed; log is truncated");
-    if (!metadata || metadata.version !== 1) fail("unsupported metadata version");
+    if (!metadata || ![1, 2].includes(metadata.version)) fail("unsupported metadata version");
     if (!Number.isFinite(metadata.day) || !Number.isFinite(metadata.width) || metadata.width <= 0 ||
         !Number.isFinite(metadata.height) || metadata.height <= 0) fail("invalid run metadata");
     if (metadata.controls !== "touch" && metadata.controls !== "keyboard") fail("unknown controls mode");
@@ -248,7 +252,8 @@ class Replay {
         }
         return;
       }
-      case "HOSTILE_DOWN": {
+      case "HOSTILE_DOWN":
+      case "ENEMY_DOWN": { // version-1 event name
         const id = this.number(a[0], "hostile id");
         const x = this.number(a[1], "hostile pointer x");
         const y = this.number(a[2], "hostile pointer y");

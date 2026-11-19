@@ -1987,7 +1987,7 @@ const runInputRecorder = (() => {
         overflow = false;
 
         metadata = {
-            version: 1,
+            version: 2,
             day: info.day,
             seed: info.seed,
             width: info.width,
@@ -3013,7 +3013,7 @@ class LeaderboardSystem {
             return {
                 saved: false,
                 authError: r.error === 'BAD_LOGIN',
-                error: r.error
+                error: r.detail ? `${r.error}: ${r.detail}` : r.error
             };
         }
 

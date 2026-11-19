@@ -1253,8 +1253,8 @@ function makeStreams(key) {
     return {
         base,
         friendly: mulberry32(hashStr(base + "|friendly")),
-        enemy:    mulberry32(hashStr(base + "|enemy")),
-        ghost:    mulberry32(hashStr(base + "|ghost"))
+        hostile:  mulberry32(hashStr(base + "|hostile")),
+        ghost:    mulberry32(hashStr(base + "|ping"))
     };
 }
 
@@ -1757,7 +1757,7 @@ function spawnEnemy() {
         return m;
     };
 
-    let pos = edgePos(RNG.enemy(), RNG.enemy());
+    let pos = edgePos(RNG.hostile(), RNG.hostile());
     let best = score(pos);
     if (best < ENEMY_SPAWN_CLEARANCE) {
         const retry = mulberry32(hashStr(RNG.base + "|espawn|" + num));
@@ -1987,7 +1987,7 @@ const runInputRecorder = (() => {
         overflow = false;
 
         metadata = {
-            version: 1,
+            version: 2,
             day: info.day,
             seed: info.seed,
             width: info.width,
@@ -2033,7 +2033,7 @@ const runInputRecorder = (() => {
             const e = G.enemies.find(item => item.el === enemyEl);
 
             if (e) {
-                record("ENEMY_DOWN", e.id, point.x, point.y, ev.pointerId);
+                record("HOSTILE_DOWN", e.id, point.x, point.y, ev.pointerId);
             }
             return;
         }
@@ -3012,7 +3012,7 @@ class LeaderboardSystem {
             return {
                 saved: false,
                 authError: r.error === 'BAD_LOGIN',
-                error: r.error
+                error: r.detail ? `${r.error}: ${r.detail}` : r.error
             };
         }
 

@@ -246,7 +246,16 @@ export function createHandler(deps: Dependencies) {
         message.startsWith("Replay input invalid:") ||
         message === "INVALID_INPUT_LOG" || message === "SESSION_MISMATCH"
       ) {
-        return response(422, { ok: false, error: "INVALID_INPUT_LOG" });
+        const detail = message.startsWith("Replay input invalid:")
+          ? message.slice("Replay input invalid: ".length).slice(0, 180)
+          : message;
+        return response(422, {
+          ok: false,
+          error: message === "SESSION_MISMATCH"
+            ? "SESSION_MISMATCH"
+            : "INVALID_INPUT_LOG",
+          detail,
+        });
       }
       if (message === "INPUT_LOG_TOO_LARGE") {
         return response(413, { ok: false, error: message });
@@ -267,8 +276,7 @@ function requiredEnv(key: string): string {
 }
 
 if (import.meta.main) {
-  const url = requiredEnv("SUPABASE_URL");
-  const base = url.replace(/\/$/, "");
+  const base = requiredEnv("SUPABASE_URL").replace(/\/+$/, "");
   const key = requiredEnv("SUPABASE_SERVICE_ROLE_KEY");
   const headers = {
     apikey: key,
@@ -277,21 +285,22 @@ if (import.meta.main) {
   };
   const handler = createHandler({
     async getSession(id) {
-      const res = await fetch(
-        `${base}/rest/v1/ace_game_runs?id=eq.${id}&select=id,account_id,puzzle_day,token_hash,expires_at,status`,
-        { headers },
+      const url = new URL(`${base}/rest/v1/ace_game_runs`);
+      url.searchParams.set("id", `eq.${id}`);
+      url.searchParams.set(
+        "select",
+        "id,account_id,puzzle_day,token_hash,expires_at,status",
       );
+      const res = await fetch(url, { headers });
       if (!res.ok) throw new Error(`session lookup ${res.status}`);
       const rows = await res.json();
       return rows[0] ?? null;
     },
     async getAccount(id) {
-      const res = await fetch(
-        `${base}/rest/v1/ace_accounts?id=eq.${
-          encodeURIComponent(id)
-        }&select=id,name`,
-        { headers },
-      );
+      const url = new URL(`${base}/rest/v1/ace_accounts`);
+      url.searchParams.set("id", `eq.${id}`);
+      url.searchParams.set("select", "id,name");
+      const res = await fetch(url, { headers });
       if (!res.ok) throw new Error(`account lookup ${res.status}`);
       const rows = await res.json();
       const account = rows[0];

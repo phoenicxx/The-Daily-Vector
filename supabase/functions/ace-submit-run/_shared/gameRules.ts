@@ -64,7 +64,10 @@ export function mulberry32(seed: number): () => number {
 }
 
 /** Keep stream names and seed separators identical to the browser/replay. */
-export function dailyStreamSeed(dailySeed: string, stream: "friendly" | "hostile" | "ping"): number {
+export function dailyStreamSeed(
+  dailySeed: string,
+  stream: "friendly" | "hostile" | "ping" | "enemy" | "ghost",
+): number {
   return hashStr(`${dailySeed}|${stream}`);
 }
 
