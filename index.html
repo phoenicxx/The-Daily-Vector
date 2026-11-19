@@ -1585,6 +1585,7 @@ function makePath(n) {
     const first = [RNG.friendly(), RNG.friendly(), RNG.friendly()];
     const retry = mulberry32(hashStr(RNG.base + "|path|" + n));
     let cand = null;
+    let safe = null;   // last candidate whose start AND destination are clear of the tutorial panel
     for (let tries = 0; tries < 300; tries++) {
         const strict = tries < 150;
         const r = tries === 0 ? first : [retry(), retry(), retry()];
@@ -1598,6 +1599,11 @@ function makePath(n) {
         cand = { x0: x, y0: y,
             x1: x + (end.x - x) * (len - back) / len,
             y1: y + (end.y - y) * (len - back) / len };
+
+        // Destination must never sit behind the tutorial instructions panel
+        if (tutBlocked(cand.x1, cand.y1, 60)) continue;
+        safe = cand;
+
         if (strict && Math.hypot(end.x - x, end.y - y) < 250) continue;
         if (!farFromOthers(x, y, strict ? 140 : 60)) continue;
         const sep = strict ? PATH_SEP : 1;
@@ -1605,7 +1611,7 @@ function makePath(n) {
             segDist(cand, { x0: f.px, y0: f.py, x1: f.path.x1, y1: f.path.y1 }) > sep);
         if (clear) return cand;
     }
-    return cand;
+    return safe || cand;
 }
 
 // =====================================================
