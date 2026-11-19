@@ -3284,6 +3284,7 @@ async function rpc(fn, args) {
 let activeGameSession = null;
 
 async function createGameSession(day) {
+    const deviceId = getDeviceId();
     const response = await fetch(
         `${SUPABASE_URL}/functions/v1/ace-start-run`,
         {
@@ -3296,7 +3297,8 @@ async function createGameSession(day) {
             body: JSON.stringify({
                 name: account.name,
                 pin: account.pin,
-                day
+                day,
+                device_id: deviceId
             })
         }
     );
@@ -3315,6 +3317,7 @@ async function createGameSession(day) {
         id: data.session_id,
         token: data.token,
         expiresAt: data.expires_at,
+        deviceId,
         seed,
         rankedInvalidated: false
     };
