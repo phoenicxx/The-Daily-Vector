@@ -58,7 +58,7 @@ export function createHandler(deps: Dependencies) {
       return response(400, { ok: false, error: "MISSING_FIELDS" });
     }
     try {
-      const deviceHash = await sha256Hex(input.device_id);
+      const deviceHash = await sha256Hex(input.device_id.toLowerCase());
       if (await deps.isDeviceBanned(deviceHash)) return response(403, { ok: false, error: "DEVICE_BANNED" });
       const account = await deps.login(input.name, input.pin);
       if (!account || !/^[1-9]\d*$/.test(account.id)) return response(403, { ok: false, error: "BAD_LOGIN" });

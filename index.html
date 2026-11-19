@@ -3181,6 +3181,8 @@ class LeaderboardView {
             if (res.authError) {
                 account.clear(); refreshAccountUI();
                 $("lbMessage").textContent = "LOGIN INVALID - PLEASE LOG IN AGAIN";
+            } else if (res.error === "DEVICE_MISMATCH") {
+                $("lbMessage").textContent = "DEVICE CHANGED - RESTART THE RUN ON THIS DEVICE";
             } else if (res.error === "LOCKED") {
                 $("lbMessage").textContent = "TOO MANY FAILED ATTEMPTS - TRY LATER";
             } else {
@@ -3271,7 +3273,9 @@ const DEVICE_ID_STORAGE_KEY = "daily_vector_device_id";
 function getDeviceId() {
     let id = null;
     try { id = localStorage.getItem(DEVICE_ID_STORAGE_KEY); } catch (_) {}
-    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id || "")) {
+    if (/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id || "")) {
+        id = id.toLowerCase();
+    } else {
         id = crypto.randomUUID();
         try { localStorage.setItem(DEVICE_ID_STORAGE_KEY, id); } catch (_) {}
     }

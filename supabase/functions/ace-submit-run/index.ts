@@ -173,7 +173,7 @@ export function createHandler(deps: Dependencies) {
       !Object.hasOwn(input, "input_log")
     ) return response(400, { ok: false, error: "MISSING_FIELDS" });
     try {
-      const deviceHash = await sha256Hex(input.device_id);
+      const deviceHash = await sha256Hex(input.device_id.toLowerCase());
       if (await deps.isDeviceBanned(deviceHash)) {
         return response(403, { ok: false, error: "DEVICE_BANNED" });
       }
