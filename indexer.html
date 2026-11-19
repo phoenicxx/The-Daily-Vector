@@ -3514,18 +3514,10 @@ refreshAccountUI();
 function updateHowTo() {
     const I = curIcons();
     const kb = isKB();
-    const planeStep = kb
-        ? `<b>1. Click a friendly</b> (${I.plane}) to select it, then steer it with <b>W A S D</b> (or arrow keys).`
-        : `<b>1. Click and drag a friendly</b> (${I.plane}) to steer it.`;
-    const strikeStep = kb
-        ? `<b>2. Click a hostile</b> ${I.hostile || "◆"}, then <b>hold SPACE for 2 seconds</b> to strike it for points.`
-        : `<b>2. Tap a hostile</b> ${I.hostile || "◆"}, then press and hold for 2 seconds to strike it for points.`;
-    const pingStep = `<b>3. Press and hold a ping</b> ${I.ping || "●"} <b>for 0.5 seconds</b> to identify it. Each ping expires after 3 seconds.`;
     $("howto").innerHTML =
-        planeStep + " Guide each friendly to its destination circle along the dotted flight path; the faster it arrives, the more you score.<br><br>" +
-        strikeStep + "<br><br>" + pingStep + "<br><br>" +
+
         "This is a game meant to assess and train your cognitive ability to multitask and prioritise threats. <br><br>" +
-        'It simulates the experience of an operator in the RSAF. Thus, you must direct friendlies (${I.plane}) to their destinations, eliminate hostiles (${I.hostile || "◆"}), and identify pings (${I.ping || "●"}). <br><br>' +
+        `It simulates the experience of an operator in the RSAF. Thus, you must direct friendlies (${I.plane}) to their destinations, eliminate hostiles (${I.hostile || "◆"}), and identify pings (${I.ping || "●"}). <br><br>` +
         "A missed ping or any collision is game over. Your daily rank is the number of <b>waves you clear</b> (points break ties). <br><br>" +
         "Clear <b>waves</b> to climb. In every level, <b>wave 1</b> is friendlies only, <b>wave 2</b> adds hostiles and <b>wave 3</b> adds pings. Each level adds more friendlies, hostiles and faster pings. <b>L10</b> is endless.";
         
