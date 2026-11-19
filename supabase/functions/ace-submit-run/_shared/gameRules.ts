@@ -4,8 +4,8 @@ export const GHOST_POINTS = 250;
 export const HOLD_STRIKE_S = 2.0;
 export const HOLD_GHOST_S = 0.5;
 export const GHOST_WINDOW_S = 3.0;
-export const ENEMY_STAGGER_S = 1.5;
-export const ENEMY_SPAWN_CLEARANCE = 170;
+export const HOSTILE_STAGGER_S = 1.5;
+export const HOSTILE_SPAWN_CLEARANCE = 170;
 export const MIN_PING_GAP_S = 1.5;
 export const MAX_FRIENDLIES = 6;
 export const MAX_HOSTILES = 10;
@@ -15,7 +15,7 @@ export const FRIENDLY_MIN_SPEED = 25;
 export const FRIENDLY_MAX_SPEED = 90;
 export const STEER_ACCEL = 170;
 export const R_FRIENDLY_FRIENDLY = 32;
-export const R_ENEMY_FRIENDLY = 28;
+export const R_HOSTILE_FRIENDLY = 28;
 export const STRIKE_PANEL_CLEARANCE = 170;
 export const PATH_MAX_POINTS = 300;
 export const PATH_MIN_POINTS = 20;
@@ -64,7 +64,7 @@ export function mulberry32(seed: number): () => number {
 }
 
 /** Keep stream names and seed separators identical to the browser/replay. */
-export function dailyStreamSeed(dailySeed: string, stream: "friendly" | "enemy" | "ghost"): number {
+export function dailyStreamSeed(dailySeed: string, stream: "friendly" | "hostile" | "ping"): number {
   return hashStr(`${dailySeed}|${stream}`);
 }
 
@@ -75,7 +75,7 @@ export function entityStreamSeed(dailySeed: string, stream: "drift" | "path" | "
 export function waveSpec(level: number, wave: number) {
   const extra = Math.max(0, wave - 3);
   const planes = Math.min(MAX_FRIENDLIES, Math.floor(level / 2) + 1);
-  const enemies = wave >= 2
+  const hostiles = wave >= 2
     ? Math.min(MAX_HOSTILES, Math.ceil(level / 2) + extra)
     : 0;
   const ping = wave >= 3
@@ -83,7 +83,7 @@ export function waveSpec(level: number, wave: number) {
     : 0;
   return {
     planes,
-    enemies,
+    hostiles,
     ping,
     speed: wave >= 2 ? Math.min(120, 35 + 5 * (level - 1) + 3 * extra) : 0,
     maxGhosts: wave >= 3 ? Math.min(6, 3 + Math.ceil(level / 2)) : 0,

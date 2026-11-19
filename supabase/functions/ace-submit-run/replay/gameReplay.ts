@@ -32,7 +32,7 @@ export interface ReplayOutcome {
     level: number;
     wave: number;
     friendlies: number;
-    enemies: number;
+    hostiles: number;
     pings: number;
     selectedFriendlyId: number | null;
     dragPointerId: number | null;
@@ -42,10 +42,10 @@ export interface ReplayOutcome {
 }
 
 import {
-  DEST_REACH, DRIFT_JITTER, DRIFT_MAX_TURN, ENEMY_SPAWN_CLEARANCE,
-  ENEMY_STAGGER_S, FRIENDLY_BASE_SPEED, FRIENDLY_MAX_SPEED, FRIENDLY_MIN_SPEED,
+  DEST_REACH, DRIFT_JITTER, DRIFT_MAX_TURN, HOSTILE_SPAWN_CLEARANCE,
+  HOSTILE_STAGGER_S, FRIENDLY_BASE_SPEED, FRIENDLY_MAX_SPEED, FRIENDLY_MIN_SPEED,
   GAME_END_REASONS, GHOST_POINTS, GHOST_WINDOW_S, HOLD_GHOST_S, HOLD_STRIKE_S,
-  KEYMAP, PATH_SEP, R_ENEMY_FRIENDLY, R_FRIENDLY_FRIENDLY,
+  KEYMAP, PATH_SEP, R_HOSTILE_FRIENDLY, R_FRIENDLY_FRIENDLY,
   STEER_ACCEL, STRIKE_PANEL_CLEARANCE, STRIKE_POINTS, WAVE_PAUSE_S, WRAP_M,
   dailyStreamSeed, destinationPoints, entityStreamSeed, mulberry32, nextWave, waveSpec,
   waveTimeLimit,
@@ -67,7 +67,7 @@ interface Friendly extends Point {
   turn: number;
   drng: () => number;
 }
-interface Enemy extends Point { id: number; name: string }
+interface hostile extends Point { id: number; name: string }
 interface Ping extends Point {
   id: number;
   age: number;
@@ -88,29 +88,30 @@ interface State {
   ghostIds: number;
   wavePings: number;
   friendlies: Friendly[];
-  enemies: Enemy[];
+  hostiles: hostile[];
   ghosts: Ping[];
   selected: Friendly | null;
   drag: Drag | null;
   nextId: number;
-  enemyCounter: number;
+  hostileCounter: number;
   friendlyCounter: number;
   inter: number;
   waveT: number;
-  enemyQueue: number;
-  enemyTimer: number;
+  hostileQueue: number;
+  hostileTimer: number;
   gateNotified: boolean;
   ghostTimer: number;
   pingGap: number;
   maxGhosts: number;
-  enemySpeed: number;
+  hostileSpeed: number;
+  Speed: number;
   ghostR: number;
   drift: number;
 }
 
 interface StrikeState {
   state: "idle" | "confirm" | "hold";
-  enemyId: number | null;
+  hostileId: number | null;
   holding: boolean;
   holdT: number;
   holdMicros: number;
@@ -129,11 +130,11 @@ class Replay {
   private fh: number;
   private readonly rngBase: string;
   private readonly friendlyRng: () => number;
-  private readonly enemyRng: () => number;
+  private readonly hostileRng: () => number;
   private readonly ghostRng: () => number;
   private readonly pointers = new Map<number, PointerState>();
   private readonly keys = new Set<string>();
-  private readonly strike: StrikeState = { state: "idle", enemyId: null, holding: false, holdT: 0, holdMicros: 0 };
+  private readonly strike: StrikeState = { state: "idle", hostileId: null, holding: false, holdT: 0, holdMicros: 0 };
   private state: State;
   private endedReason: string | null = null;
   private frameCount = 0;
@@ -143,14 +144,14 @@ class Replay {
     this.fh = log.metadata.height;
     this.rngBase = log.metadata.seed;
     this.friendlyRng = mulberry32(dailyStreamSeed(this.rngBase, "friendly"));
-    this.enemyRng = mulberry32(dailyStreamSeed(this.rngBase, "enemy"));
-    this.ghostRng = mulberry32(dailyStreamSeed(this.rngBase, "ghost"));
+    this.hostileRng = mulberry32(dailyStreamSeed(this.rngBase, "hostile"));
+    this.ghostRng = mulberry32(dailyStreamSeed(this.rngBase, "ping"));
     this.state = {
       t: 0, level: 1, wave: 1, cleared: 0, points: 0, kills: 0, ghostIds: 0,
-      wavePings: 0, friendlies: [], enemies: [], ghosts: [], selected: null,
-      drag: null, nextId: 1, enemyCounter: 1, friendlyCounter: 0, inter: 0, waveT: 0,
-      enemyQueue: 0, enemyTimer: 0, gateNotified: false, ghostTimer: Infinity,
-      pingGap: 0, maxGhosts: 0, enemySpeed: 40, ghostR: 28, drift: 1,
+      wavePings: 0, friendlies: [], hostiles: [], ghosts: [], selected: null,
+      drag: null, nextId: 1, hostileCounter: 1, friendlyCounter: 0, inter: 0, waveT: 0,
+      hostileQueue: 0, hostileTimer: 0, gateNotified: false, ghostTimer: Infinity,
+      pingGap: 0, maxGhosts: 0, hostileSpeed: 40, ghostR: 28, drift: 1, Speed: 40
     };
     this.queueWave({ level: 1, wave: 1 });
   }
@@ -247,18 +248,18 @@ class Replay {
         }
         return;
       }
-      case "ENEMY_DOWN": {
-        const id = this.number(a[0], "enemy id");
-        const x = this.number(a[1], "enemy pointer x");
-        const y = this.number(a[2], "enemy pointer y");
+      case "HOSTILE_DOWN": {
+        const id = this.number(a[0], "hostile id");
+        const x = this.number(a[1], "hostile pointer x");
+        const y = this.number(a[2], "hostile pointer y");
         this.number(a[3], "pointer id");
-        const enemy = this.state.enemies.find((item) => item.id === id);
-        if (!enemy) fail(`ENEMY_DOWN references absent enemy ${id}`);
-        // Enemy labels extend beyond the 46x46 element, but the current log
+        const hostile = this.state.hostiles.find((item) => item.id === id);
+        if (!hostile) fail(`HOSTILE_DOWN references absent hostile ${id}`);
+        // Hostile labels extend beyond the 46x46 element, but the current log
         // does not distinguish a label hit from an element hit. Fail closed
         // for points that cannot be proven to hit the element itself.
-        if (Math.abs(x - enemy.x) > 23 || Math.abs(y - enemy.y) > 23) {
-          fail(`ENEMY_DOWN point is outside enemy ${id}'s element; label hit testing is unsupported`);
+        if (Math.abs(x - hostile.x) > 23 || Math.abs(y - hostile.y) > 23) {
+          fail(`HOSTILE_DOWN point is outside hostile ${id}'s element; label hit testing is unsupported`);
         }
         this.selectStrike(id);
         return;
@@ -364,7 +365,7 @@ class Replay {
       f.px *= sx; f.py *= sy;
       f.pathLen = Math.hypot(f.path.x1 - f.path.x0, f.path.y1 - f.path.y0);
     }
-    for (const e of this.state.enemies) scale(e);
+    for (const e of this.state.hostiles) scale(e);
     for (const g of this.state.ghosts) scale(g);
     if (this.state.drag) { this.state.drag.x *= sx; this.state.drag.y *= sy; }
     this.fw = width;
@@ -446,7 +447,7 @@ class Replay {
       }
     }
 
-    for (const e of g.enemies) {
+    for (const e of g.hostiles) {
       if (!g.friendlies.length) break;
       let target: Friendly | null = null;
       let best = Infinity;
@@ -456,11 +457,11 @@ class Replay {
         if (v.d < best) { best = v.d; target = f; vector = v; }
       }
       if (target && vector && best > 0) {
-        e.x += vector.dx / best * g.enemySpeed * dt;
-        e.y += vector.dy / best * g.enemySpeed * dt;
+        e.x += vector.dx / best * g.hostileSpeed * dt;
+        e.y += vector.dy / best * g.hostileSpeed * dt;
         this.wrapPos(e);
       }
-      if (target && this.wrapDelta(e.x, e.y, target.x, target.y).d < R_ENEMY_FRIENDLY) {
+      if (target && this.wrapDelta(e.x, e.y, target.x, target.y).d < R_HOSTILE_FRIENDLY) {
         this.end(GAME_END_REASONS.hostileHit);
         return;
       }
@@ -513,7 +514,7 @@ class Replay {
     g.waveT += dt;
     if (g.friendlies.length === 0) {
       const allowed = g.wave === 2
-        ? g.enemyQueue === 0 && g.enemies.length === 0
+        ? g.hostileQueue === 0 && g.hostiles.length === 0
         : g.wave >= 3 ? g.wavePings >= 1 : true;
       if (allowed) {
         g.cleared++;
@@ -530,12 +531,12 @@ class Replay {
       this.queueWave(nextWave(g.level, g.wave));
       return;
     }
-    if (g.enemyQueue > 0) {
-      g.enemyTimer -= dt;
-      if (g.enemyTimer <= 0) {
-        this.spawnEnemy();
-        g.enemyQueue--;
-        g.enemyTimer = ENEMY_STAGGER_S;
+    if (g.hostileQueue > 0) {
+      g.hostileTimer -= dt;
+      if (g.hostileTimer <= 0) {
+        this.spawnHostile();
+        g.hostileQueue--;
+        g.hostileTimer = HOSTILE_STAGGER_S;
       }
     }
     if (g.pingGap > 0) {
@@ -551,8 +552,8 @@ class Replay {
 
   private queueWave(pos: { level: number; wave: number }): void {
     this.resetStrike();
-    this.state.enemies = [];
-    this.state.enemyQueue = 0;
+    this.state.hostiles = [];
+    this.state.hostileQueue = 0;
     this.state.ghostTimer = Infinity;
     this.state.pingGap = 0;
     this.state.level = pos.level;
@@ -566,13 +567,13 @@ class Replay {
     g.gateNotified = false;
     g.wavePings = 0;
     const spec = waveSpec(g.level, g.wave);
-    g.enemySpeed = spec.speed;
+    g.hostileSpeed = spec.speed;
     g.drift = spec.drift;
     g.ghostR = spec.ghostR;
     g.maxGhosts = spec.maxGhosts;
     g.pingGap = spec.ping;
-    g.enemyQueue = spec.enemies;
-    g.enemyTimer = 1.0;
+    g.hostileQueue = spec.hostiles;
+    g.hostileTimer = 1.0;
     g.ghostTimer = spec.ping > 0 ? spec.ping : Infinity;
     for (let i = 0; i < spec.planes; i++) this.spawnFriendly();
   }
@@ -630,7 +631,7 @@ class Replay {
   }
 
   private farFromOthers(x: number, y: number, minimum: number): boolean {
-    return [...this.state.friendlies, ...this.state.enemies]
+    return [...this.state.friendlies, ...this.state.hostiles]
       .every((entity) => Math.hypot(entity.x - x, entity.y - y) > minimum);
   }
 
@@ -665,9 +666,9 @@ class Replay {
     );
   }
 
-  private spawnEnemy(): void {
+  private spawnHostile(): void {
     const g = this.state;
-    const number = g.enemyCounter++;
+    const number = g.hostileCounter++;
     const edgePos = (a: number, b: number): Point => {
       const side = Math.floor(a * 4);
       const t = 0.1 + b * 0.8;
@@ -681,18 +682,18 @@ class Replay {
       for (const f of g.friendlies) distance = Math.min(distance, this.wrapDelta(p.x, p.y, f.x, f.y).d);
       return distance;
     };
-    let pos = edgePos(this.enemyRng(), this.enemyRng());
+    let pos = edgePos(this.hostileRng(), this.hostileRng());
     let best = score(pos);
-    if (best < ENEMY_SPAWN_CLEARANCE) {
+    if (best < HOSTILE_SPAWN_CLEARANCE) {
       const retry = mulberry32(entityStreamSeed(this.rngBase, "espawn", number));
       for (let i = 0; i < 60; i++) {
         const p = edgePos(retry(), retry());
         const candidate = score(p);
         if (candidate > best) { best = candidate; pos = p; }
-        if (best >= ENEMY_SPAWN_CLEARANCE) break;
+        if (best >= HOSTILE_SPAWN_CLEARANCE) break;
       }
     }
-    g.enemies.push({ id: g.nextId++, x: pos.x, y: pos.y, name: `HOSTILE ${String(number).padStart(3, "0")}` });
+    g.hostiles.push({ id: g.nextId++, x: pos.x, y: pos.y, name: `HOSTILE ${String(number).padStart(3, "0")}` });
   }
 
   private spawnPing(): void {
@@ -707,19 +708,19 @@ class Replay {
     if (this.strike.holding) return;
     if (
       this.log.metadata.controls === "touch" &&
-      this.strike.enemyId === id
+      this.strike.hostileId === id
     ) {
       this.resetStrike();
       return;
     }
-    this.strike.enemyId = id;
+    this.strike.hostileId = id;
     // The browser starts the hold directly for both touch and keyboard.
     this.strike.state = "hold";
   }
 
   private resetStrike(): void {
     this.strike.state = "idle";
-    this.strike.enemyId = null;
+    this.strike.hostileId = null;
     this.strike.holding = false;
     this.strike.holdT = 0;
     this.strike.holdMicros = 0;
@@ -733,12 +734,12 @@ class Replay {
   }
 
   private completeStrike(): void {
-    const id = this.strike.enemyId;
+    const id = this.strike.hostileId;
     this.resetStrike();
     if (id === null) return;
-    const index = this.state.enemies.findIndex((enemy) => enemy.id === id);
+    const index = this.state.hostiles.findIndex((hostile) => hostile.id === id);
     if (index < 0) return;
-    this.state.enemies.splice(index, 1);
+    this.state.hostiles.splice(index, 1);
     this.state.kills++;
     this.state.points += STRIKE_POINTS;
   }
@@ -775,7 +776,7 @@ class Replay {
       level: this.state.level,
       wave: this.state.wave,
       friendlies: this.state.friendlies.length,
-      enemies: this.state.enemies.length,
+      hostiles: this.state.hostiles.length,
       pings: this.state.ghosts.length,
       selectedFriendlyId: this.state.selected?.id ?? null,
       dragPointerId: this.state.drag?.pointerId ?? null,
