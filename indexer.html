@@ -1254,7 +1254,7 @@ function makeStreams(key) {
         base,
         friendly: mulberry32(hashStr(base + "|friendly")),
         hostile:    mulberry32(hashStr(base + "|hostile")),
-        ghost:    mulberry32(hashStr(base + "|ghost"))
+        ghost:    mulberry32(hashStr(base + "|ping"))
     };
 }
 
@@ -1799,8 +1799,8 @@ function spawnGhost() {
     for (let i = 0; i < 50 && tutBlocked(pos.x, pos.y, R); i++) pos = pick(Math.random);
     const x = pos.x, y = pos.y;
 
-    const el = document.createElement("div");
-    el.className = "ghost";
+    const el = document.createElement("div")
+            el.className = "ping";
     el.style.width = el.style.height = (R * 2) + "px";
     el.innerHTML = '<div class="core"></div>' +
         (ICON.ping ? '<div class="gico" style="font-size:' + Math.round(R * 0.95) + 'px">' + ICON.ping + '</div>' : '') +
@@ -2216,7 +2216,7 @@ function tutStepInfo(s) {
     if (s === 1) return {
         title: "IDENTIFY THE PING",
         text: "A red <b>ping</b> appeared. <b>Press and hold it for 0.5 s</b> before its " +
-              "red ring runs out (3 s). In a real run, a missed Ghost ends the game. Here it just comes back."
+              "red ring runs out (3 s). In a real run, a missed Ping ends the game. Here it just comes back."
     };
     return {
         title: "STRIKE THE HOSTILE",
@@ -2685,14 +2685,15 @@ function updateHud() {
 
 let last = performance.now();
 function frame(now) {
-    const dt = Math.min(0.05, (now - last) / 1000);
+    let dt = Math.min(0.05, (now - last) / 1000);
+    dt = Math.round(dt * 1000000) / 1000000;   // same quantisation as the log
     last = now;
     if (state === "play" && G) {
     runInputRecorder.recordFrame(dt);
 
     if (!(G.tutorial && G.tut.phase === "read")) update(dt);
     updateHud();
-}
+    }
     requestAnimationFrame(frame);
 }
 
@@ -3524,8 +3525,8 @@ function updateHowTo() {
         planeStep + " Guide each friendly to its destination circle along the dotted flight path; the faster it arrives, the more you score.<br><br>" +
         strikeStep + "<br><br>" + pingStep + "<br><br>" +
         "Clear <b>waves</b> to climb. In every level, <b>wave 1</b> is friendlies only, <b>wave 2</b> adds hostiles and <b>wave 3</b> adds pings. Each level adds more friendlies, hostiles and faster pings. <b>L10</b> is endless.<br>" +
-        "A missed ping or any collision is game over. Your daily rank is the number of <b>waves you clear</b> (points break ties). <br><br>";
-        "This is a game meant to assess and train your cognitive ability to multitask and prioritise threats. <br><br>";
+        "A missed ping or any collision is game over. Your daily rank is the number of <b>waves you clear</b> (points break ties). <br><br>" +
+        "This is a game meant to assess and train your cognitive ability to multitask and prioritise threats. <br><br>" +
         "It simulates the experience of an operator in the RSAF. Thus, you must direct friendlies to their destinations, eliminate hostiles, and identify pings.";
         
 }
