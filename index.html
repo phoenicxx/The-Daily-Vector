@@ -970,8 +970,7 @@ body {
             <div class="lb-label">WAVES CLEARED</div>
             <div id="lbCer">0</div>
             <div id="lbGuest">
-                <div class="acct-hint">You need an account to submit your score.</div>
-                <button class="btn primary" id="lbLogin" style="width:100%;margin-top:10px">LOG IN / CREATE ACCOUNT</button>
+                <div class="acct-hint">Log in from the main menu before starting a run to submit scores.</div>
             </div>
             <div id="lbUser" class="lb-label" style="display:none">SUBMITTING AS <b id="lbUserName" style="color:#45e6a0;font-weight:normal"></b></div>
             <button class="btn primary" id="lbSubmitButton">SUBMIT RESULT</button>
@@ -1151,7 +1150,7 @@ function waveSpec(level, wave) {
     };
 }
 function waveSummary(sp) {
-    let s = sp.planes + (sp.planes === 1 ? " PLANE" : " PLANES");
+    let s = sp.planes + (sp.planes === 1 ? " FRIENDLIES" : " FRIENDLIES");
     if (sp.enemies) s += " · " + sp.enemies + (sp.enemies === 1 ? " HOSTILE" : " HOSTILES");
     if (sp.ping) s += " · PING EVERY " + sp.ping.toFixed(1) + "s";
     return s;
@@ -2147,6 +2146,10 @@ const runInputRecorder = (() => {
         activePointers.clear();
     }
 
+    function debugWaveSkip(level, wave) {
+        record("DEBUG_WAVE_SKIP", level, wave);
+    }
+
     document.addEventListener("pointerdown", pointerDown, true);
     document.addEventListener("pointermove", pointerMove, true);
     document.addEventListener("pointerup", pointerEnd, true);
@@ -2176,6 +2179,7 @@ const runInputRecorder = (() => {
     return {
         start,
         recordFrame,
+        debugWaveSkip,
         stop
     };
 })();
@@ -2979,18 +2983,22 @@ class LeaderboardSystem {
             };
         }
 
-        const r = await rpc('ace_submit_score_v2', {
-            p_name: account.name,
-            p_pin: account.pin,
-            p_day: this.day,
-            p_points: result.points,
-            p_time_ms: result.timeMs,
-            p_waves: result.waves,
-            p_session_id: activeGameSession.id,
-            p_token: activeGameSession.token
+        const response = await fetch(`${SUPABASE_URL}/functions/v1/ace-submit-run`, {
+            method: 'POST',
+            headers: {
+                apikey: SUPABASE_KEY,
+                Authorization: `Bearer ${SUPABASE_KEY}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                session_id: activeGameSession.id,
+                token: activeGameSession.token,
+                input_log: activeGameSession.inputLog
+            })
         });
+        const r = await response.json();
 
-        if (!r.ok) {
+        if (!response.ok || !r.ok) {
             return {
                 saved: false,
                 authError: r.error === 'BAD_LOGIN',
@@ -3008,7 +3016,7 @@ class LeaderboardSystem {
 
         return {
             saved: true,
-            id: String(r.id),
+            id: String(r.score_id),
             rank: index === -1 ? null : index + 1
         };
 
@@ -3317,7 +3325,7 @@ account.load();
 
 function refreshAccountUI() {
     $("acctLine").innerHTML = account.loggedIn
-        ? 'SIGNED IN AS <b></b>' : 'PLAYING AS GUEST';
+        ? 'SIGNED IN AS <b></b>' : 'PLAYING AS GUEST -- LOG IN TO SAVE SCORES';
     if (account.loggedIn) $("acctLine").querySelector("b").textContent = account.name;
     $("menuAcct").textContent = account.loggedIn ? "LOG OUT" : "LOG IN / SIGN UP";
     board.syncSubmitUI();
@@ -3473,7 +3481,6 @@ $("myClose").addEventListener("click", () => $("myOverlay").classList.remove("on
 
 $("menuMy").addEventListener("click", openMyScores);
 $("lbMy").addEventListener("click", openMyScores);
-$("lbLogin").addEventListener("click", () => openAccount());
 $("menuAcct").addEventListener("click", () => {
     if (account.loggedIn) { account.clear(); refreshAccountUI(); }
     else openAccount();
@@ -3679,6 +3686,7 @@ operatorCommand.addEventListener("keydown", async (event) => {
 
 const level = Number(operatorLevel.value);
 const wave = Number(operatorWave.value);
+runInputRecorder.debugWaveSkip(level, wave);
 
 // Clear existing friendly aircraft
 for (const f of G.friendlies) {

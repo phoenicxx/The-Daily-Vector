@@ -41,36 +41,16 @@ export interface ReplayOutcome {
   };
 }
 
-const STRIKE_POINTS = 500;
-const GHOST_POINTS = 250;
-const HOLD_STRIKE_S = 2.0;
-const HOLD_GHOST_S = 0.5;
-const GHOST_WINDOW_S = 3.0;
-const ENEMY_STAGGER_S = 1.5;
-const ENEMY_SPAWN_CLEARANCE = 170;
-const MIN_PING_GAP_S = 1.5;
-const MAX_FRIENDLIES = 6;
-const MAX_HOSTILES = 10;
-const WAVE_PAUSE_S = 1.8;
-const FRIENDLY_BASE_SPEED = 40;
-const FRIENDLY_MIN_SPEED = 25;
-const FRIENDLY_MAX_SPEED = 90;
-const STEER_ACCEL = 170;
-const R_FRIENDLY_FRIENDLY = 32;
-const R_ENEMY_FRIENDLY = 28;
-const STRIKE_PANEL_CLEARANCE = 170;
-const PATH_MAX_POINTS = 300;
-const PATH_MIN_POINTS = 20;
-const PATH_SEP = 80;
-const DRIFT_JITTER = 0.5;
-const DRIFT_MAX_TURN = 0.3;
-const DEST_REACH = 24;
-const WRAP_M = 30;
+import {
+  DEST_REACH, DRIFT_JITTER, DRIFT_MAX_TURN, ENEMY_SPAWN_CLEARANCE,
+  ENEMY_STAGGER_S, FRIENDLY_BASE_SPEED, FRIENDLY_MAX_SPEED, FRIENDLY_MIN_SPEED,
+  GAME_END_REASONS, GHOST_POINTS, GHOST_WINDOW_S, HOLD_GHOST_S, HOLD_STRIKE_S,
+  KEYMAP, PATH_SEP, R_ENEMY_FRIENDLY, R_FRIENDLY_FRIENDLY,
+  STEER_ACCEL, STRIKE_PANEL_CLEARANCE, STRIKE_POINTS, WAVE_PAUSE_S, WRAP_M,
+  dailyStreamSeed, destinationPoints, entityStreamSeed, mulberry32, nextWave, waveSpec,
+} from "../supabase/functions/_shared/gameRules.ts";
 
-const KEYMAP: Record<string, string> = {
-  KeyW: "U", ArrowUp: "U", KeyA: "L", ArrowLeft: "L",
-  KeyS: "D", ArrowDown: "D", KeyD: "R", ArrowRight: "R",
-};
+export { destinationPoints, hashStr, mulberry32, waveSpec } from "../supabase/functions/_shared/gameRules.ts";
 
 interface Point { x: number; y: number }
 interface Path { x0: number; y0: number; x1: number; y1: number }
@@ -136,52 +116,6 @@ function fail(message: string): never {
   throw new Error(`Replay input invalid: ${message}`);
 }
 
-export function hashStr(value: string): number {
-  let h = 1779033703 ^ value.length;
-  for (let i = 0; i < value.length; i++) {
-    h = Math.imul(h ^ value.charCodeAt(i), 3432918353);
-    h = (h << 13) | (h >>> 19);
-  }
-  return h >>> 0;
-}
-
-export function mulberry32(seed: number): () => number {
-  let a = seed;
-  return function () {
-    a |= 0;
-    a = (a + 0x6D2B79F5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-export function waveSpec(level: number, wave: number) {
-  const extra = Math.max(0, wave - 3);
-  const planes = Math.min(MAX_FRIENDLIES, Math.floor(level / 2) + 1);
-  const enemies = wave >= 2
-    ? Math.min(MAX_HOSTILES, Math.ceil(level / 2) + extra)
-    : 0;
-  const ping = wave >= 3
-    ? Math.max(MIN_PING_GAP_S, 6.5 - 0.5 * level)
-    : 0;
-  return {
-    planes,
-    enemies,
-    ping,
-    speed: wave >= 2 ? Math.min(120, 35 + 5 * (level - 1) + 3 * extra) : 0,
-    maxGhosts: wave >= 3 ? Math.min(6, 3 + Math.ceil(level / 2)) : 0,
-    ghostR: Math.max(20, 28 - 0.6 * (level - 1) - 0.4 * extra),
-    drift: Math.min(2, 1 + 0.05 * (level - 1) + 0.05 * extra),
-  };
-}
-
-export function destinationPoints(pathLen: number, age: number): number {
-  const fastT = pathLen / FRIENDLY_MAX_SPEED;
-  const slowT = 3 * pathLen / FRIENDLY_BASE_SPEED;
-  const k = Math.max(0, Math.min(1, 1 - (age - fastT) / (slowT - fastT)));
-  return Math.round(PATH_MIN_POINTS + (PATH_MAX_POINTS - PATH_MIN_POINTS) * k);
-}
 
 class Replay {
   private fw: number;
@@ -201,9 +135,9 @@ class Replay {
     this.fw = log.metadata.width;
     this.fh = log.metadata.height;
     this.rngBase = log.metadata.seed;
-    this.friendlyRng = mulberry32(hashStr(this.rngBase + "|friendly"));
-    this.enemyRng = mulberry32(hashStr(this.rngBase + "|enemy"));
-    this.ghostRng = mulberry32(hashStr(this.rngBase + "|ghost"));
+    this.friendlyRng = mulberry32(dailyStreamSeed(this.rngBase, "friendly"));
+    this.enemyRng = mulberry32(dailyStreamSeed(this.rngBase, "enemy"));
+    this.ghostRng = mulberry32(dailyStreamSeed(this.rngBase, "ghost"));
     this.state = {
       t: 0, level: 1, wave: 1, cleared: 0, points: 0, kills: 0, ghostIds: 0,
       wavePings: 0, friendlies: [], enemies: [], ghosts: [], selected: null,
@@ -310,7 +244,7 @@ class Replay {
         const id = this.number(a[0], "enemy id");
         const x = this.number(a[1], "enemy pointer x");
         const y = this.number(a[2], "enemy pointer y");
-        const pointerId = this.number(a[3], "pointer id");
+        this.number(a[3], "pointer id");
         const enemy = this.state.enemies.find((item) => item.id === id);
         if (!enemy) fail(`ENEMY_DOWN references absent enemy ${id}`);
         // Enemy labels extend beyond the 46x46 element, but the current log
@@ -517,7 +451,7 @@ class Replay {
         this.wrapPos(e);
       }
       if (target && this.wrapDelta(e.x, e.y, target.x, target.y).d < R_ENEMY_FRIENDLY) {
-        this.end("FRIENDLY HIT BY HOSTILE");
+        this.end(GAME_END_REASONS.hostileHit);
         return;
       }
     }
@@ -526,7 +460,7 @@ class Replay {
       for (let j = i + 1; j < g.friendlies.length; j++) {
         const a = g.friendlies[i], b = g.friendlies[j];
         if (Math.hypot(a.x - b.x, a.y - b.y) < R_FRIENDLY_FRIENDLY) {
-          this.end("FRIENDLY COLLISION");
+          this.end(GAME_END_REASONS.friendlyCollision);
           return;
         }
       }
@@ -545,7 +479,7 @@ class Replay {
         }
       }
       if (ping.age >= GHOST_WINDOW_S) {
-        this.end("PING NOT IDENTIFIED WITHIN 3.0 SECONDS");
+        this.end(GAME_END_REASONS.pingTimeout(GHOST_WINDOW_S));
         return;
       }
     }
@@ -570,11 +504,7 @@ class Replay {
         : g.wave >= 3 ? g.wavePings >= 1 : true;
       if (allowed) {
         g.cleared++;
-        const wavesInLevel = g.level < 10 ? 3 : Infinity;
-        const next = g.wave < wavesInLevel
-          ? { level: g.level, wave: g.wave + 1 }
-          : { level: g.level + 1, wave: 1 };
-        this.queueWave(next);
+        this.queueWave(nextWave(g.level, g.wave));
         return;
       }
       g.gateNotified = true;
@@ -642,7 +572,7 @@ class Replay {
       vy: Math.sin(angle) * FRIENDLY_BASE_SPEED,
       age: 0,
       turn: 0,
-      drng: mulberry32(hashStr(this.rngBase + "|drift|" + n)),
+      drng: mulberry32(entityStreamSeed(this.rngBase, "drift", n)),
     };
     f.turn = (f.drng() - 0.5) * 0.3;
     g.friendlies.push(f);
@@ -650,7 +580,7 @@ class Replay {
 
   private makePath(n: number): Path {
     const first = [this.friendlyRng(), this.friendlyRng(), this.friendlyRng()];
-    const retry = mulberry32(hashStr(this.rngBase + "|path|" + n));
+    const retry = mulberry32(entityStreamSeed(this.rngBase, "path", n));
     let candidate: Path | null = null;
     for (let tries = 0; tries < 300; tries++) {
       const strict = tries < 150;
@@ -732,7 +662,7 @@ class Replay {
     let pos = edgePos(this.enemyRng(), this.enemyRng());
     let best = score(pos);
     if (best < ENEMY_SPAWN_CLEARANCE) {
-      const retry = mulberry32(hashStr(this.rngBase + "|espawn|" + number));
+      const retry = mulberry32(entityStreamSeed(this.rngBase, "espawn", number));
       for (let i = 0; i < 60; i++) {
         const p = edgePos(retry(), retry());
         const candidate = score(p);
