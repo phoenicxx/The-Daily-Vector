@@ -200,27 +200,6 @@ body {
     pointer-events: none;
     gap: 10px;
 }
-#runInputDiagnostic {
-    position: fixed;
-    z-index: 1000;
-    left: max(10px, calc((100vw - 430px) / 2 + 10px));
-    bottom: 10px;
-    width: 280px;
-    max-width: calc(100vw - 20px);
-    max-height: 30vh;
-    overflow: auto;
-    padding: 8px 10px;
-    border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent);
-    background: rgba(3, 11, 19, 0.92);
-    color: var(--text);
-    font: 10px/1.35 monospace;
-    pointer-events: none;
-}
-#runInputDiagnostic[hidden] { display: none; }
-#runInputDiagnosticTitle { color: var(--accent); margin-bottom: 5px; letter-spacing: 1px; }
-#runInputDiagnosticEvents { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; }
-#runInputDiagnosticOverflow { margin-top: 5px; color: var(--gold); }
-:root[data-view="horizontal"] #runInputDiagnostic { left: 10px; }
 .eyebrow { color: var(--accent); font-size: 10px; letter-spacing: 4px; }
 #menu .eyebrow { font-size: 13px; letter-spacing: 3px; }
 #hud h1 { font-size: 16px; font-weight: 300; letter-spacing: 4px; margin: 6px 0 0; }
@@ -829,12 +808,6 @@ body {
     <div id="banner"><div id="bnTitle"></div><div id="bnSub"></div></div>
 
 </div>
-
-<aside id="runInputDiagnostic" aria-live="polite" hidden>
-    <div id="runInputDiagnosticTitle">INPUT LOG DIAGNOSTIC</div>
-    <div id="runInputDiagnosticEvents"></div>
-    <div id="runInputDiagnosticOverflow"></div>
-</aside>
 
 <!-- Tutorial instructions (clicks pass through, except the exit button) -->
 <div id="tutPanel">
@@ -2199,37 +2172,6 @@ const runInputRecorder = (() => {
     };
 })();
 
-function showRunInputDiagnostic(recordedRun) {
-    if (!recordedRun || !Array.isArray(recordedRun.events)) return;
-
-    const counts = new Map();
-    for (const event of recordedRun.events) {
-        const type = Array.isArray(event) && typeof event[2] === "string"
-            ? event[2]
-            : "UNKNOWN";
-        counts.set(type, (counts.get(type) || 0) + 1);
-    }
-
-    const list = $("runInputDiagnosticEvents");
-    list.replaceChildren();
-    for (const [type, count] of counts) {
-        const label = document.createElement("span");
-        label.textContent = type;
-        const value = document.createElement("span");
-        value.textContent = String(count);
-        list.append(label, value);
-    }
-
-    $("runInputDiagnosticOverflow").textContent =
-        "Overflow: " + (recordedRun.overflow ? "YES" : "NO");
-    $("runInputDiagnostic").hidden = false;
-}
-
-function hideRunInputDiagnostic() {
-    $("runInputDiagnostic").hidden = true;
-}
-
-
 function strikeComplete() {
     const e = strike.enemy;
     strikeReset();
@@ -2762,7 +2704,6 @@ async function startGame() {
         }
     }
 
-    hideRunInputDiagnostic();
     deathScreen.finish(false);
     breathing.runId++;
     $("breathOverlay").classList.remove("on");
@@ -2830,8 +2771,6 @@ if (activeGameSession && recordedRun) {
         difficulty: LEGACY_DIFFICULTY
     };
     updateHud();
-    showRunInputDiagnostic(recordedRun);
-
     const token = gameToken;
     setTimeout(() => {
         if (token === gameToken && state === "over") deathScreen.open(reason);   // was breathing.open()
