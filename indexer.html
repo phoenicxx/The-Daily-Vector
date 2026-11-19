@@ -3013,7 +3013,7 @@ class LeaderboardSystem {
             return {
                 saved: false,
                 authError: r.error === 'BAD_LOGIN',
-                error: r.detail ? `${r.error}: ${r.detail}` : r.error
+                error: r.error
             };
         }
 

@@ -248,12 +248,16 @@ export function createHandler(deps: Dependencies) {
       ) {
         const detail = message.startsWith("Replay input invalid:")
           ? message.slice("Replay input invalid: ".length).slice(0, 180)
+          : message === "SESSION_MISMATCH"
+          ? "run metadata does not match the server session"
           : message;
+        const errorCode = message === "SESSION_MISMATCH"
+          ? "SESSION_MISMATCH"
+          : "INVALID_INPUT_LOG";
         return response(422, {
           ok: false,
-          error: message === "SESSION_MISMATCH"
-            ? "SESSION_MISMATCH"
-            : "INVALID_INPUT_LOG",
+          error: `${errorCode}: ${detail}`,
+          error_code: errorCode,
           detail,
         });
       }
