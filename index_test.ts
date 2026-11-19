@@ -37,9 +37,11 @@ function setup(overrides: Record<string, unknown> = {}) {
   const handler = createHandler({
     async isDeviceBanned(hash) { return bannedHash === hash; },
     async getSession(id) {
-      return id === SESSION_ID
-        ? { ...session, device_hash: session.device_hash || await sha256(DEVICE_ID) }
-        : null;
+      if (id !== SESSION_ID) return null;
+      const deviceHash = Object.hasOwn(session, "device_hash")
+        ? session.device_hash
+        : await sha256(DEVICE_ID);
+      return { ...session, device_hash: deviceHash };
     },
     async getAccount(id) {
       return id === "42" ? { id: "42", name: "VECTOR PLAYER" } : null;
@@ -113,6 +115,15 @@ Deno.test("changed device identifier is rejected", async () => {
   const response = await request(handler, { device_id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb" });
   if (response.status !== 403 || (await response.json()).error !== "DEVICE_MISMATCH" || writes.length) {
     throw new Error("changed device identifier was accepted");
+  }
+});
+
+Deno.test("unbound legacy session is rejected with a device mismatch", async () => {
+  const { handler, session, writes } = setup({ device_hash: null });
+  session.token_hash = await sha256(TOKEN);
+  const response = await request(handler);
+  if (response.status !== 403 || (await response.json()).error !== "DEVICE_MISMATCH" || writes.length) {
+    throw new Error("unbound legacy session was accepted");
   }
 });
 
