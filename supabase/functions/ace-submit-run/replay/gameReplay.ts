@@ -48,9 +48,9 @@ import {
   KEYMAP, PATH_SEP, R_ENEMY_FRIENDLY, R_FRIENDLY_FRIENDLY,
   STEER_ACCEL, STRIKE_PANEL_CLEARANCE, STRIKE_POINTS, WAVE_PAUSE_S, WRAP_M,
   dailyStreamSeed, destinationPoints, entityStreamSeed, mulberry32, nextWave, waveSpec,
-} from "../supabase/functions/_shared/gameRules.ts";
+} from "../_shared/gameRules.ts";
 
-export { destinationPoints, hashStr, mulberry32, waveSpec } from "../supabase/functions/_shared/gameRules.ts";
+export { destinationPoints, hashStr, mulberry32, waveSpec } from "../_shared/gameRules.ts";
 
 interface Point { x: number; y: number }
 interface Path { x0: number; y0: number; x1: number; y1: number }

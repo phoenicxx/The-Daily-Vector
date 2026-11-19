@@ -1,9 +1,9 @@
-import { createHandler } from "./index.ts";
+import { createHandler } from "./supabase/functions/ace-submit-run/index.ts";
 import genuineLog from "./fixtures/genuine-run.json" with { type: "json" };
 import {
   replayInputLog,
   type RunInputLog,
-} from "../../../replay/gameReplay.ts";
+} from "./supabase/functions/ace-submit-run/replay/gameReplay.ts";
 
 const capturedLog = genuineLog as RunInputLog;
 const SESSION_ID = capturedLog.metadata.sessionId!;

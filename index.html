@@ -2994,7 +2994,12 @@ class LeaderboardSystem {
                 session_id: activeGameSession.id,
                 token: activeGameSession.token,
                 account_name: account.name,
-                input_log: activeGameSession.inputLog
+                pin: account.pin,
+                result: {
+                    points: G.result.points,
+                    timeMs: G.result.timeMs,
+                    waves: G.result.waves
+                }
             })
         });
         const r = await response.json();

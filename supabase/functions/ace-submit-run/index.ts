@@ -1,7 +1,7 @@
 import {
   replayInputLog,
   type RunInputLog,
-} from "../../../replay/gameReplay.ts";
+} from "./replay/gameReplay.ts";
 
 const MAX_BODY_BYTES = 8_000_000;
 const MAX_EVENTS = 100_000;

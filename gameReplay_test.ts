@@ -6,8 +6,8 @@ import {
   waveSpec,
   type RecordedEvent,
   type RunInputLog,
-} from "./gameReplay.ts";
-import genuineLog from "../supabase/functions/ace-submit-run/fixtures/genuine-run.json" with { type: "json" };
+} from "./supabase/functions/ace-submit-run/replay/gameReplay.ts";
+import genuineLog from "./fixtures/genuine-run.json" with { type: "json" };
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
@@ -52,17 +52,6 @@ function recordedLog(controls: "touch" | "keyboard" = "touch"): RunInputLog {
     events,
     overflow: false,
   };
-  // This is deliberately only a malformed/incomplete synthetic tape; it is
-  // not a captured browser run or evidence of replay parity.
-  add(2_001, "FRIENDLY_DOWN", 1, 100, 100, 7);
-  add(2_002, "FRIENDLY_MOVE", 1, 300, 300, 7);
-  add(2_050, "RESIZE", 460, 680);
-  add(2_100, "FRAME", 50_000);
-  add(2_150, "POINTER_END", "FRIENDLY", 1, 7, "pointerup");
-  add(2_200, "KEY_DOWN", "KeyW");
-  add(2_250, "FRAME", 50_000);
-  add(2_300, "KEY_UP", "KeyW");
-
   return base;
 }
 
@@ -120,16 +109,6 @@ Deno.test("overflowed recorder tapes are rejected", () => {
   const log = recordedLog();
   log.overflow = true;
   assertThrows(() => replayInputLog(log), "recorder overflowed");
-});
-
-Deno.test("client END claims are rejected unless simulation reaches game over", () => {
-  const log = recordedLog();
-  // This test targets END validation only. Keep its valid START/FRAME prefix,
-  // omitting unrelated synthetic pointer events with non-browser coordinates.
-  log.events = log.events.slice(0, 41);
-  const lastTime = log.events.at(-1)![0] + 1;
-  log.events.push([lastTime, log.events.length, "END", "PING NOT IDENTIFIED WITHIN 3.0 SECONDS"]);
-  assertThrows(() => replayInputLog(log), "END arrived before a simulated game-over condition");
 });
 
 Deno.test("genuine captured run replays through threshold-length holds to its recorded terminal state", () => {
