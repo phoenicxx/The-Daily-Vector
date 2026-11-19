@@ -1,7 +1,4 @@
-const DEVICE_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
 type Dependencies = {
-  isDeviceBanned(hash: string): Promise<boolean>;
   login(name: string, pin: string): Promise<{ id: string; name: string } | null>;
   createRun(run: Record<string, unknown>): Promise<void>;
   now(): number;
@@ -52,14 +49,11 @@ export function createHandler(deps: Dependencies) {
       return response(400, { ok: false, error: "INVALID_JSON" });
     }
     if (!input || typeof input !== "object" || Array.isArray(input) ||
-      typeof input.device_id !== "string" || !DEVICE_ID.test(input.device_id) ||
       typeof input.name !== "string" || input.name.length < 1 || input.name.length > 50 ||
       typeof input.pin !== "string" || !/^\d{4,6}$/.test(input.pin) || !validDay(input.day)) {
       return response(400, { ok: false, error: "MISSING_FIELDS" });
     }
     try {
-      const deviceHash = await sha256Hex(input.device_id.toLowerCase());
-      if (await deps.isDeviceBanned(deviceHash)) return response(403, { ok: false, error: "DEVICE_BANNED" });
       const account = await deps.login(input.name, input.pin);
       if (!account || !/^[1-9]\d*$/.test(account.id)) return response(403, { ok: false, error: "BAD_LOGIN" });
       const tokenBytes = crypto.getRandomValues(new Uint8Array(32));
@@ -72,7 +66,6 @@ export function createHandler(deps: Dependencies) {
         account_id: account.id,
         puzzle_day: input.day,
         token_hash: tokenHash,
-        device_hash: deviceHash,
         expires_at: expiresAt,
         status: "active",
       });
@@ -95,17 +88,6 @@ if (import.meta.main) {
   const key = requiredEnv("SUPABASE_SERVICE_ROLE_KEY");
   const headers = { apikey: key, authorization: `Bearer ${key}`, "content-type": "application/json" };
   const handler = createHandler({
-    async isDeviceBanned(hash) {
-      const params = new URLSearchParams({
-        device_hash: `eq.${hash}`,
-        select: "device_hash",
-        limit: "1",
-        or: `(expires_at.is.null,expires_at.gt.${new Date().toISOString()})`,
-      });
-      const res = await fetch(`${base}/rest/v1/ace_device_bans?${params}`, { headers });
-      if (!res.ok) throw new Error(`device ban lookup ${res.status}`);
-      return (await res.json()).length > 0;
-    },
     async login(name, pin) {
       const res = await fetch(`${base}/rest/v1/rpc/ace_check_login`, {
         method: "POST",

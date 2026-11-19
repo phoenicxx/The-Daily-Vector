@@ -6,7 +6,6 @@ import type { RunInputLog } from "./supabase/functions/ace-submit-run/replay/gam
 const capturedLog = genuineLog as RunInputLog;
 const SESSION_ID = capturedLog.metadata.sessionId!;
 const TOKEN = "test-token-with-more-than-thirty-two-characters";
-const DEVICE_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const DAY = capturedLog.metadata.day;
 const NOW = Date.now();
 
@@ -20,7 +19,6 @@ async function sha256(value: string): Promise<string> {
 }
 
 function setup(overrides: Record<string, unknown> = {}) {
-  const { bannedHash, ...sessionOverrides } = overrides;
   let completed = false;
   const writes: unknown[] = [];
   const session: Record<string, unknown> = {
@@ -30,16 +28,11 @@ function setup(overrides: Record<string, unknown> = {}) {
     puzzle_day: DAY,
     expires_at: new Date(NOW + 60_000).toISOString(),
     status: "active",
-    ...sessionOverrides,
+    ...overrides,
   };
   const handler = createHandler({
-    isDeviceBanned(hash) { return Promise.resolve(bannedHash === hash); },
-    async getSession(id) {
-      if (id !== SESSION_ID) return null;
-      const deviceHash = Object.hasOwn(session, "device_hash")
-        ? session.device_hash
-        : await sha256(DEVICE_ID);
-      return { ...session, device_hash: deviceHash };
+    getSession(id) {
+      return Promise.resolve(id === SESSION_ID ? session : null);
     },
     getAccount(id) {
       return Promise.resolve(
@@ -76,7 +69,6 @@ async function request(
         session_id: SESSION_ID,
         token: TOKEN,
         account_name: "VECTOR PLAYER",
-        device_id: DEVICE_ID,
         input_log: structuredClone(capturedLog),
         ...extra,
       }),
@@ -87,7 +79,7 @@ async function request(
 Deno.test("genuine captured run passes strict replay and completes its session", async () => {
   const { handler, session, writes } = setup();
   session.token_hash = await sha256(TOKEN);
-  const response = await request(handler, { device_id: DEVICE_ID.toUpperCase() });
+  const response = await request(handler);
   if (response.status !== 200 || writes.length !== 1) {
     throw new Error(
       "genuine captured tape did not complete after strict replay",
@@ -98,33 +90,6 @@ Deno.test("genuine captured run passes strict replay and completes its session",
     score.points !== 1558 || score.time_ms !== 36316 || score.waves !== 2 ||
     score.ending_reason !== "FRIENDLY HIT BY HOSTILE"
   ) throw new Error("score was not derived from the genuine captured replay");
-});
-
-Deno.test("banned device submission is rejected before completion", async () => {
-  const { handler, session, writes } = setup({ bannedHash: await sha256(DEVICE_ID) });
-  session.token_hash = await sha256(TOKEN);
-  const response = await request(handler);
-  if (response.status !== 403 || (await response.json()).error !== "DEVICE_BANNED" || writes.length) {
-    throw new Error("banned device submission was accepted");
-  }
-});
-
-Deno.test("changed device identifier is rejected", async () => {
-  const { handler, session, writes } = setup();
-  session.token_hash = await sha256(TOKEN);
-  const response = await request(handler, { device_id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb" });
-  if (response.status !== 403 || (await response.json()).error !== "DEVICE_MISMATCH" || writes.length) {
-    throw new Error("changed device identifier was accepted");
-  }
-});
-
-Deno.test("unbound legacy session is rejected with a device mismatch", async () => {
-  const { handler, session, writes } = setup({ device_hash: null });
-  session.token_hash = await sha256(TOKEN);
-  const response = await request(handler);
-  if (response.status !== 403 || (await response.json()).error !== "DEVICE_MISMATCH" || writes.length) {
-    throw new Error("unbound legacy session was accepted");
-  }
 });
 
 Deno.test("forged client score fields are ignored", async () => {
@@ -285,16 +250,12 @@ Deno.test("invalid ending reason is rejected", async () => {
   }
 });
 
-const START_DEVICE_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const START_DAY = 20261119;
 
-function setupStartRun(banned = false) {
+function setupStartRun() {
   let loginCalls = 0;
   const runs: Record<string, unknown>[] = [];
   const handler = createStartRunHandler({
-    async isDeviceBanned(hash) {
-      return banned && hash === await sha256(START_DEVICE_ID);
-    },
     login(name, pin) {
       loginCalls++;
       return Promise.resolve(
@@ -314,35 +275,30 @@ function setupStartRun(banned = false) {
 
 async function startRunRequest(
   handler: (request: Request) => Promise<Response>,
-  deviceId = START_DEVICE_ID,
   name = "PLAYER",
 ) {
   return await handler(new Request("https://example.test", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ name, pin: "1234", day: START_DAY, device_id: deviceId }),
+    body: JSON.stringify({ name, pin: "1234", day: START_DAY }),
   }));
 }
 
-Deno.test("banned device cannot start a run for a new account", async () => {
-  const test = setupStartRun(true);
-  const result = await startRunRequest(test.handler, START_DEVICE_ID, "NEW PLAYER");
-  if (result.status !== 403 || (await result.json()).error !== "DEVICE_BANNED" || test.runs.length || test.loginCalls) {
-    throw new Error("banned device reached account authentication or run creation");
-  }
-});
-
-Deno.test("unbanned device starts a run with a canonical server hash", async () => {
+Deno.test("valid login starts a run and returns its server session", async () => {
   const test = setupStartRun();
-  const result = await startRunRequest(test.handler, START_DEVICE_ID.toUpperCase());
+  const result = await startRunRequest(test.handler);
   const body = await result.json();
-  if (result.status !== 200 || test.runs.length !== 1 || test.runs[0].device_hash !== await sha256(START_DEVICE_ID) || !body.session_id || !body.token) {
-    throw new Error("valid unbanned device did not start a bound run");
+  if (result.status !== 200 || test.runs.length !== 1 || !body.session_id || !body.token) {
+    throw new Error("valid login did not start a server session");
   }
 });
 
-Deno.test("start-run rejects malformed device identifiers", async () => {
+Deno.test("start-run rejects an invalid PIN", async () => {
   const test = setupStartRun();
-  const result = await startRunRequest(test.handler, "not-a-device-id");
-  if (result.status !== 400 || test.runs.length) throw new Error("invalid device identifier accepted");
+  const result = await test.handler(new Request("https://example.test", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ name: "PLAYER", pin: "12", day: START_DAY }),
+  }));
+  if (result.status !== 400 || test.runs.length) throw new Error("invalid PIN accepted");
 });

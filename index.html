@@ -2727,8 +2727,8 @@ async function startGame() {
             await createGameSession(getDaily());
         } catch (err) {
             console.error("Game session error:", err);
-            alert("Unable to start a verified game session. Please try again.");
-            return;
+            // Keep gameplay available if the ranked session service is unavailable.
+            activeGameSession = null;
         }
     }
 
@@ -2992,7 +2992,6 @@ class LeaderboardSystem {
                 session_id: activeGameSession.id,
                 token: activeGameSession.token,
                 account_name: account.name,
-                device_id: activeGameSession.deviceId,
                 input_log: activeGameSession.inputLog
             })
         });
@@ -3182,8 +3181,8 @@ class LeaderboardView {
             if (res.authError) {
                 account.clear(); refreshAccountUI();
                 $("lbMessage").textContent = "LOGIN INVALID - PLEASE LOG IN AGAIN";
-            } else if (res.error === "DEVICE_MISMATCH") {
-                $("lbMessage").textContent = "DEVICE CHANGED, RESTART THE RUN AND TRY AGAIN";
+            } else if (res.error === "NO_VALID_SESSION") {
+                $("lbMessage").textContent = "UNRANKED RUN - START A NEW RUN TO SUBMIT A SCORE";
             } else if (res.error === "LOCKED") {
                 $("lbMessage").textContent = "TOO MANY FAILED ATTEMPTS - TRY LATER";
             } else {
@@ -3270,22 +3269,8 @@ async function rpc(fn, args) {
 // =====================================================
 
 let activeGameSession = null;
-const DEVICE_ID_STORAGE_KEY = "ace_device_id";
-function getDeviceId() {
-    let id = null;
-    try { id = localStorage.getItem(DEVICE_ID_STORAGE_KEY); } catch (_) {}
-    if (/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id || "")) {
-        id = id.toLowerCase();
-        try { localStorage.setItem(DEVICE_ID_STORAGE_KEY, id); } catch (_) {}
-    } else {
-        id = crypto.randomUUID();
-        try { localStorage.setItem(DEVICE_ID_STORAGE_KEY, id); } catch (_) {}
-    }
-    return id;
-}
 
 async function createGameSession(day) {
-    const deviceId = getDeviceId();
     const response = await fetch(
         `${SUPABASE_URL}/functions/v1/ace-start-run`,
         {
@@ -3298,8 +3283,7 @@ async function createGameSession(day) {
             body: JSON.stringify({
                 name: account.name,
                 pin: account.pin,
-                day,
-                device_id: deviceId
+                day
             })
         }
     );
@@ -3318,7 +3302,6 @@ async function createGameSession(day) {
         id: data.session_id,
         token: data.token,
         expiresAt: data.expires_at,
-        deviceId,
         seed,
         rankedInvalidated: false
     };

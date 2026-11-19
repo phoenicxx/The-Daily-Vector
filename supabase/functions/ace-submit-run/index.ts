@@ -8,14 +8,11 @@ const MAX_EVENTS = 100_000;
 const MAX_EVENT_TIME_MS = 24 * 60 * 60 * 1000;
 const UUID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const DEVICE_UUID =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 type RunSession = Record<string, unknown>;
 type Account = { id: string; name: string };
 type Dependencies = {
   getSession(id: string): Promise<RunSession | null>;
-  isDeviceBanned(deviceHash: string): Promise<boolean>;
   getAccount(id: string): Promise<Account | null>;
   complete(
     id: string,
@@ -165,7 +162,6 @@ export function createHandler(deps: Dependencies) {
     if (
       !input || typeof input !== "object" || Array.isArray(input) ||
       typeof input.session_id !== "string" || !UUID.test(input.session_id) ||
-      typeof input.device_id !== "string" || !DEVICE_UUID.test(input.device_id) ||
       typeof input.token !== "string" || input.token.length < 32 ||
       input.token.length > 512 ||
       typeof input.account_name !== "string" || input.account_name.length < 1 ||
@@ -173,10 +169,6 @@ export function createHandler(deps: Dependencies) {
       !Object.hasOwn(input, "input_log")
     ) return response(400, { ok: false, error: "MISSING_FIELDS" });
     try {
-      const deviceHash = await sha256Hex(input.device_id.toLowerCase());
-      if (await deps.isDeviceBanned(deviceHash)) {
-        return response(403, { ok: false, error: "DEVICE_BANNED" });
-      }
       const session = await deps.getSession(input.session_id);
       if (!session) {
         return response(403, { ok: false, error: "INVALID_SESSION" });
@@ -198,9 +190,6 @@ export function createHandler(deps: Dependencies) {
       }
       if (session.status !== "active") {
         return response(403, { ok: false, error: "INVALID_SESSION" });
-      }
-      if (String(session.device_hash ?? "") !== deviceHash) {
-        return response(403, { ok: false, error: "DEVICE_MISMATCH" });
       }
       if (!storedHash || await sha256Hex(input.token) !== storedHash) {
         return response(403, { ok: false, error: "INVALID_SESSION" });
@@ -287,24 +276,12 @@ if (import.meta.main) {
   const handler = createHandler({
     async getSession(id) {
       const res = await fetch(
-        `${base}/rest/v1/ace_game_runs?id=eq.${id}&select=id,account_id,puzzle_day,token_hash,expires_at,status,device_hash`,
+        `${base}/rest/v1/ace_game_runs?id=eq.${id}&select=id,account_id,puzzle_day,token_hash,expires_at,status`,
         { headers },
       );
       if (!res.ok) throw new Error(`session lookup ${res.status}`);
       const rows = await res.json();
       return rows[0] ?? null;
-    },
-    async isDeviceBanned(deviceHash) {
-      const params = new URLSearchParams({
-        device_hash: `eq.${deviceHash}`,
-        select: "device_hash",
-        limit: "1",
-        or: `(expires_at.is.null,expires_at.gt.${new Date().toISOString()})`,
-      });
-      const res = await fetch(`${base}/rest/v1/ace_device_bans?${params}`, { headers });
-      if (!res.ok) throw new Error(`device ban lookup ${res.status}`);
-      const rows = await res.json();
-      return rows.length > 0;
     },
     async getAccount(id) {
       const res = await fetch(
