@@ -705,8 +705,16 @@ class Replay {
 
   private selectStrike(id: number): void {
     if (this.strike.holding) return;
+    if (
+      this.log.metadata.controls === "touch" &&
+      this.strike.enemyId === id
+    ) {
+      this.resetStrike();
+      return;
+    }
     this.strike.enemyId = id;
-    this.strike.state = this.log.metadata.controls === "keyboard" ? "hold" : "confirm";
+    // The browser starts the hold directly for both touch and keyboard.
+    this.strike.state = "hold";
   }
 
   private resetStrike(): void {
