@@ -1,5 +1,6 @@
+
 -- Ranked scores are written only after ace-submit-run replays the captured run.
--- Keep this RPC aligned with the existing account_id/status run schema.
+
 create or replace function public.ace_complete_verified_run(
   p_session_id uuid,
   p_token_hash text,
@@ -18,12 +19,16 @@ declare
   v_score_id bigint;
   v_name text;
 begin
-  if p_points < 0 or p_time_ms < 0 or p_waves < 0 or
+  if p_points is null or p_time_ms is null or p_waves is null or
+     p_ending_reason is null or
+     p_points < 0 or p_time_ms < 0 or p_waves < 0 or
      p_ending_reason not in (
-       'FRIENDLY HIT BY HOSTILE', 'FRIENDLY COLLISION',
+       'FRIENDLY HIT BY HOSTILE',
+       'FRIENDLY COLLISION',
        'PING NOT IDENTIFIED WITHIN 3.0 SECONDS'
      ) then
-    raise exception 'INVALID_VERIFIED_RESULT' using errcode = '22023';
+    raise exception 'INVALID_VERIFIED_RESULT'
+      using errcode = '22023';
   end if;
 
   select name into v_name
@@ -58,23 +63,34 @@ begin
 end;
 $$;
 
-revoke all on function public.ace_complete_verified_run(uuid, text, bigint, integer, bigint, integer, integer, text)
-  from public, anon, authenticated;
-grant execute on function public.ace_complete_verified_run(uuid, text, bigint, integer, bigint, integer, integer, text)
-  to service_role;
+revoke all on function public.ace_complete_verified_run(
+  uuid, text, bigint, integer, bigint, integer, integer, text
+) from public, anon, authenticated;
 
--- Prevent the legacy client-credential submission route from bypassing replay.
+grant execute on function public.ace_complete_verified_run(
+  uuid, text, bigint, integer, bigint, integer, integer, text
+) to service_role;
+
+-- Disable the legacy client-credential submission route.
 do $$
-declare r record;
+declare
+  r record;
 begin
   for r in
     select p.oid::regprocedure as signature
-      from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-     where n.nspname = 'public' and p.proname = 'ace_submit_score_v2'
+      from pg_proc p
+      join pg_namespace n on n.oid = p.pronamespace
+     where n.nspname = 'public'
+       and p.proname = 'ace_submit_score_v2'
   loop
-    execute format('revoke all on function %s from public, anon, authenticated', r.signature);
+    execute format(
+      'revoke all on function %s from public, anon, authenticated',
+      r.signature
+    );
   end loop;
 end;
 $$;
 
-revoke insert on public.ace_scores from public, anon, authenticated;
+-- Prevent direct client insertion of leaderboard scores.
+revoke insert on public.ace_scores
+  from public, anon, authenticated;
