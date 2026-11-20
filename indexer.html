@@ -623,6 +623,7 @@ body {
     padding: 18px 24px;
     box-shadow: 0 0 20px 5px rgba(255, 0, 0, 0.8);
 }
+#deathReason { font-size: 16px; line-height: 1.5; }
 
 /* Ring that marks the failure point (positioned from JS; 120px = 60px radius) */
 #deathMarker {
@@ -932,8 +933,7 @@ body {
    <div class="screen" id="deathOverlay">
   <div id="deathMarker"></div>
   <div class="modal">
-    <div class="eyebrow">GAME OVER</div>
-    <h2>YOU DIED</h2>
+    <h2>GAME OVER</h2>
     <div class="sub" id="deathReason">Reason: Unknown</div>
     <div class="btn-row">
       <button class="btn" id="deathSkip">CLOSE</button>
