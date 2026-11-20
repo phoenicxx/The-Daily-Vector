@@ -257,14 +257,14 @@ body {
     box-shadow: 0 0 14px #ff697a;
 }
 
-.enemy {
+.hostile {
     position: absolute;
     width: 46px; height: 46px;
     transform: translate(-50%, -50%);
     cursor: pointer;
     z-index: 4;
 }
-.enemy .dia {
+.hostile .dia {
     position: absolute; left: 11px; top: 11px;
     width: 24px; height: 24px;
     transform: rotate(45deg);
@@ -272,9 +272,9 @@ body {
     border: 2px solid var(--danger);
     box-shadow: 0 0 15px color-mix(in srgb, var(--danger) 65%, transparent);
 }
-.enemy:hover .dia { background: #ff5265; }
-.enemy.sel .dia { background: #ff8793; box-shadow: 0 0 25px #ff304f, 0 0 45px #ff304f; }
-.enemy .eico {
+.hostile:hover .dia { background: #ff5265; }
+.hostile.sel .dia { background: #ff8793; box-shadow: 0 0 25px #ff304f, 0 0 45px #ff304f; }
+.hostile .eico {
     position: absolute; inset: 0;
     display: flex; align-items: center; justify-content: center;
     font-size: 30px; line-height: 1;
@@ -283,15 +283,15 @@ body {
     animation: wob 0.7s ease-in-out infinite alternate;
 }
 @keyframes wob { from { transform: rotate(-8deg); } to { transform: rotate(8deg); } }
-.enemy.sel .eico { filter: drop-shadow(0 0 10px #ff304f) drop-shadow(0 0 18px #ff304f); font-size: 34px; }
-.enemy .lbl {
+.hostile.sel .eico { filter: drop-shadow(0 0 10px #ff304f) drop-shadow(0 0 18px #ff304f); font-size: 34px; }
+.hostile .lbl {
     position: absolute; top: 46px; left: 50%;
     transform: translateX(-50%);
     color: var(--danger); font-size: 9px; letter-spacing: 2px;
     white-space: nowrap; pointer-events: none;
 }
 
-.ghost {
+.ping {
     position: absolute;
     transform: translate(-50%, -50%);
     border-radius: 50%;
@@ -299,25 +299,25 @@ body {
     cursor: pointer;
     touch-action: none;
 }
-.ghost .core {
+.ping .core {
     position: absolute; inset: 22%;
     border-radius: 50%;
     background: rgba(255,61,61,0.6);
     animation: pulse 0.7s ease-in-out infinite alternate;
 }
-.ghost .gico {
+.ping .gico {
     position: absolute; inset: 0;
     display: flex; align-items: center; justify-content: center;
     line-height: 1; pointer-events: none;
 }
-.ghost .arc, .ghost .hold {
+.ping .arc, .ping .hold {
     position: absolute; inset: 0;
     border-radius: 50%;
     -webkit-mask: radial-gradient(circle, transparent 62%, #000 64%);
             mask: radial-gradient(circle, transparent 62%, #000 64%);
 }
-.ghost .arc  { background: conic-gradient(#ff3d3d var(--rem, 360deg), transparent 0); }
-.ghost .hold { inset: 12%; background: conic-gradient(#5ee6a8 var(--hold, 0deg), transparent 0); }
+.ping .arc  { background: conic-gradient(#ff3d3d var(--rem, 360deg), transparent 0); }
+.ping .hold { inset: 12%; background: conic-gradient(#5ee6a8 var(--hold, 0deg), transparent 0); }
 @keyframes pulse { from { transform: scale(0.7); opacity: 0.5; } to { transform: scale(1.15); opacity: 1; } }
 
 .fx {
@@ -343,7 +343,7 @@ body {
 }
 #banner.on { animation: bn 2s ease forwards; }
 #bnTitle { font-size: 22px; letter-spacing: 5px; color: var(--accent); }
-#bnSub { margin-top: 8px; font-size: 11px; letter-spacing: 3px; color: var(--muted); }
+#bnSub { margin-top: 10px; font-size: 17px; letter-spacing: 2px; color: var(--muted); }
 @keyframes bn {
     0% { opacity: 0; transform: scale(0.9); }
     15% { opacity: 1; transform: scale(1); }
@@ -498,7 +498,8 @@ body {
 #menu .modal h2 { font-size: clamp(25px, 4.2vh, 34px); letter-spacing: 3px; margin: 8px 0 4px; }
 #howto { font-size: clamp(15px, 2.2vh, 18px); line-height: 1.4; margin: 8px 0 12px; }
 #menuPlay { min-height: clamp(48px, 7vh, 58px); font-size: clamp(14px, 2vh, 17px); }
-#tutText { font-size: 17px; line-height: 1.55; }                      /* tutorial instructions (was 11px) */
+#tutText { font-size: 17px; line-height: 1.55; }
+#tutDone .sub { font-size: 17px; line-height: 1.6; }
 .btn {
     min-height: 46px;
     padding: 0 18px;
@@ -622,6 +623,7 @@ body {
     padding: 18px 24px;
     box-shadow: 0 0 20px 5px rgba(255, 0, 0, 0.8);
 }
+#deathReason { font-size: 16px; line-height: 1.5; }
 
 /* Ring that marks the failure point (positioned from JS; 120px = 60px radius) */
 #deathMarker {
@@ -698,6 +700,8 @@ body {
 .br-text { position: relative; z-index: 1; text-align: center; }
 #brText  { display: block; font-size: 18px; font-weight: 300; letter-spacing: 3px; color: var(--text); }
 #brTimer { display: block; font-size: 42px; margin-top: 6px; color: var(--text); font-variant-numeric: tabular-nums; }
+#breathOverlay .eyebrow { font-size: 15px; letter-spacing: 4px; }
+#breathOverlay .sub { font-size: 18px; line-height: 1.6; }
 .my-avgs { margin-top: 0; }
 .my-avgs .lab { font-size: 7px; }
 
@@ -817,11 +821,11 @@ body {
     <div class="tut-foot">
         <div id="tutChecks">
             <span id="tc0">○ DRAG PLANE</span>
-            <span id="tc1">○ IDENTIFY GHOST</span>
+            <span id="tc1">○ IDENTIFY PING</span>
             <span id="tc2">○ STRIKE HOSTILE</span>
         </div>
         <div class="tut-btns">
-            <button class="btn primary" id="tutNext">NEXT ▶</button>
+            <button class="btn primary" id="tutNext">CONTINUE ▶</button>
             <button class="btn" id="tutSkip">SKIP TUTORIAL</button>
         </div>
     </div>
@@ -850,7 +854,7 @@ body {
         <div class="eyebrow">NEURAL READINESS - BEEP TEST</div>
         <h2>THE DAILY VECTOR</h2>
         <div class="sub" id="howto"></div>
-        <button class="btn primary" id="menuPlay">▶ START GAME</button>
+        <button class="btn primary" id="menuPlay">▶ START GAME (TUTORIAL INCLUDED)</button>
 
         <div id="menuSettings">
         <div class="theme-picker">
@@ -913,7 +917,6 @@ body {
 <!-- Tutorial complete -->
 <div class="screen" id="tutDone">
     <div class="modal">
-        <div class="eyebrow">TRAINING</div>
         <h2>TUTORIAL COMPLETE</h2>
         <div class="sub">
             You've steered a friendly, identified a ping and struck a hostile.<br><br>
@@ -930,8 +933,7 @@ body {
    <div class="screen" id="deathOverlay">
   <div id="deathMarker"></div>
   <div class="modal">
-    <div class="eyebrow">GAME OVER</div>
-    <h2>YOU DIED</h2>
+    <h2>GAME OVER</h2>
     <div class="sub" id="deathReason">Reason: Unknown</div>
     <div class="btn-row">
       <button class="btn" id="deathSkip">CLOSE</button>
@@ -1098,10 +1100,10 @@ const LEGACY_DIFFICULTY = "easy";
 const TARGET_ENDURANCE_S = 360;     // 06:00
 const TARGET_EFFICIENCY  = 20000;   // points
 const STRIKE_POINTS = 500;
-const GHOST_POINTS  = 250;
+const PING_POINTS  = 250;
 const HOLD_STRIKE_S = 2.0;          // seconds to confirm strike
-const HOLD_GHOST_S  = 0.5;
-const GHOST_WINDOW_S = 3.0;
+const HOLD_PING_S  = 0.5;
+const PING_WINDOW_S = 3.0;
 const MIN_TIME_MS = 3000;           // shortest run the server accepts
 
 // ---- Levels & waves --------------------------------------------------
@@ -1116,13 +1118,13 @@ const WAVE_INTRO = [
     "HOSTILES INCOMING - STRIKE THEM",
     "PINGS ACTIVE - IDENTIFY THEM FAST"
 ];
-const ENEMY_STAGGER_S = 1.5;        // gap between hostiles spawning inside a wave
-const ENEMY_SPAWN_CLEARANCE = 170;  // min px between a new hostile and any friendly
+const HOSTILE_STAGGER_S = 1.5;        // gap between hostiles spawning inside a wave
+const HOSTILE_SPAWN_CLEARANCE = 170;  // min px between a new hostile and any friendly
 const MIN_PING_GAP_S = 1.5;         // fastest allowed time between pings
 const MAX_FRIENDLIES = 6;
 const MAX_HOSTILES   = 10;
 const WAVE_PAUSE_S = 1.8;           // breather between waves (clock paused)
-const WAVE_TIME_LIMIT_S = 30;
+const WAVE_TIME_LIMIT_S = 45;
 const WAVE_TIME_LIMIT_MAX_LEVEL = 3;
 
 function waveSpec(level, wave) {
@@ -1132,7 +1134,7 @@ function waveSpec(level, wave) {
     const planes = Math.min(MAX_FRIENDLIES, Math.floor(level / 2) + 1);
 
     // L1:1  L2:1  L3:2  L4:2  L5:3 ... L10:5, then +1 per extra wave up to 10
-    const enemies = wave >= 2
+    const hostiles = wave >= 2
         ? Math.min(MAX_HOSTILES, Math.ceil(level / 2) + extra)
         : 0;
 
@@ -1142,16 +1144,16 @@ function waveSpec(level, wave) {
         : 0;
 
     return {
-        planes, enemies, ping,
+        planes, hostiles, ping,
         speed:     wave >= 2 ? Math.min(120, 35 + 5 * (level - 1) + 3 * extra) : 0,
-        maxGhosts: wave >= 3 ? Math.min(6, 3 + Math.ceil(level / 2)) : 0,
-        ghostR:    Math.max(20, 28 - 0.6 * (level - 1) - 0.4 * extra),
+        maxPings: wave >= 3 ? Math.min(6, 3 + Math.ceil(level / 2)) : 0,
+        pingR:    Math.max(20, 28 - 0.6 * (level - 1) - 0.4 * extra),
         drift:     Math.min(2, 1 + 0.05 * (level - 1) + 0.05 * extra)
     };
 }
 function waveSummary(sp) {
     let s = sp.planes + (sp.planes === 1 ? " FRIENDLIES" : " FRIENDLIES");
-    if (sp.enemies) s += " · " + sp.enemies + (sp.enemies === 1 ? " HOSTILE" : " HOSTILES");
+    if (sp.hostiles) s += " · " + sp.hostiles + (sp.hostiles === 1 ? " HOSTILE" : " HOSTILES");
     if (sp.ping) s += " · PING EVERY " + sp.ping.toFixed(1) + "s";
     return s;
 }
@@ -1161,8 +1163,8 @@ const FRIENDLY_MIN_SPEED  = 25;
 const FRIENDLY_MAX_SPEED  = 90;
 const STEER_ACCEL = 170;            // px/s^2
 const R_FRIENDLY_FRIENDLY = 32;
-const R_ENEMY_FRIENDLY    = 28;
-const STRIKE_PANEL_CLEARANCE = 170; // keep Ghosts out of the strike panel area
+const R_HOSTILE_FRIENDLY    = 28;
+const STRIKE_PANEL_CLEARANCE = 170; // keep Pings out of the strike panel area
 
 // Flight paths
 const PATH_ON_DIST     = 12;
@@ -1207,18 +1209,18 @@ const TUT_STEP_PAUSE = 1.4;
 const TUT_RESPAWN_S  = 0.8;
 
 // ---- Theme icons -------------------------------------------------------
-// plane: friendly icon | enemy: hostile icon ("" = classic diamond)
+// plane: friendly icon | hostile: hostile icon ("" = classic diamond)
 // ping: icon in the centre of a ping ("" = plain pulse) | rot: rotate to face direction of travel
 const ICONS = {
-    classic:   { plane: "✈",  rot: true,  enemy: "",   ping: ""   },
-    spring:    { plane: "🌷", rot: false, enemy: "🦋", ping: "🌼" },
-    summer:    { plane: "🐠", rot: false, face: "left", enemy: "🦈", ping: "🐚" },
-    autumn:    { plane: "🍁", rot: false, enemy: "🦃", ping: "🌰" },
-    winter:    { plane: "❄️", rot: false, enemy: "☃️", ping: "🧊" },
-    christmas: { plane: "🛷", rot: false, face: "left", enemy: "👹", ping: "🎁" },
-    halloween: { plane: "🦇", rot: false, face: "left", enemy: "💀", ping: "🎃" },
-    birthday:  { plane: "🎂", rot: false, enemy: "🔪", ping: "🎈" },
-    space:     {plane: "🚀", rot: false, face: "right", enemy: "👽", ping: "☄️" }
+    classic:   { plane: "✈",  rot: true,  hostile: "",   ping: ""   },
+    spring:    { plane: "🌷", rot: false, hostile: "🦋", ping: "🌼" },
+    summer:    { plane: "🐠", rot: false, face: "left", hostile: "🦈", ping: "🐚" },
+    autumn:    { plane: "🍁", rot: false, hostile: "🦃", ping: "🌰" },
+    winter:    { plane: "❄️", rot: false, hostile: "☃️", ping: "🧊" },
+    christmas: { plane: "🛷", rot: false, face: "left", hostile: "👹", ping: "🎁" },
+    halloween: { plane: "🦇", rot: false, face: "left", hostile: "💀", ping: "🎃" },
+    birthday:  { plane: "🎂", rot: false, hostile: "🔪", ping: "🎈" },
+    space:     {plane: "🚀", rot: false, face: "right", hostile: "👽", ping: "☄️" }
 };
 function curIcons() {
     return ICONS[document.documentElement.dataset.theme] || ICONS.classic;
@@ -1253,8 +1255,8 @@ function makeStreams(key) {
     return {
         base,
         friendly: mulberry32(hashStr(base + "|friendly")),
-        hostile:  mulberry32(hashStr(base + "|hostile")),
-        ghost:    mulberry32(hashStr(base + "|ping"))
+        hostile:    mulberry32(hashStr(base + "|hostile")),
+        ping:    mulberry32(hashStr(base + "|ping"))
     };
 }
 
@@ -1311,7 +1313,7 @@ const THEME_SOUND_SETTINGS = {
 
     spring: {
         default: { startTime: 0, duration: 1.0 },
-        enemy_select: { startTime: 1.0, duration: 1.0, volume: 1},
+        hostile_select: { startTime: 1.0, duration: 1.0, volume: 1},
         lose: { startTime: 2, duration: 2.0 },
         ping: {volume: 0.6, fadeOut: 0.5}
     },
@@ -1332,14 +1334,14 @@ const THEME_SOUND_SETTINGS = {
     winter: {
         default: { startTime: 0, duration: 1.0 },
         ping: { startTime: 0, duration: 0.5, volume: 0.9 },
-        enemy_select: { startTime: 0, duration: 3, playbackRate: 1.2, volume: 1},
+        hostile_select: { startTime: 0, duration: 3, playbackRate: 1.2, volume: 1},
         lose: { startTime: 0, duration: 6.0, fadeOut: 2 }
     },
 
     christmas: {
         default: { startTime: 0, duration: 1.0 },
         ping: { startTime: 13.0, duration: 0.4 },
-        enemy_select: { startTime: 0, duration: 0.5 }
+        hostile_select: { startTime: 0, duration: 0.5 }
     },
 
     halloween: {
@@ -1444,8 +1446,8 @@ function playPingSound() {
     playThemeSound("ping");
 }
 
-function playEnemySelectSound() {
-    playThemeSound("enemy_select", 0.6);
+function playHostileSelectSound() {
+    playThemeSound("hostile_select", 0.6);
 }
 
 function playPointSound() {
@@ -1511,8 +1513,8 @@ function measure() {
         setPos(f);
         rotateFriendly(f);
     }
-    for (const e of G.enemies) { scalePoint(e); setPos(e); }
-    for (const g of G.ghosts) { scalePoint(g); setPos(g); }
+    for (const e of G.hostiles) { scalePoint(e); setPos(e); }
+    for (const g of G.pings) { scalePoint(g); setPos(g); }
     if (G.drag) { G.drag.x *= sx; G.drag.y *= sy; }
 }
 
@@ -1618,7 +1620,7 @@ function makePath(n) {
 // =====================================================
 
 function farFromOthers(x, y, minD) {
-    const all = [...G.friendlies, ...G.enemies];
+    const all = [...G.friendlies, ...G.hostiles];
     return all.every(e => Math.hypot(e.x - x, e.y - y) > minD);
 }
 
@@ -1738,8 +1740,8 @@ field.addEventListener("pointerup", endFriendlyDrag);
 field.addEventListener("pointercancel", endFriendlyDrag);
 field.addEventListener("lostpointercapture", endFriendlyDrag);
 
-function spawnEnemy() {
-    const num = G.enemyCounter++;
+function spawnHostile() {
+    const num = G.hostileCounter++;
 
     const edgePos = (a, b) => {
         const side = Math.floor(a * 4);
@@ -1759,22 +1761,22 @@ function spawnEnemy() {
 
     let pos = edgePos(RNG.hostile(), RNG.hostile());
     let best = score(pos);
-    if (best < ENEMY_SPAWN_CLEARANCE) {
+    if (best < HOSTILE_SPAWN_CLEARANCE) {
         const retry = mulberry32(hashStr(RNG.base + "|espawn|" + num));
         for (let i = 0; i < 60; i++) {
             const p = edgePos(retry(), retry());
             const s = score(p);
             if (s > best) { best = s; pos = p; }
-            if (best >= ENEMY_SPAWN_CLEARANCE) break;
+            if (best >= HOSTILE_SPAWN_CLEARANCE) break;
         }
     }
     const x = pos.x, y = pos.y;
 
     const ICON = curIcons();
     const el = document.createElement("div");
-    el.className = "enemy";
+    el.className = "hostile";
     const name = "HOSTILE " + String(num).padStart(3, "0");
-    el.innerHTML = (ICON.enemy ? '<div class="eico">' + ICON.enemy + '</div>' : '<div class="dia"></div>') +
+    el.innerHTML = (ICON.hostile ? '<div class="eico">' + ICON.hostile + '</div>' : '<div class="dia"></div>') +
                    '<div class="lbl">' + name + '</div>';
 
     const e = { id: G.nextId++, el, x, y, name };
@@ -1784,23 +1786,23 @@ function spawnEnemy() {
         strikeSelect(e);
     });
     worldLayer.appendChild(el);
-    G.enemies.push(e);
+    G.hostiles.push(e);
     setPos(e);
 }
 
-function spawnGhost() {
-    const R = G.ghostR;
+function spawnPing() {
+    const R = G.pingR;
     const ICON = curIcons();
     const pick = rnd => ({
         x: R + 20 + rnd() * Math.max(10, FW - 2 * R - 40),
         y: R + 20 + rnd() * Math.max(10, FH - 2 * R - 40 - STRIKE_PANEL_CLEARANCE)
     });
-    let pos = pick(() => RNG.ghost());
+    let pos = pick(() => RNG.ping());
     for (let i = 0; i < 50 && tutBlocked(pos.x, pos.y, R); i++) pos = pick(Math.random);
     const x = pos.x, y = pos.y;
 
-    const el = document.createElement("div");
-    el.className = "ghost";
+    const el = document.createElement("div")
+            el.className = "ping";
     el.style.width = el.style.height = (R * 2) + "px";
     el.innerHTML = '<div class="core"></div>' +
         (ICON.ping ? '<div class="gico" style="font-size:' + Math.round(R * 0.95) + 'px">' + ICON.ping + '</div>' : '') +
@@ -1824,7 +1826,7 @@ function spawnGhost() {
     el.addEventListener("lostpointercapture", release);
 
     worldLayer.appendChild(el);
-    G.ghosts.push(g);
+    G.pings.push(g);
     playPingSound();
     setPos(g);
 }
@@ -1851,23 +1853,23 @@ function award(base, x, y) {
 // 6. STRIKE AUTHORISATION
 // =====================================================
 
-const strike = { state: "idle", enemy: null, holding: false, holdT: 0 };
+const strike = { state: "idle", hostile: null, holding: false, holdT: 0 };
 
 function holdLabel() {
     return isKB() ? "HOLD [SPACE] 2 SECONDS TO AUTHORISE" : "HOLD 2 SECONDS TO AUTHORISE";
 }
 
-function strikeSelect(enemy) {
+function strikeSelect(hostile) {
     if (strike.holding) return;
 
     // Touch: tapping the already-selected hostile again cancels the strike
-    if (!isKB() && strike.enemy === enemy) { strikeReset(); return; }
+    if (!isKB() && strike.hostile === hostile) { strikeReset(); return; }
 
-    if (strike.enemy) strike.enemy.el.classList.remove("sel");
-    strike.enemy = enemy;
-    enemy.el.classList.add("sel");
-    playEnemySelectSound();
-    $("spTarget").textContent = enemy.name;
+    if (strike.hostile) strike.hostile.el.classList.remove("sel");
+    strike.hostile = hostile;
+    hostile.el.classList.add("sel");
+    playHostileSelectSound();
+    $("spTarget").textContent = hostile.name;
     $("spProg").style.width = "0%";
     $("spHoldText").textContent = holdLabel();
 
@@ -1882,9 +1884,9 @@ function strikeSelect(enemy) {
 }
 
 function strikeReset() {
-    if (strike.enemy) strike.enemy.el.classList.remove("sel");
+    if (strike.hostile) strike.hostile.el.classList.remove("sel");
     strike.state = "idle";
-    strike.enemy = null;
+    strike.hostile = null;
     strike.holding = false;
     strike.holdT = 0;
     $("spProg").style.width = "0%";
@@ -2028,9 +2030,9 @@ const runInputRecorder = (() => {
             return;
         }
 
-        const enemyEl = target.closest(".enemy");
-        if (enemyEl) {
-            const e = G.enemies.find(item => item.el === enemyEl);
+        const hostileEl = target.closest(".hostile");
+        if (hostileEl) {
+            const e = G.hostiles.find(item => item.el === hostileEl);
 
             if (e) {
                 record("HOSTILE_DOWN", e.id, point.x, point.y, ev.pointerId);
@@ -2038,9 +2040,9 @@ const runInputRecorder = (() => {
             return;
         }
 
-        const ghostEl = target.closest(".ghost");
-        if (ghostEl) {
-            const g = G.ghosts.find(item => item.el === ghostEl);
+        const pingEl = target.closest(".ping");
+        if (pingEl) {
+            const g = G.pings.find(item => item.el === pingEl);
 
             if (g && g.holder === null) {
                 record("PING_DOWN", g.id, point.x, point.y, ev.pointerId);
@@ -2185,12 +2187,12 @@ const runInputRecorder = (() => {
 })();
 
 function strikeComplete() {
-    const e = strike.enemy;
+    const e = strike.hostile;
     strikeReset();
     if (!e) return;
-    const i = G.enemies.indexOf(e);
+    const i = G.hostiles.indexOf(e);
     if (i === -1) return;
-    G.enemies.splice(i, 1);
+    G.hostiles.splice(i, 1);
     e.el.remove();
     G.kills++;
     award(STRIKE_POINTS, e.x, e.y);
@@ -2201,7 +2203,7 @@ function strikeComplete() {
 // 7. TUTORIAL
 // =====================================================
 
-const TUT_NAMES = ["DRAG FRIENDLY", "IDENTIFY PING", "STRIKE ENEMY"];
+const TUT_NAMES = ["DRAG FRIENDLY", "IDENTIFY PING", "STRIKE HOSTILE"];
 
 function tutStepInfo(s) {
     const I = curIcons();
@@ -2216,14 +2218,14 @@ function tutStepInfo(s) {
     if (s === 1) return {
         title: "IDENTIFY THE PING",
         text: "A red <b>ping</b> appeared. <b>Press and hold it for 0.5 s</b> before its " +
-              "red ring runs out (3 s). In a real run, a missed Ghost ends the game. Here it just comes back."
+              "red ring runs out (3 s). In a real run, a missed Ping ends the game."
     };
     return {
-        title: "STRIKE THE ENEMY",
+        title: "STRIKE THE HOSTILE",
         text: kb ? "<b>Click the hostile</b>, then <b>hold SPACE for 2 seconds</b>. " +
-                   "Hostiles chase friendlies. In a real run, contact ends the game."
+                   "Hostiles chase friendlies. In a real run, contact between a friendly and a hostile or a friendly ends the game."
                  : "<b>Tap the hostile</b>, then <b>hold the button for 2 seconds</b>. " +
-                   "Hostiles chase friendlies. In a real run, contact ends the game."
+                   "Hostiles chase friendlies. In a real run, contact between a friendly and a hostile or a friendly ends the game."
     };
 }
 // True if (x,y) in field coordinates is behind the tutorial instructions panel
@@ -2297,8 +2299,8 @@ function enterTutStep(s) {
     if (s >= 3) { finishTutorial(); return; }
     G.tut.phase = "read";                              // instructions first, everything frozen
     updateTutUI();
-    if (s === 1 && !G.ghosts.length)  spawnGhost();    // so there is something to look at
-    if (s === 2 && !G.enemies.length) spawnEnemy();
+    if (s === 1 && !G.pings.length)  spawnPing();    // so there is something to look at
+    if (s === 2 && !G.hostiles.length) spawnHostile();
     updateTutUI();
 }
 
@@ -2310,8 +2312,8 @@ function tutTick(dt) {
         return;
     }
     if (T.cool > 0) { T.cool -= dt; return; }
-    if (T.step === 1 && !T.done[1] && G.ghosts.length === 0) spawnGhost();
-    if (T.step === 2 && !T.done[2] && G.enemies.length === 0) spawnEnemy();
+    if (T.step === 1 && !T.done[1] && G.pings.length === 0) spawnPing();
+    if (T.step === 2 && !T.done[2] && G.hostiles.length === 0) spawnHostile();
 }
 
 function startTutorial() {
@@ -2331,7 +2333,7 @@ function startTutorial() {
 
     G = newState({
         tutorial: true,
-        enemySpeed: 25,
+        hostileSpeed: 25,
         tut: { step: 0, done: [false, false, false], wait: 0, next: 0, cool: 0, phase: "read" }
     });
     $("tutPanel").classList.add("on");
@@ -2389,10 +2391,10 @@ function nextWavePos(level, wave) {
 // Set up the breather before a wave: leftover hostiles withdraw, banner shows
 function queueWave(pos) {
     strikeReset();
-    for (const e of G.enemies) e.el.remove();
-    G.enemies = [];
-    G.enemyQueue = 0;
-    G.ghostTimer = Infinity;
+    for (const e of G.hostiles) e.el.remove();
+    G.hostiles = [];
+    G.hostileQueue = 0;
+    G.pingTimer = Infinity;
     G.pingGap = 0;
     G.level = pos.level;
     G.wave = pos.wave;
@@ -2408,21 +2410,21 @@ function startWave() {
     G.gateNotified = false;
     G.wavePings = 0;
     const sp = waveSpec(G.level, G.wave);
-    G.enemySpeed = sp.speed;
+    G.hostileSpeed = sp.speed;
     G.drift = sp.drift;
-    G.ghostR = sp.ghostR;
-    G.maxGhosts = sp.maxGhosts;
+    G.pingR = sp.pingR;
+    G.maxPings = sp.maxPings;
     G.pingGap = sp.ping;
-    G.enemyQueue = sp.enemies;
-    G.enemyTimer = 1.0;
-    G.ghostTimer = sp.ping > 0 ? sp.ping : Infinity;
+    G.hostileQueue = sp.hostiles;
+    G.hostileTimer = 1.0;
+    G.pingTimer = sp.ping > 0 ? sp.ping : Infinity;
     for (let i = 0; i < sp.planes; i++) spawnFriendly();
 }
 
 // Level 2 gate: a wave can't end (so Level 3 can't be reached) until every
 // hostile in it has spawned AND been struck down.
 function hostilesCleared() {
-    return G.enemyQueue === 0 && G.enemies.length === 0;
+    return G.hostileQueue === 0 && G.hostiles.length === 0;
 }
 function canAdvanceFromWave(level, wave) {
     // Wave 2: every hostile must be struck
@@ -2433,9 +2435,9 @@ function canAdvanceFromWave(level, wave) {
 }
 function clearWaveEntities() {
     for (const f of G.friendlies) { f.el.remove(); f.pathEl.remove(); f.destEl.remove(); }
-    for (const g of G.ghosts) g.el.remove();
+    for (const g of G.pings) g.el.remove();
     G.friendlies = [];
-    G.ghosts = [];
+    G.pings = [];
     G.selected = null;
     G.drag = null;
 }
@@ -2469,23 +2471,23 @@ function waveTick(dt) {
         return;
     }
     // Hostiles arrive one at a time
-    if (G.enemyQueue > 0) {
-        G.enemyTimer -= dt;
-        if (G.enemyTimer <= 0) {
-            spawnEnemy();
-            G.enemyQueue--;
-            G.enemyTimer = ENEMY_STAGGER_S;
+    if (G.hostileQueue > 0) {
+        G.hostileTimer -= dt;
+        if (G.hostileTimer <= 0) {
+            spawnHostile();
+            G.hostileQueue--;
+            G.hostileTimer = HOSTILE_STAGGER_S;
         }
     }
     // Pings at this wave's pace (a skipped spawn draws nothing from the daily stream)
     if (G.pingGap > 0) {
-        G.ghostTimer -= dt;
-        if (G.ghostTimer <= 0) {
-            if (G.ghosts.length < G.maxGhosts) {
-                spawnGhost();
-                G.ghostTimer = G.pingGap * (0.9 + RNG.ghost() * 0.2);
+        G.pingTimer -= dt;
+        if (G.pingTimer <= 0) {
+            if (G.pings.length < G.maxPings) {
+                spawnPing();
+                G.pingTimer = G.pingGap * (0.9 + RNG.ping() * 0.2);
             } else {
-                G.ghostTimer = 0.3;
+                G.pingTimer = 0.3;
             }
         }
     }
@@ -2590,8 +2592,8 @@ function update(dt) {
     // Tutorial keeps one plane in the air; real runs spawn planes per wave only
     if (G.tutorial) while (G.friendlies.length < 1) spawnFriendly();
 
-    // --- Enemies hunt the nearest friendly ---
-    for (const e of G.enemies) {
+    // --- Hostiles hunt the nearest friendly ---
+    for (const e of G.hostiles) {
         if (!G.friendlies.length) break;
         let target = null, best = Infinity, tv = null;
         for (const f of G.friendlies) {
@@ -2599,15 +2601,15 @@ function update(dt) {
             if (v.d < best) { best = v.d; target = f; tv = v; }
         }
         if (target && best > 0) {
-            e.x += tv.dx / best * G.enemySpeed * dt;
-            e.y += tv.dy / best * G.enemySpeed * dt;
+            e.x += tv.dx / best * G.hostileSpeed * dt;
+            e.y += tv.dy / best * G.hostileSpeed * dt;
             wrapPos(e);
             setPos(e);
         }
-        if (target && wrapDelta(e.x, e.y, target.x, target.y).d < R_ENEMY_FRIENDLY) {
+        if (target && wrapDelta(e.x, e.y, target.x, target.y).d < R_HOSTILE_FRIENDLY) {
             if (G.tutorial) {
-                if (strike.enemy === e) strikeReset();
-                G.enemies.splice(G.enemies.indexOf(e), 1);
+                if (strike.hostile === e) strikeReset();
+                G.hostiles.splice(G.hostiles.indexOf(e), 1);
                 e.el.remove();
                 G.tut.cool = TUT_RESPAWN_S;
                 break;
@@ -2628,23 +2630,23 @@ function update(dt) {
     }
 
     // --- Pings ---
-    for (const g of [...G.ghosts]) {
+    for (const g of [...G.pings]) {
         g.age += dt;
         if (g.holder !== null) {
             g.holdT += dt;
-            if (g.holdT >= HOLD_GHOST_S) {
-                G.ghosts.splice(G.ghosts.indexOf(g), 1);
+            if (g.holdT >= HOLD_PING_S) {
+                G.pings.splice(G.pings.indexOf(g), 1);
                 g.el.remove();
-                G.ghostIds++;
+                G.pingIds++;
                 G.wavePings++;
-                award(GHOST_POINTS, g.x, g.y);
+                award(PING_POINTS, g.x, g.y);
                 if (G.tutorial) tutComplete(1);
                 continue;
             }
         }
-        if (g.age >= GHOST_WINDOW_S) {
+        if (g.age >= PING_WINDOW_S) {
             if (G.tutorial) {
-                G.ghosts.splice(G.ghosts.indexOf(g), 1);
+                G.pings.splice(G.pings.indexOf(g), 1);
                 g.el.remove();
                 G.tut.cool = TUT_RESPAWN_S;
                 continue;
@@ -2652,8 +2654,8 @@ function update(dt) {
             g.el.style.outline = "3px solid #ff3d3d";
             return endGame("PING NOT IDENTIFIED WITHIN 3.0 SECONDS", { x: g.x, y: g.y });
         }
-        g.el.style.setProperty("--rem", (1 - g.age / GHOST_WINDOW_S) * 360 + "deg");
-        g.el.style.setProperty("--hold", Math.min(1, g.holdT / HOLD_GHOST_S) * 360 + "deg");
+        g.el.style.setProperty("--rem", (1 - g.age / PING_WINDOW_S) * 360 + "deg");
+        g.el.style.setProperty("--hold", Math.min(1, g.holdT / HOLD_PING_S) * 360 + "deg");
     }
 
     // --- Strike hold ---
@@ -2678,21 +2680,22 @@ function updateHud() {
     $("hWaves").textContent = G.cleared;
     $("hLvl").textContent = G.tutorial ? "-" :
         G.level + "·" + (G.level < 10 ? G.wave + "/" + LEVEL_WAVES[G.level - 1] : G.wave);
-    $("hHost").textContent = G.enemies.length;
+    $("hHost").textContent = G.hostiles.length;
     $("hTime").classList.toggle("ok", G.t >= TARGET_ENDURANCE_S);
     $("hPts").classList.toggle("ok", G.points >= TARGET_EFFICIENCY);
 }
 
 let last = performance.now();
 function frame(now) {
-    const dt = Math.min(0.05, (now - last) / 1000);
+    let dt = Math.min(0.05, (now - last) / 1000);
+    dt = Math.round(dt * 1000000) / 1000000;   // same quantisation as the log
     last = now;
     if (state === "play" && G) {
     runInputRecorder.recordFrame(dt);
 
     if (!(G.tutorial && G.tut.phase === "read")) update(dt);
     updateHud();
-}
+    }
     requestAnimationFrame(frame);
 }
 
@@ -2704,13 +2707,13 @@ function clearField() { field.innerHTML = ""; field.classList.remove("frozen"); 
 
 function newState(extra) {
     return Object.assign({
-        t: 0, level: 1, wave: 1, cleared: 0, points: 0, kills: 0, ghostIds: 0,
-        friendlies: [], enemies: [], ghosts: [],
-        selected: null, drag: null, nextId: 1, enemyCounter: 1,
+        t: 0, level: 1, wave: 1, cleared: 0, points: 0, kills: 0, pingIds: 0,
+        friendlies: [], hostiles: [], pings: [],
+        selected: null, drag: null, nextId: 1, hostileCounter: 1,
         friendlyCounter: 0,
-        inter: 0, waveT: 0, enemyQueue: 0, enemyTimer: 0, gateNotified: false, wavePings: 0,
-        ghostTimer: Infinity, pingGap: 0, maxGhosts: 0,
-        enemySpeed: 40, ghostR: 28, drift: 1,
+        inter: 0, waveT: 0, hostileQueue: 0, hostileTimer: 0, gateNotified: false, wavePings: 0,
+        pingTimer: Infinity, pingGap: 0, maxPings: 0,
+        hostileSpeed: 40, pingR: 28, drift: 1,
         failReason: "", result: null,
         tutorial: false, tut: null
     }, extra || {});
@@ -3124,7 +3127,7 @@ class LeaderboardView {
             ["Reached", `Level ${G.level} · Wave ${G.wave}`],
             ["Waves cleared", G.cleared],
             ["Hostiles eliminated", G.kills],
-            ["Ghosts identified", G.ghostIds]
+            ["Pings identified", G.pingIds]
         ];
         $("metrics").innerHTML = rows.map(x => `<tr><td>${x[0]}</td><td>${x[1]}</td></tr>`).join("");
         $("metrics").style.display = "table";
@@ -3513,18 +3516,12 @@ refreshAccountUI();
 function updateHowTo() {
     const I = curIcons();
     const kb = isKB();
-    const planeStep = kb
-        ? `<b>1. Click a friendly</b> (${I.plane}) to select it, then steer it with <b>W A S D</b> (or arrow keys).`
-        : `<b>1. Click and drag a friendly</b> (${I.plane}) to steer it.`;
-    const strikeStep = kb
-        ? `<b>2. Click an enemy</b> ${I.enemy || "◆"}, then <b>hold SPACE for 2 seconds</b> to strike it for points.`
-        : `<b>2. Tap a enemy</b> ${I.enemy || "◆"}, then press and hold for 2 seconds to strike it for points.`;
-    const pingStep = `<b>3. Press and hold a ping</b> ${I.ping || "●"} <b>for 0.5 seconds</b> to identify it. Each ping expires after 3 seconds.`;
     $("howto").innerHTML =
-        planeStep + " Guide each friendly to its destination circle along the dotted flight path; the faster it arrives, the more you score.<br><br>" +
-        strikeStep + "<br><br>" + pingStep + "<br><br>" +
-        "Clear <b>waves</b> to climb. In every level, <b>wave 1</b> is friendlies only, <b>wave 2</b> adds hostiles and <b>wave 3</b> adds pings. Each level adds more friendlies, hostiles and faster pings. <b>L10</b> is endless.<br>" +
-        "A missed ping or any collision is game over. Your daily rank is the number of <b>waves you clear</b> (points break ties).";
+        `Think you have what it takes to be an RSAF Air Battle Manager? Try your hand at <b>navigating friendlies (${I.plane}), eliminating hostiles (${I.hostile || "◆"}), and identifying pings (${I.ping || "●"})</b> to find out! ` +
+        "This game assesses and trains your cognitive ability to multitask and prioritise threats. <br><br>" +
+        "A missed ping or any collision is game over. Your daily rank is the number of <b>waves you clear</b> (points break ties). <br><br>" +
+        "Clear <b>waves</b> to climb. In every level, <b>wave 1</b> is friendlies only, <b>wave 2</b> adds hostiles and <b>wave 3</b> adds pings. Each level adds more friendlies, hostiles and faster pings. <b>L10</b> is endless.";
+        
 }
 
 function applyTheme(theme) {
@@ -3724,12 +3721,12 @@ for (const f of G.friendlies) {
 }
 
 // Clear existing pings
-for (const g of G.ghosts) {
+for (const g of G.pings) {
     g.el?.remove();
 }
 
 G.friendlies = [];
-G.ghosts = [];
+G.pings = [];
 G.selected = null;
 G.drag = null;
 
