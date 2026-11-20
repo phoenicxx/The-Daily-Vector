@@ -1967,8 +1967,20 @@ const runInputRecorder = (() => {
     let sequence = 0;
     let events = [];
     let activePointers = new Map();
+    // Browser pointerId values are implementation-defined. Some mobile
+    // browsers expose very large IDs, which Supabase's numeric validator
+    // rejects (it caps numeric replay fields at 10,000,000).
+    let loggedPointerIds = new Map();
+    let nextLoggedPointerId = 1;
     let overflow = false;
     let metadata = null;
+
+    function logPointerId(pointerId) {
+        if (!loggedPointerIds.has(pointerId)) {
+            loggedPointerIds.set(pointerId, nextLoggedPointerId++);
+        }
+        return loggedPointerIds.get(pointerId);
+    }
 
     function record(type, ...values) {
         if (!active) return;
@@ -2002,6 +2014,8 @@ const runInputRecorder = (() => {
         sequence = 0;
         events = [];
         activePointers.clear();
+        loggedPointerIds.clear();
+        nextLoggedPointerId = 1;
         overflow = false;
 
         metadata = {
@@ -2041,7 +2055,7 @@ const runInputRecorder = (() => {
             const f = G.friendlies.find(item => item.el === friendlyEl);
 
             if (f) {
-                record("FRIENDLY_DOWN", f.id, point.x, point.y, ev.pointerId);
+                record("FRIENDLY_DOWN", f.id, point.x, point.y, logPointerId(ev.pointerId));
                 activePointers.set(ev.pointerId, {
                     type: "FRIENDLY",
                     id: f.id
@@ -2055,7 +2069,7 @@ const runInputRecorder = (() => {
             const e = G.hostiles.find(item => item.el === hostileEl);
 
             if (e) {
-                record("HOSTILE_DOWN", e.id, point.x, point.y, ev.pointerId);
+                record("HOSTILE_DOWN", e.id, point.x, point.y, logPointerId(ev.pointerId));
             }
             return;
         }
@@ -2065,7 +2079,7 @@ const runInputRecorder = (() => {
             const g = G.pings.find(item => item.el === pingEl);
 
             if (g && g.holder === null) {
-                record("PING_DOWN", g.id, point.x, point.y, ev.pointerId);
+                record("PING_DOWN", g.id, point.x, point.y, logPointerId(ev.pointerId));
                 activePointers.set(ev.pointerId, {
                     type: "PING",
                     id: g.id
@@ -2075,7 +2089,7 @@ const runInputRecorder = (() => {
         }
 
         if (target.closest("#spHold")) {
-            record("STRIKE_HOLD_DOWN", ev.pointerId);
+            record("STRIKE_HOLD_DOWN", logPointerId(ev.pointerId));
             activePointers.set(ev.pointerId, {
                 type: "STRIKE"
             });
@@ -2096,7 +2110,7 @@ const runInputRecorder = (() => {
             pointer.id,
             point.x,
             point.y,
-            ev.pointerId
+            logPointerId(ev.pointerId)
         );
     }
 
@@ -2110,11 +2124,12 @@ const runInputRecorder = (() => {
             "POINTER_END",
             pointer.type,
             pointer.id ?? null,
-            ev.pointerId,
+            logPointerId(ev.pointerId),
             ev.type
         );
 
         activePointers.delete(ev.pointerId);
+        loggedPointerIds.delete(ev.pointerId);
     }
 
     function pointerClick(ev) {
