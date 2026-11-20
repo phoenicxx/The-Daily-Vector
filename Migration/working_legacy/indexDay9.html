@@ -1524,15 +1524,9 @@ window.addEventListener("resize", measure);
 function fieldPoint(ev) {
     const rect = field.getBoundingClientRect();
 
-    // Mobile browsers can deliver pointer coordinates beyond the play field
-    // when a finger drifts outside it (or while the visual viewport moves).
-    // Keep replay coordinates inside the dimensions recorded at run start.
-    const x = rect.width > 0 ? (ev.clientX - rect.left) * (FW / rect.width) : 0;
-    const y = rect.height > 0 ? (ev.clientY - rect.top) * (FH / rect.height) : 0;
-
     return {
-        x: Math.round(Math.max(0, Math.min(FW, x))),
-        y: Math.round(Math.max(0, Math.min(FH, y)))
+        x: (ev.clientX - rect.left) * (FW / rect.width),
+        y: (ev.clientY - rect.top) * (FH / rect.height)
     };
 }
 
@@ -1967,33 +1961,11 @@ const runInputRecorder = (() => {
     let sequence = 0;
     let events = [];
     let activePointers = new Map();
-    // Browser pointerId values are implementation-defined. Some mobile
-    // browsers expose very large IDs, which Supabase's numeric validator
-    // rejects (it caps numeric replay fields at 10,000,000).
-    let loggedPointerIds = new Map();
-    let nextLoggedPointerId = 1;
     let overflow = false;
     let metadata = null;
 
-    function logPointerId(pointerId) {
-        if (!loggedPointerIds.has(pointerId)) {
-            loggedPointerIds.set(pointerId, nextLoggedPointerId++);
-        }
-        return loggedPointerIds.get(pointerId);
-    }
-
     function record(type, ...values) {
         if (!active) return;
-
-        // JSON.stringify converts NaN and Infinity to null. The replay
-        // validator expects every numeric slot to be a finite number, so
-        // reject malformed samples before they can poison the whole run.
-        if (!values.every(value =>
-            typeof value !== "number" || Number.isFinite(value)
-        )) {
-            overflow = true;
-            return;
-        }
 
         if (events.length >= MAX_EVENTS) {
             overflow = true;
@@ -2001,7 +1973,7 @@ const runInputRecorder = (() => {
         }
 
         events.push([
-            Math.max(0, Math.floor(performance.now() - startedAt)),
+            Math.round((performance.now() - startedAt) * 10) / 10,
             sequence++,
             type,
             ...values
@@ -2014,16 +1986,14 @@ const runInputRecorder = (() => {
         sequence = 0;
         events = [];
         activePointers.clear();
-        loggedPointerIds.clear();
-        nextLoggedPointerId = 1;
         overflow = false;
 
         metadata = {
             version: 2,
             day: info.day,
             seed: info.seed,
-            width: Math.round(info.width),
-            height: Math.round(info.height),
+            width: info.width,
+            height: info.height,
             controls: info.controls,
             sessionId: info.sessionId
         };
@@ -2032,10 +2002,6 @@ const runInputRecorder = (() => {
     }
 
     function recordFrame(dt) {
-        if (!Number.isFinite(dt) || dt < 0) {
-            overflow = true;
-            return;
-        }
         record("FRAME", Math.round(dt * 1000000));
     }
 
@@ -2055,7 +2021,7 @@ const runInputRecorder = (() => {
             const f = G.friendlies.find(item => item.el === friendlyEl);
 
             if (f) {
-                record("FRIENDLY_DOWN", f.id, point.x, point.y, logPointerId(ev.pointerId));
+                record("FRIENDLY_DOWN", f.id, point.x, point.y, ev.pointerId);
                 activePointers.set(ev.pointerId, {
                     type: "FRIENDLY",
                     id: f.id
@@ -2069,7 +2035,7 @@ const runInputRecorder = (() => {
             const e = G.hostiles.find(item => item.el === hostileEl);
 
             if (e) {
-                record("HOSTILE_DOWN", e.id, point.x, point.y, logPointerId(ev.pointerId));
+                record("HOSTILE_DOWN", e.id, point.x, point.y, ev.pointerId);
             }
             return;
         }
@@ -2079,7 +2045,7 @@ const runInputRecorder = (() => {
             const g = G.pings.find(item => item.el === pingEl);
 
             if (g && g.holder === null) {
-                record("PING_DOWN", g.id, point.x, point.y, logPointerId(ev.pointerId));
+                record("PING_DOWN", g.id, point.x, point.y, ev.pointerId);
                 activePointers.set(ev.pointerId, {
                     type: "PING",
                     id: g.id
@@ -2089,7 +2055,7 @@ const runInputRecorder = (() => {
         }
 
         if (target.closest("#spHold")) {
-            record("STRIKE_HOLD_DOWN", logPointerId(ev.pointerId));
+            record("STRIKE_HOLD_DOWN", ev.pointerId);
             activePointers.set(ev.pointerId, {
                 type: "STRIKE"
             });
@@ -2110,7 +2076,7 @@ const runInputRecorder = (() => {
             pointer.id,
             point.x,
             point.y,
-            logPointerId(ev.pointerId)
+            ev.pointerId
         );
     }
 
@@ -2124,12 +2090,11 @@ const runInputRecorder = (() => {
             "POINTER_END",
             pointer.type,
             pointer.id ?? null,
-            logPointerId(ev.pointerId),
+            ev.pointerId,
             ev.type
         );
 
         activePointers.delete(ev.pointerId);
-        loggedPointerIds.delete(ev.pointerId);
     }
 
     function pointerClick(ev) {
@@ -2175,7 +2140,7 @@ const runInputRecorder = (() => {
     function resize() {
         if (!active) return;
 
-        record("RESIZE", Math.round(FW), Math.round(FH));
+        record("RESIZE", FW, FH);
     }
 
     function blur() {
